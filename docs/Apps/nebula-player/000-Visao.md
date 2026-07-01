@@ -1,3 +1,21 @@
+# Documento
+
+**Projeto:** Nebula Platform
+
+**Módulo:** Nebula Player
+
+**Versão:** 0.1.0
+
+**Status:** Em desenvolvimento
+
+**Última atualização:** 01/07/2026
+
+**Responsável:** Felipe Almeida
+
+---
+
+
+
 # 1. Nebula Player
 
 O **Nebula Player** é o cliente oficial da Nebula Platform, responsável exclusivamente pela experiência de reprodução do usuário.
