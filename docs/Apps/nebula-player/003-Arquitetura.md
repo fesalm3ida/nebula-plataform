@@ -20,7 +20,7 @@ Nebula Player
 
 ↓
 
-Solicita playlist
+Solicita recursos de conteúdo autorizados
 
 ↓
 
@@ -28,7 +28,7 @@ Nebula Core valida o dispositivo
 
 ↓
 
-Nebula Core entrega a playlist
+Nebula Core entrega os recursos de conteúdo autorizados
 
 ↓
 
@@ -36,7 +36,7 @@ Player reproduz
 
 ↓
 
-Playlist permanece apenas em memória
+Recurso de conteúdo autorizado permanece apenas em memória
 
 ↓
 
@@ -44,7 +44,7 @@ Aplicativo é fechado
 
 ↓
 
-Playlist descartada
+Recurso de conteúdo autorizado descartado
 
 
 --- 
@@ -53,7 +53,7 @@ Isso traz algumas vantagens:
 
 🔒 Menor exposição de URLs e credenciais.
 
-🔄 O backend pode trocar playlists ou servidores sem intervenção do usuário.
+🔄 O backend pode atualizar autorizações de recursos de conteúdo sem intervenção do usuário.
 
 📡 Facilita implementar failover e balanceamento de carga.
 

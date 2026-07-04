@@ -164,6 +164,8 @@ Facilidade de manutenção
 
 Experiência do usuário
 
+A Nebula não distribui conteúdo. Ela gerencia o acesso autorizado ao conteúdo e observa sua qualidade operacional.
+
 ---
 
 # Fora do Escopo do MVP

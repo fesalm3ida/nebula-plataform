@@ -24,7 +24,7 @@ Seu papel é consumir as informações disponibilizadas pelo **Nebula Core** e a
 
 ## Responsabilidades
 
-- Reprodução de playlists
+- Reprodução de conteúdo autorizado
 - Interface gráfica (UI)
 - Login e ativação do dispositivo
 - Troca de canais
@@ -34,7 +34,7 @@ Seu papel é consumir as informações disponibilizadas pelo **Nebula Core** e a
 
 ## O que o Nebula Player NÃO faz
 
-- Não armazena playlists M3U.
+- Não armazena ContentEndpoints permanentemente.
 - Não armazena credenciais Xtream.
 - Não decide qual servidor utilizar.
 - Não gerencia clientes.
@@ -48,7 +48,7 @@ Seu papel é consumir as informações disponibilizadas pelo **Nebula Core** e a
 
 Sempre que necessário, o Nebula Player consulta o Nebula Core para obter:
 
-- Playlist autorizada para o dispositivo
+- Recursos de conteúdo autorizados para o dispositivo
 - Configurações
 - Permissões
 - Informações de atualização

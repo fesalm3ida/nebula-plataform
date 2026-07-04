@@ -34,7 +34,7 @@ O **Nebula Player** é responsável exclusivamente pela experiência do usuário
 
 ## Responsabilidades
 
-- Reprodução de playlists
+- Reprodução de conteúdo autorizado
 - Interface gráfica (UI)
 - Login e ativação do dispositivo
 - Troca de canais
@@ -44,7 +44,7 @@ O **Nebula Player** é responsável exclusivamente pela experiência do usuário
 
 ## Observações
 
-O Nebula Player **não decide** qual playlist será utilizada.
+O Nebula Player **não decide** qual recurso de conteúdo será utilizado.
 
 Sua única responsabilidade é solicitar as informações ao **Nebula Core** e apresentar o conteúdo ao usuário. Não armazena o conteudo. 
 
@@ -59,9 +59,9 @@ O **Nebula Core** é o núcleo da plataforma e concentra todas as regras de neg�
 - Ativação de dispositivos
 - Autenticação
 - Gerenciamento de dispositivos
-- Gerenciamento de playlists
+- Gerenciamento de recursos de conteúdo
 - Gerenciamento dos servidores de conteúdo
-- Distribuição das playlists
+- Distribuição dos ContentEndpoints autorizados
 - Disponibilização das APIs
 - Aplicação das regras de negócio
 
@@ -106,7 +106,7 @@ O **Painel Administrativo** é utilizado pelos administradores da plataforma par
 ## Responsabilidades
 
 - Cadastro de clientes
-- Cadastro de playlists
+- Cadastro de ContentEndpoints
 - Cadastro de servidores
 - Ativação de dispositivos
 - Bloqueio e desbloqueio de dispositivos
@@ -128,7 +128,7 @@ O Banco de Dados centraliza todas as informações persistentes da plataforma.
 
 - Usuários
 - Dispositivos
-- Playlists
+- ContentEndpoints
 - Servidores
 - Telemetria
 - Logs

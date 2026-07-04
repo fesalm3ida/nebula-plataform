@@ -28,9 +28,11 @@ Identificador de rede utilizado como um dos fatores de ativação quando dispon�
 
 ---
 
-## Playlist
+## ContentEndpoint
 
-Conjunto de canais disponibilizados ao dispositivo.
+Ponto autorizado de acesso ao conteúdo disponibilizado ao dispositivo.
+
+No MVP, o tipo utilizado será M3U.
 
 ---
 
@@ -42,7 +44,7 @@ Origem responsável por fornecer o conteúdo autorizado ao dispositivo.
 
 ## Heartbeat
 
-Mensagem periódica enviada pelo Nebula Player ao Nebula Monitor indicando que o dispositivo continua ativo.
+Mensagem periódica enviada pelo Nebula Player ao Nebula Core e encaminhada ao Nebula Monitor indicando que o dispositivo continua ativo.
 
 ---
 

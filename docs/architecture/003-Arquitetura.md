@@ -18,7 +18,7 @@
 
 # 1. O Player é "stateless" sempre que possível
 
-Em vez de armazenar playlists e configurações localmente, ele consulta o Core quando necessário e mantém apenas o mínimo indispensável para funcionar. Isso simplifica atualizações e reduz o risco de inconsistências.
+Em vez de armazenar recursos de conteúdo autorizados e configurações localmente, ele consulta o Core quando necessário e mantém apenas o mínimo indispensável para funcionar. Isso simplifica atualizações e reduz o risco de inconsistências.
 
 # 2. O Nebula Core não conhece detalhes do player
 
@@ -70,15 +70,15 @@ Aplicativo cliente responsável pela experiência do usuário.
 - Gerar Device Key
 - Exibir MAC Address quando disponível
 - Solicitar ativação ao Nebula Core
-- Solicitar playlist autorizada
+- Solicitar recursos de conteúdo autorizados
 - Reproduzir conteúdo
 - Enviar eventos de telemetria
 
 ### Restrições
 
 - Não armazena conteúdo de mídia
-- Não armazena playlists permanentemente
-- Não cadastra URLs M3U ou Xtream
+- Não armazena ContentEndpoints permanentemente
+- Não cadastra ContentEndpoints do tipo M3U ou credenciais Xtream
 - Não possui regras de negócio
 - Não decide qual servidor utilizar
 
@@ -94,9 +94,9 @@ Backend principal da plataforma.
 - Ativação de dispositivos
 - Gerenciamento de clientes
 - Gerenciamento de dispositivos
-- Gerenciamento de playlists
+- Gerenciamento de ContentProviders, ProviderAccounts e ContentEndpoints
 - Gerenciamento de servidores
-- Distribuição segura das playlists
+- Distribuição segura dos ContentEndpoints autorizados
 - Regras de negócio
 - APIs internas e externas
 
@@ -109,9 +109,9 @@ Painel administrativo web.
 ### Responsabilidades
 
 - Cadastrar clientes
-- Cadastrar playlists
+- Cadastrar ContentEndpoints
 - Cadastrar servidores
-- Vincular playlists a dispositivos
+- Autorizar ContentEndpoints para dispositivos
 - Ativar dispositivos
 - Bloquear dispositivos
 - Visualizar métricas
@@ -145,7 +145,9 @@ Camada de persistência da plataforma.
 - Usuários
 - Clientes
 - Dispositivos
-- Playlists
+- ContentProviders
+- ProviderAccounts
+- ContentEndpoints
 - Servidores
 - Eventos de telemetria
 - Logs
@@ -162,7 +164,7 @@ Camada de persistência da plataforma.
 4. App envia Device Key e MAC ao Nebula Core
 5. Nebula Core registra o dispositivo como pendente
 6. Administrador acessa o Nebula Admin
-7. Administrador vincula uma playlist ao dispositivo
+7. Administrador autoriza ContentEndpoints para o dispositivo
 8. Nebula Core marca o dispositivo como ativo
 9. Nebula Player consulta novamente o status
 10. Nebula Player recebe autorização
@@ -174,9 +176,9 @@ Camada de persistência da plataforma.
 
 ```text
 1. Usuário seleciona um canal no Nebula Player
-2. Player solicita ao Nebula Core a playlist autorizada
+2. Player solicita ao Nebula Core os recursos de conteúdo autorizados
 3. Nebula Core valida o dispositivo
-4. Nebula Core identifica a playlist vinculada
+4. Nebula Core identifica os ContentEndpoints autorizados
 5. Nebula Core retorna os dados necessários para reprodução
 6. Player inicia a reprodução
 7. Player envia eventos de loading, erro e buffering
@@ -206,7 +208,7 @@ Eventos iniciais:
 
 - App iniciado
 - Dispositivo online
-- Playlist solicitada
+- ContentEndpoint solicitado
 - Canal iniciado
 - Loading iniciado
 - Loading concluído
@@ -233,7 +235,7 @@ Exemplos:
 
 - Solicitar ativação
 - Consultar status do dispositivo
-- Solicitar playlist
+- Solicitar recursos de conteúdo autorizados
 - Enviar telemetria
 
 ---
@@ -252,7 +254,7 @@ Exemplos:
 
 - Login administrativo
 - Cadastro de clientes
-- Cadastro de playlists
+- Cadastro de ContentEndpoints
 - Ativação de dispositivos
 - Consulta de métricas
 
