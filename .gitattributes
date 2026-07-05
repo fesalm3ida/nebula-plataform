@@ -1,0 +1,35 @@
+# Texto
+* text=auto eol=lf
+
+# Shell
+*.sh text eol=lf
+
+# Python
+*.py text eol=lf
+
+# Kotlin
+*.kt text eol=lf
+
+# Markdown
+*.md text eol=lf
+
+# YAML
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Docker
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+
+# Windows
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binários
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.jar binary
+*.keystore binary
