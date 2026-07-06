@@ -645,3 +645,534 @@ Seu histórico constitui parte do mecanismo de auditoria da Nebula Platform.
 A existência de uma autorização não implica que o Device esteja online.
 
 A existência de uma autorização apenas indica que o Device possui permissão para consumir determinado ContentEndpoint.
+
+---
+---
+---
+
+# Entidade: Session
+
+## Definição
+
+Session representa um período contínuo de uso do Nebula Player por um Device.
+
+Uma Session começa quando o Nebula Player inicia uma execução válida e se comunica com o Nebula Core.
+
+Uma Session termina quando o Player é encerrado, perde comunicação por tempo limite, ocorre falha crítica ou o Nebula Core considera aquela execução encerrada.
+
+A Session funciona como o contexto temporal dos eventos operacionais do Player.
+
+---
+
+## Responsabilidades
+
+A Session é responsável por:
+
+- representar uma execução do Nebula Player;
+- agrupar Heartbeats, TelemetryEvents e Logs;
+- registrar início e fim de uso;
+- permitir análise de estabilidade durante um período;
+- servir como base para métricas de experiência e observabilidade.
+
+---
+
+## Identidade
+
+### SessionID
+
+Identificador único da Session.
+
+Cada nova execução relevante do Nebula Player deve gerar uma nova Session.
+
+---
+
+## Atributos Conceituais
+
+- SessionID
+- DeviceID
+- Status
+- StartedAt
+- EndedAt
+- LastHeartbeatAt
+- AppVersion
+- Platform
+- IPAddress
+- UserAgent
+- CreatedAt
+- UpdatedAt
+
+---
+
+## Estados
+
+Estados possíveis:
+
+- Active
+- Closed
+- TimedOut
+- Failed
+
+---
+
+## Relacionamentos
+
+Uma Session:
+
+- pertence exatamente a um Device;
+- pode possuir zero ou mais Heartbeats;
+- pode possuir zero ou mais TelemetryEvents;
+- pode possuir zero ou mais Logs.
+
+Um Device pode possuir diversas Sessions ao longo do tempo.
+
+---
+
+## Invariantes
+
+### INV-SESSION-001
+
+Toda Session pertence exatamente a um Device.
+
+---
+
+### INV-SESSION-002
+
+Um Device pode possuir múltiplas Sessions.
+
+---
+
+### INV-SESSION-003
+
+Toda Session deve possuir StartedAt.
+
+---
+
+### INV-SESSION-004
+
+Uma Session encerrada deve possuir EndedAt.
+
+---
+
+### INV-SESSION-005
+
+Uma Session ativa não deve possuir EndedAt.
+
+---
+
+### INV-SESSION-006
+
+Heartbeats, TelemetryEvents e Logs devem estar associados a uma Session sempre que possível.
+
+---
+
+### INV-SESSION-007
+
+Uma Session encerrada não pode voltar ao estado Active.
+
+---
+
+## Ciclo de Vida
+
+```text
+Nebula Player iniciado
+        ↓
+Comunicação com Nebula Core
+        ↓
+Session criada
+        ↓
+Active
+        ↓
+Heartbeats / TelemetryEvents / Logs
+        ↓
+Closed / TimedOut / Failed
+```
+
+---
+---
+---
+
+# Entidade: Heartbeat
+
+## Definição
+
+Heartbeat representa um sinal periódico enviado pelo Nebula Player ao Nebula Core durante uma Session ativa.
+
+Seu objetivo é informar que o Device continua operacional e conectado.
+
+Heartbeat não representa eventos de reprodução nem ações do usuário.
+
+Heartbeat representa apenas a saúde operacional da Session.
+
+---
+
+## Responsabilidades
+
+O Heartbeat é responsável por:
+
+- informar que o Device continua ativo;
+- atualizar o último contato da Session;
+- permitir cálculo de disponibilidade;
+- permitir cálculo de Online/Offline;
+- servir como base para monitoramento em tempo real.
+
+---
+
+## Identidade
+
+Heartbeat representa um evento operacional.
+
+Cada envio gera um novo Heartbeat.
+
+---
+
+## Atributos Conceituais
+
+- HeartbeatID
+- SessionID
+- Timestamp
+- Ping
+- Latency
+- Status
+- CreatedAt
+
+---
+
+## Estados
+
+Heartbeat representa um evento instantâneo.
+
+Por esse motivo, não possui ciclo de vida próprio.
+
+O atributo Status representa apenas o resultado da comunicação.
+
+Exemplos:
+
+- Success
+- Timeout
+- Failed
+
+---
+
+## Relacionamentos
+
+Todo Heartbeat:
+
+- pertence exatamente a uma Session.
+
+Uma Session pode possuir diversos Heartbeats.
+
+---
+
+## Invariantes
+
+### INV-HEARTBEAT-001
+
+Todo Heartbeat pertence exatamente a uma Session.
+
+---
+
+### INV-HEARTBEAT-002
+
+Heartbeat nunca altera o Status Administrativo do Device.
+
+---
+
+### INV-HEARTBEAT-003
+
+Heartbeat pode influenciar o OperationalState calculado pelo Nebula Core.
+
+---
+
+### INV-HEARTBEAT-004
+
+Heartbeat nunca representa autorização de acesso.
+
+---
+
+## Regras Operacionais
+
+- O Nebula Player envia Heartbeats periodicamente.
+- O Nebula Core registra os Heartbeats.
+- O Nebula Monitor utiliza os Heartbeats para cálculo de disponibilidade.
+- A frequência dos Heartbeats será definida posteriormente.
+- Heartbeats nunca são alterados após registrados.
+
+---
+
+## Observações Arquiteturais
+
+Heartbeat representa exclusivamente conectividade e disponibilidade.
+
+Ele não substitui TelemetryEvent.
+
+Ele não substitui Log.
+
+Ele não representa eventos de reprodução.
+
+Sua principal finalidade é permitir que o Nebula Core e o Nebula Monitor determinem o estado operacional do Device.
+
+---
+---
+---
+
+# Entidade: TelemetryEvent
+
+## Definição
+
+TelemetryEvent representa um evento operacional gerado pelo Nebula Player durante uma Session.
+
+Seu objetivo é registrar acontecimentos relevantes relacionados ao comportamento da aplicação, permitindo análise operacional, diagnóstico, métricas de qualidade e observabilidade.
+
+TelemetryEvent não representa conectividade.
+
+TelemetryEvent não representa logs técnicos.
+
+TelemetryEvent representa acontecimentos do funcionamento do Player.
+
+---
+
+## Responsabilidades
+
+TelemetryEvent é responsável por:
+
+- registrar eventos operacionais;
+- permitir análise de experiência do usuário;
+- alimentar dashboards;
+- fornecer métricas de QoS;
+- auxiliar diagnósticos operacionais.
+
+---
+
+## Identidade
+
+Cada TelemetryEvent representa um fato ocorrido durante uma Session.
+
+Todo evento possui identidade própria.
+
+### TelemetryEventID
+
+Identificador único do evento.
+
+---
+
+## Atributos Conceituais
+
+- TelemetryEventID
+- SessionID
+- EventType
+- EventTimestamp
+- Payload
+- CreatedAt
+
+---
+
+## Tipos de Evento
+
+Exemplos:
+
+- PlaybackStarted
+- PlaybackStopped
+- ChannelChanged
+- BufferStarted
+- BufferFinished
+- VolumeChanged
+- FullscreenEnabled
+- FullscreenDisabled
+- ErrorOccurred
+- ListChange
+
+A lista poderá evoluir conforme novas funcionalidades forem incorporadas ao Nebula Player.
+
+---
+
+## Relacionamentos
+
+Todo TelemetryEvent:
+
+- pertence exatamente a uma Session.
+
+Uma Session pode possuir diversos TelemetryEvents.
+
+---
+
+## Invariantes
+
+### INV-TELEMETRY-001
+
+Todo TelemetryEvent pertence exatamente a uma Session.
+
+---
+
+### INV-TELEMETRY-002
+
+TelemetryEvents representam fatos imutáveis.
+
+---
+
+### INV-TELEMETRY-003
+
+TelemetryEvents nunca devem ser alterados após registrados.
+
+---
+
+### INV-TELEMETRY-004
+
+TelemetryEvents não representam autorização.
+
+---
+
+### INV-TELEMETRY-005
+
+TelemetryEvents não representam Heartbeats.
+
+---
+
+## Regras Operacionais
+
+- O Nebula Player gera TelemetryEvents.
+- O Nebula Core registra TelemetryEvents.
+- O Nebula Monitor utiliza TelemetryEvents para análises operacionais.
+- TelemetryEvents nunca são removidos durante a Session.
+
+---
+
+## Observações Arquiteturais
+
+TelemetryEvent representa acontecimentos relevantes da execução do Nebula Player.
+
+Sua finalidade é permitir análise histórica, geração de métricas e melhoria contínua da experiência do usuário.
+
+O formato do Payload será definido durante a modelagem lógica e da API.
+
+---
+---
+---
+
+# Entidade: Log
+
+## Definição
+
+Log representa um registro técnico gerado durante uma Session do Nebula Player.
+
+Seu objetivo é auxiliar diagnóstico técnico, investigação de falhas e rastreamento de comportamento interno da aplicação.
+
+Log não representa conectividade.
+
+Log não representa eventos de experiência do usuário.
+
+Log não representa autorização de acesso.
+
+Log pertence ao contexto de uma Session sempre que possível.
+
+---
+
+## Responsabilidades
+
+O Log é responsável por:
+
+- registrar informações técnicas relevantes;
+- auxiliar diagnóstico de falhas;
+- preservar rastros operacionais da execução;
+- apoiar investigação de erros;
+- complementar Heartbeats e TelemetryEvents sem substituí-los.
+
+---
+
+## Identidade
+
+Cada Log representa um registro técnico ocorrido durante uma Session.
+
+Todo Log possui identidade própria.
+
+### LogID
+
+Identificador único do Log.
+
+---
+
+## Atributos Conceituais
+
+- LogID
+- SessionID
+- Level
+- Source
+- Message
+- Context
+- Timestamp
+- CreatedAt
+
+---
+
+## Níveis
+
+Exemplos:
+
+- Debug
+- Info
+- Warning
+- Error
+- Critical
+
+---
+
+## Relacionamentos
+
+Todo Log:
+
+- pertence exatamente a uma Session sempre que possível.
+
+Uma Session pode possuir diversos Logs.
+
+---
+
+## Invariantes
+
+### INV-LOG-001
+
+Log pertence ao contexto de uma Session sempre que possível.
+
+---
+
+### INV-LOG-002
+
+Logs representam registros técnicos.
+
+---
+
+### INV-LOG-003
+
+Logs não representam Heartbeats.
+
+---
+
+### INV-LOG-004
+
+Logs não representam TelemetryEvents.
+
+---
+
+### INV-LOG-005
+
+Logs não representam autorização de acesso.
+
+---
+
+## Regras Operacionais
+
+- O Nebula Player gera Logs técnicos.
+- O Nebula Core registra Logs recebidos do Nebula Player.
+- O Nebula Monitor pode utilizar Logs para diagnóstico operacional.
+- Logs não substituem Heartbeats.
+- Logs não substituem TelemetryEvents.
+
+---
+
+## Observações Arquiteturais
+
+Log representa diagnóstico técnico.
+
+Sua finalidade é apoiar análise de falhas, investigação operacional e manutenção da aplicação.
+
+Log faz parte do modelo híbrido de observabilidade, ao lado de Session, Heartbeat e TelemetryEvent.
+
+Log permanece separado de Heartbeat e TelemetryEvent por representar diagnóstico técnico dentro do contexto de uma Session.
