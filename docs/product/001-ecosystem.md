@@ -20,7 +20,7 @@ A Nebula Platform é uma plataforma modular para gerenciamento operacional de di
 
 Ela é composta por diversos serviços independentes que trabalham em conjunto para oferecer ativação de dispositivos, gerenciamento de conteúdo, monitoramento operacional e reprodução de mídia.
 
-![](image.png)
+![](../architecture-overview.png)
 
 # Arquitetura da Plataforma
 
