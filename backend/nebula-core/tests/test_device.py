@@ -2,14 +2,16 @@ from app.domain.entities.device import Device
 from app.domain.enums.device_status import DeviceStatus
 from app.domain.value_objects.device_fingerprint import DeviceFingerprint
 from app.domain.value_objects.mac_address import MacAddress
+from app.domain.enums.device_platform import DevicePlatform
+from app.domain.value_objects.app_version import AppVersion
 
 
 def make_device() -> Device:
     return Device(
         fingerprint=DeviceFingerprint("a" * 64),
         mac_address=MacAddress("AA:BB:CC:DD:EE:FF"),
-        platform="android_tv",
-        app_version="0.1.0",
+        platform=DevicePlatform.ANDROID_TV,
+        app_version=AppVersion("0.1.0"),
     )
 
 
