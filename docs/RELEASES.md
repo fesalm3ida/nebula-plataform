@@ -64,3 +64,26 @@ Primeira versão pública
 - Consolidação das ADRs 001–011.
 - Consolidação das RFCs 001–004.
 - Estruturação do subdomínio de Observabilidade.
+
+---
+---
+---
+
+Release
+
+M1 - Architectural Foundation
+
+Description:
+
+Completed:
+
+✔ Product Vision
+✔ MVP
+✔ Domain Model
+✔ Architecture
+✔ ADRs
+✔ RFCs
+✔ Conceptual Model
+✔ Logical Model
+✔ Storage Strategy
+✔ Startup Flow
