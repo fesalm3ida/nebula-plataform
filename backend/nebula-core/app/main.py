@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-
 from app.api.routes.devices import router as devices_router
+from app.api.routes.auth import router as auth_router
 
 
 app = FastAPI(
@@ -9,6 +9,7 @@ app = FastAPI(
 )
 
 app.include_router(devices_router)
+app.include_router(auth_router)
 
 
 @app.get("/")
