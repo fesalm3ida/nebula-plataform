@@ -86,3 +86,52 @@ def test_should_reject_invalid_domain_data() -> None:
     )
 
     assert response.status_code == 422
+
+def test_should_activate_registered_device_through_http() -> None:
+    reset_repository()
+
+    registration_response = client.post(
+        "/devices/register",
+        json=valid_payload(),
+    )
+
+    device_id = registration_response.json()["device_id"]
+
+    response = client.post(
+        f"/devices/{device_id}/activate"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["device_id"] == device_id
+    assert response.json()["status"] == "active"
+
+
+def test_should_return_not_found_when_activating_unknown_device() -> None:
+    from uuid import uuid4
+
+    reset_repository()
+
+    response = client.post(
+        f"/devices/{uuid4()}/activate"
+    )
+
+    assert response.status_code == 404
+
+
+def test_should_return_conflict_when_device_is_already_active() -> None:
+    reset_repository()
+
+    registration_response = client.post(
+        "/devices/register",
+        json=valid_payload(),
+    )
+
+    device_id = registration_response.json()["device_id"]
+
+    client.post(f"/devices/{device_id}/activate")
+
+    response = client.post(
+        f"/devices/{device_id}/activate"
+    )
+
+    assert response.status_code == 409

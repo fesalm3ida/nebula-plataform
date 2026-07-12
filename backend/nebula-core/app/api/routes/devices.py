@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from uuid import UUID
+
 
 from app.api.dependencies.device_repository import get_device_repository
 from app.api.schemas.device_registration import (
@@ -12,6 +14,9 @@ from app.application.use_cases.register_device import (
 )
 from app.domain.repositories.device_repository import DeviceRepository
 
+from app.api.schemas.device_activation import DeviceActivationResponse
+from app.application.exceptions import ( DeviceAlreadyActiveError,  DeviceAlreadyRegisteredError, DeviceNotFoundError, )
+from app.application.use_cases.activate_device import ( ActivateDeviceCommand, ActivateDeviceUseCase,)
 
 router = APIRouter(
     prefix="/devices",
@@ -55,5 +60,43 @@ def register_device(
     return DeviceRegistrationResponse(
         device_id=result.device_id,
         device_key=result.device_key,
+        status=result.status,
+    )
+
+@router.post(
+    "/{device_id}/activate",
+    response_model=DeviceActivationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Activate Device",
+    description=(
+        "Temporary development endpoint. "
+        "It will later be replaced by a protected administrative flow."
+    ),
+)
+def activate_device(
+    device_id: UUID,
+    repository: DeviceRepository = Depends(get_device_repository),
+) -> DeviceActivationResponse:
+    use_case = ActivateDeviceUseCase(repository)
+
+    try:
+        result = use_case.execute(
+            ActivateDeviceCommand(device_id=device_id)
+        )
+
+    except DeviceNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+
+    except DeviceAlreadyActiveError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error
+
+    return DeviceActivationResponse(
+        device_id=result.device_id,
         status=result.status,
     )
