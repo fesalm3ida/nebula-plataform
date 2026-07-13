@@ -20,6 +20,7 @@ def test_should_create_active_session() -> None:
     assert session.session_id is not None
     assert session.status == SessionStatus.ACTIVE
     assert session.started_at is not None
+    assert session.last_seen == session.started_at
     assert session.ended_at is None
 
 
@@ -77,6 +78,60 @@ def test_should_reject_naive_expiration_datetime() -> None:
         )
 
 
+def test_should_reject_naive_start_datetime() -> None:
+    started_at = datetime.now()
+
+    with pytest.raises(
+        ValueError,
+        match="start time must be timezone-aware",
+    ):
+        Session(
+            device_id=uuid4(),
+            started_at=started_at,
+            expires_at=started_at + timedelta(minutes=30),
+        )
+
+
+def test_should_reject_last_seen_before_start() -> None:
+    started_at = datetime.now(timezone.utc)
+
+    with pytest.raises(
+        ValueError,
+        match="last_seen cannot be earlier",
+    ):
+        Session(
+            device_id=uuid4(),
+            started_at=started_at,
+            last_seen=started_at - timedelta(seconds=1),
+            expires_at=started_at + timedelta(minutes=30),
+        )
+
+
+def test_should_reject_naive_last_seen_datetime() -> None:
+    started_at = datetime.now(timezone.utc)
+
+    with pytest.raises(
+        ValueError,
+        match="last_seen must be timezone-aware",
+    ):
+        Session(
+            device_id=uuid4(),
+            started_at=started_at,
+            last_seen=datetime.now(),
+            expires_at=started_at + timedelta(minutes=30),
+        )
+
+
+def test_should_reject_naive_expiration_reference() -> None:
+    session = make_session()
+
+    with pytest.raises(
+        ValueError,
+        match="expiration reference must be timezone-aware",
+    ):
+        session.is_expired(datetime.now())
+
+
 def test_should_reject_ending_session_twice() -> None:
     session = make_session()
     session.end()
@@ -86,3 +141,6 @@ def test_should_reject_ending_session_twice() -> None:
         match="Only an active Session",
     ):
         session.end()
+
+
+

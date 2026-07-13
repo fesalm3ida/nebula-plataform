@@ -1,4 +1,5 @@
-from uuid import uuid4
+from datetime import datetime
+from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 
@@ -43,6 +44,12 @@ def reset_repositories() -> tuple[
     return device_repository, session_repository
 
 
+def parse_api_datetime(value: str) -> datetime:
+    return datetime.fromisoformat(
+        value.replace("Z", "+00:00")
+    )
+
+
 def make_device(active: bool = True) -> Device:
     device = Device(
         fingerprint=DeviceFingerprint("a" * 64),
@@ -55,6 +62,17 @@ def make_device(active: bool = True) -> Device:
         device.activate()
 
     return device
+
+
+def start_session_for_device(device: Device) -> dict:
+    response = client.post(
+        "/sessions",
+        json={"device_id": str(device.device_id)},
+    )
+
+    assert response.status_code == 201
+
+    return response.json()
 
 
 def test_should_start_session_through_http() -> None:
@@ -77,6 +95,8 @@ def test_should_start_session_through_http() -> None:
     assert body["status"] == "active"
     assert body["started_at"]
     assert body["expires_at"]
+    assert body["last_seen"]
+    assert body["last_seen"] == body["started_at"]
 
 
 def test_should_reject_unknown_device() -> None:
@@ -135,3 +155,136 @@ def test_should_reject_invalid_request_schema() -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_should_update_session_presence_through_http() -> None:
+    device_repository, _ = reset_repositories()
+
+    device = make_device()
+    device_repository.save(device)
+
+    session_body = start_session_for_device(device)
+    session_id = session_body["session_id"]
+
+    original_last_seen = parse_api_datetime(
+        session_body["last_seen"]
+    )
+
+    response = client.post(
+        f"/sessions/{session_id}/heartbeat"
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    updated_last_seen = parse_api_datetime(
+        body["last_seen"]
+    )
+
+    assert body["session_id"] == session_id
+    assert body["status"] == "active"
+    assert updated_last_seen >= original_last_seen
+
+
+def test_should_return_not_found_for_unknown_heartbeat_session() -> None:
+    reset_repositories()
+
+    response = client.post(
+        f"/sessions/{uuid4()}/heartbeat"
+    )
+
+    assert response.status_code == 404
+
+
+def test_should_reject_heartbeat_for_ended_session() -> None:
+    device_repository, _ = reset_repositories()
+
+    device = make_device()
+    device_repository.save(device)
+
+    session_body = start_session_for_device(device)
+    session_id = session_body["session_id"]
+
+    client.post(f"/sessions/{session_id}/end")
+
+    response = client.post(
+        f"/sessions/{session_id}/heartbeat"
+    )
+
+    assert response.status_code == 409
+    assert "ended" in response.json()["detail"]
+
+
+def test_should_reject_heartbeat_for_expired_session() -> None:
+    device_repository, session_repository = reset_repositories()
+
+    device = make_device()
+    device_repository.save(device)
+
+    session_body = start_session_for_device(device)
+    session_id = session_body["session_id"]
+
+    session = session_repository.find_by_id(
+        UUID(session_id)
+    )
+
+    assert session is not None
+
+    session.expire()
+    session_repository.save(session)
+
+    response = client.post(
+        f"/sessions/{session_id}/heartbeat"
+    )
+
+    assert response.status_code == 409
+    assert "expired" in response.json()["detail"]
+
+
+def test_should_end_active_session_through_http() -> None:
+    device_repository, _ = reset_repositories()
+
+    device = make_device()
+    device_repository.save(device)
+
+    session_body = start_session_for_device(device)
+    session_id = session_body["session_id"]
+
+    response = client.post(
+        f"/sessions/{session_id}/end"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["session_id"] == session_id
+    assert response.json()["status"] == "ended"
+    assert response.json()["ended_at"]
+
+
+def test_should_return_not_found_when_ending_unknown_session() -> None:
+    reset_repositories()
+
+    response = client.post(
+        f"/sessions/{uuid4()}/end"
+    )
+
+    assert response.status_code == 404
+
+
+def test_should_return_conflict_when_session_is_already_ended() -> None:
+    device_repository, _ = reset_repositories()
+
+    device = make_device()
+    device_repository.save(device)
+
+    session_body = start_session_for_device(device)
+    session_id = session_body["session_id"]
+
+    client.post(f"/sessions/{session_id}/end")
+
+    response = client.post(
+        f"/sessions/{session_id}/end"
+    )
+
+    assert response.status_code == 409
+

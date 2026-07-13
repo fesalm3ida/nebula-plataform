@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.dependencies.device_repository import get_device_repository
@@ -6,10 +8,23 @@ from app.api.schemas.session import (
     StartSessionRequest,
     StartSessionResponse,
 )
+from app.api.schemas.session_heartbeat import SessionHeartbeatResponse
+from app.api.schemas.session_termination import EndSessionResponse
 from app.application.exceptions import (
     ActiveSessionAlreadyExistsError,
     DeviceNotActiveError,
     DeviceNotFoundError,
+    SessionAlreadyClosedError,
+    SessionNotActiveError,
+    SessionNotFoundError,
+)
+from app.application.use_cases.end_session import (
+    EndSessionCommand,
+    EndSessionUseCase,
+)
+from app.application.use_cases.heartbeat_session import (
+    HeartbeatSessionCommand,
+    HeartbeatSessionUseCase,
 )
 from app.application.use_cases.start_session import (
     StartSessionCommand,
@@ -17,6 +32,7 @@ from app.application.use_cases.start_session import (
 )
 from app.domain.repositories.device_repository import DeviceRepository
 from app.domain.repositories.session_repository import SessionRepository
+
 
 router = APIRouter(
     prefix="/sessions",
@@ -76,4 +92,85 @@ def start_session(
         status=result.status,
         started_at=result.started_at,
         expires_at=result.expires_at,
+        last_seen=result.last_seen,
+    )
+
+
+@router.post(
+    "/{session_id}/heartbeat",
+    response_model=SessionHeartbeatResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Session Heartbeat",
+    description="Updates the presence timestamp of an active Session.",
+)
+def heartbeat_session(
+    session_id: UUID,
+    repository: SessionRepository = Depends(
+        get_session_repository
+    ),
+) -> SessionHeartbeatResponse:
+    use_case = HeartbeatSessionUseCase(repository)
+
+    try:
+        result = use_case.execute(
+            HeartbeatSessionCommand(
+                session_id=session_id,
+            )
+        )
+
+    except SessionNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+
+    except SessionNotActiveError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error
+
+    return SessionHeartbeatResponse(
+        session_id=result.session_id,
+        status=result.status,
+        last_seen=result.last_seen,
+    )
+
+
+@router.post(
+    "/{session_id}/end",
+    response_model=EndSessionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="End Session",
+    description="Ends an active Session.",
+)
+def end_session(
+    session_id: UUID,
+    repository: SessionRepository = Depends(
+        get_session_repository
+    ),
+) -> EndSessionResponse:
+    use_case = EndSessionUseCase(repository)
+
+    try:
+        result = use_case.execute(
+            EndSessionCommand(session_id=session_id)
+        )
+
+    except SessionNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+
+    except SessionAlreadyClosedError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error
+
+    return EndSessionResponse(
+        session_id=result.session_id,
+        status=result.status,
+        ended_at=result.ended_at,
     )

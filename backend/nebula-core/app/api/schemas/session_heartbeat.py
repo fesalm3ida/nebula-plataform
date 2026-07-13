@@ -6,15 +6,7 @@ from pydantic import BaseModel
 from app.domain.enums.session_status import SessionStatus
 
 
-class StartSessionRequest(BaseModel):
-    device_id: UUID
-
-
-class StartSessionResponse(BaseModel):
+class SessionHeartbeatResponse(BaseModel):
     session_id: UUID
-    device_id: UUID
     status: SessionStatus
-    started_at: datetime
-    expires_at: datetime
     last_seen: datetime
-

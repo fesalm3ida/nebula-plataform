@@ -27,6 +27,7 @@ from app.infrastructure.repositories.in_memory_session_repository import (
     InMemorySessionRepository,
 )
 
+
 def make_active_device() -> Device:
     device = Device(
         fingerprint=DeviceFingerprint("a" * 64),
@@ -35,6 +36,7 @@ def make_active_device() -> Device:
         app_version=AppVersion("0.1.0"),
     )
     device.activate()
+
     return device
 
 
@@ -59,6 +61,7 @@ def test_should_start_session_for_active_device() -> None:
     assert result.status == SessionStatus.ACTIVE
     assert result.started_at is not None
     assert result.expires_at > result.started_at
+    assert result.last_seen == result.started_at
 
 
 def test_should_persist_started_session() -> None:
@@ -84,6 +87,7 @@ def test_should_persist_started_session() -> None:
     assert stored_session is not None
     assert stored_session.device_id == device.device_id
     assert stored_session.status == SessionStatus.ACTIVE
+    assert stored_session.last_seen == stored_session.started_at
 
 
 def test_should_reject_unknown_device() -> None:
@@ -125,9 +129,9 @@ def test_should_reject_second_active_session() -> None:
     device_repository.save(device)
 
     existing_session = Session(
-    device_id=device.device_id,
-    expires_at=datetime.now(timezone.utc)
-    + timedelta(minutes=30),
+        device_id=device.device_id,
+        expires_at=datetime.now(timezone.utc)
+        + timedelta(minutes=30),
     )
     session_repository.save(existing_session)
 
@@ -143,3 +147,4 @@ def test_should_reject_second_active_session() -> None:
         use_case.execute(
             StartSessionCommand(device_id=device.device_id)
         )
+

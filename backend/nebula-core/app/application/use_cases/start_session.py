@@ -26,6 +26,7 @@ class StartSessionResult:
     status: SessionStatus
     started_at: datetime
     expires_at: datetime
+    last_seen: datetime
 
 
 class StartSessionUseCase:
@@ -78,10 +79,17 @@ class StartSessionUseCase:
 
         self._session_repository.save(session)
 
+        if session.last_seen is None:
+            raise RuntimeError(
+                "Session created without a last_seen timestamp."
+            )
+
         return StartSessionResult(
             session_id=session.session_id,
             device_id=session.device_id,
             status=session.status,
             started_at=session.started_at,
             expires_at=session.expires_at,
+            last_seen=session.last_seen,
         )
+
