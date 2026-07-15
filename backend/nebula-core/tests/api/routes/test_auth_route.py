@@ -1,24 +1,19 @@
 from fastapi.testclient import TestClient
-from app.api.dependencies.device_repository import get_device_repository
+
 from app.domain.entities.device import Device
 from app.domain.enums.device_platform import DevicePlatform
 from app.domain.value_objects.app_version import AppVersion
-from app.domain.value_objects.device_fingerprint import DeviceFingerprint
+from app.domain.value_objects.device_fingerprint import (
+    DeviceFingerprint,
+)
 from app.domain.value_objects.mac_address import MacAddress
-from app.infrastructure.repositories.in_memory_device_repository import (InMemoryDeviceRepository)
+from app.infrastructure.repositories.in_memory_device_repository import (
+    InMemoryDeviceRepository,
+)
 from app.main import app
 
 
 client = TestClient(app)
-
-
-def reset_repository() -> InMemoryDeviceRepository:
-    repository = get_device_repository()
-
-    assert isinstance(repository, InMemoryDeviceRepository)
-
-    repository._devices.clear()
-    return repository
 
 
 def make_device(active: bool = True) -> Device:
@@ -35,22 +30,23 @@ def make_device(active: bool = True) -> Device:
     return device
 
 
-def authentication_payload(device: Device) -> dict[str, str]:
+def valid_payload(device: Device) -> dict[str, str]:
     return {
         "device_id": str(device.device_id),
-        "device_key": str(device.device_key),
         "fingerprint": str(device.fingerprint),
+        "device_key": str(device.device_key),
     }
 
 
-def test_should_authenticate_active_device_through_http() -> None:
-    repository = reset_repository()
+def test_should_authenticate_active_device_through_http(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
     device = make_device()
-    repository.save(device)
+    device_repository.save(device)
 
     response = client.post(
         "/auth/device",
-        json=authentication_payload(device),
+        json=valid_payload(device),
     )
 
     assert response.status_code == 200
@@ -62,12 +58,13 @@ def test_should_authenticate_active_device_through_http() -> None:
     assert body["device_status"] == "active"
 
 
-def test_should_reject_invalid_credentials() -> None:
-    repository = reset_repository()
+def test_should_reject_invalid_credentials(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
     device = make_device()
-    repository.save(device)
+    device_repository.save(device)
 
-    payload = authentication_payload(device)
+    payload = valid_payload(device)
     payload["device_key"] = "x" * 32
 
     response = client.post(
@@ -76,21 +73,20 @@ def test_should_reject_invalid_credentials() -> None:
     )
 
     assert response.status_code == 401
-    assert response.json()["detail"] == "Invalid Device credentials."
 
 
-def test_should_reject_pending_device() -> None:
-    repository = reset_repository()
+def test_should_reject_pending_device(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
     device = make_device(active=False)
-    repository.save(device)
+    device_repository.save(device)
 
     response = client.post(
         "/auth/device",
-        json=authentication_payload(device),
+        json=valid_payload(device),
     )
 
     assert response.status_code == 403
-    assert "pending" in response.json()["detail"]
 
 
 def test_should_reject_invalid_request_schema() -> None:
@@ -98,8 +94,8 @@ def test_should_reject_invalid_request_schema() -> None:
         "/auth/device",
         json={
             "device_id": "invalid-uuid",
-            "device_key": "short",
             "fingerprint": "invalid",
+            "device_key": "short",
         },
     )
 

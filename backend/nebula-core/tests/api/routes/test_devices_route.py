@@ -1,6 +1,5 @@
 from fastapi.testclient import TestClient
 
-from app.api.dependencies.device_repository import get_device_repository
 from app.infrastructure.repositories.in_memory_device_repository import (
     InMemoryDeviceRepository,
 )
@@ -8,13 +7,6 @@ from app.main import app
 
 
 client = TestClient(app)
-
-
-def reset_repository() -> None:
-    repository = get_device_repository()
-
-    if isinstance(repository, InMemoryDeviceRepository):
-        repository._devices.clear()
 
 
 def valid_payload() -> dict[str, str]:
@@ -26,9 +18,9 @@ def valid_payload() -> dict[str, str]:
     }
 
 
-def test_should_register_device_through_http() -> None:
-    reset_repository()
-
+def test_should_register_device_through_http(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
     response = client.post(
         "/devices/register",
         json=valid_payload(),
@@ -43,26 +35,30 @@ def test_should_register_device_through_http() -> None:
     assert body["status"] == "pending"
 
 
-def test_should_return_conflict_for_duplicate_device() -> None:
-    reset_repository()
-
-    client.post(
+def test_should_return_conflict_for_duplicate_device(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    first_response = client.post(
         "/devices/register",
         json=valid_payload(),
     )
 
-    response = client.post(
+    second_response = client.post(
         "/devices/register",
         json=valid_payload(),
     )
 
-    assert response.status_code == 409
-    assert "already registered" in response.json()["detail"]
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+    assert (
+        "already registered"
+        in second_response.json()["detail"]
+    )
 
 
-def test_should_reject_invalid_fingerprint_length() -> None:
-    reset_repository()
-
+def test_should_reject_invalid_fingerprint_length(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
     payload = valid_payload()
     payload["fingerprint"] = "invalid"
 
@@ -74,9 +70,9 @@ def test_should_reject_invalid_fingerprint_length() -> None:
     assert response.status_code == 422
 
 
-def test_should_reject_invalid_domain_data() -> None:
-    reset_repository()
-
+def test_should_reject_invalid_domain_data(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
     payload = valid_payload()
     payload["fingerprint"] = "g" * 64
 
@@ -87,51 +83,60 @@ def test_should_reject_invalid_domain_data() -> None:
 
     assert response.status_code == 422
 
-def test_should_activate_registered_device_through_http() -> None:
-    reset_repository()
 
-    registration_response = client.post(
+def test_should_activate_registered_device_through_http(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    register_response = client.post(
         "/devices/register",
         json=valid_payload(),
     )
 
-    device_id = registration_response.json()["device_id"]
+    assert register_response.status_code == 201
+
+    device_id = register_response.json()["device_id"]
 
     response = client.post(
         f"/devices/{device_id}/activate"
     )
 
     assert response.status_code == 200
-    assert response.json()["device_id"] == device_id
-    assert response.json()["status"] == "active"
+
+    body = response.json()
+
+    assert body["device_id"] == device_id
+    assert body["status"] == "active"
 
 
-def test_should_return_not_found_when_activating_unknown_device() -> None:
-    from uuid import uuid4
-
-    reset_repository()
-
+def test_should_return_not_found_when_activating_unknown_device(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
     response = client.post(
-        f"/devices/{uuid4()}/activate"
+        "/devices/00000000-0000-0000-0000-000000000000/activate"
     )
 
     assert response.status_code == 404
 
 
-def test_should_return_conflict_when_device_is_already_active() -> None:
-    reset_repository()
-
-    registration_response = client.post(
+def test_should_return_conflict_when_device_is_already_active(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    register_response = client.post(
         "/devices/register",
         json=valid_payload(),
     )
 
-    device_id = registration_response.json()["device_id"]
+    assert register_response.status_code == 201
 
-    client.post(f"/devices/{device_id}/activate")
+    device_id = register_response.json()["device_id"]
 
-    response = client.post(
+    first_activation_response = client.post(
         f"/devices/{device_id}/activate"
     )
 
-    assert response.status_code == 409
+    second_activation_response = client.post(
+        f"/devices/{device_id}/activate"
+    )
+
+    assert first_activation_response.status_code == 200
+    assert second_activation_response.status_code == 409
