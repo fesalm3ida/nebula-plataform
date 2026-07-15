@@ -9,10 +9,14 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+
+    secrets:
+      - postgres_password
 
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5434}:5432"
 
     volumes:
       - nebula_postgres_data:/var/lib/postgresql/data
@@ -30,6 +34,10 @@ services:
 
     networks:
       - nebula_network
+
+secrets:
+  postgres_password:
+    file: ../../backend/nebula-core/.secrets/postgres_password
 
 volumes:
   nebula_postgres_data:

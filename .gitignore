@@ -37,3 +37,7 @@ htmlcov/
 
 # Docker local environment
 infra/docker/.env
+
+# Local secrets
+.secrets/
+**/.secrets/
