@@ -5,18 +5,19 @@ from uuid import UUID
 from app.application.exceptions import (
     ActiveSessionAlreadyExistsError,
     DeviceNotActiveError,
-    DeviceNotFoundError,
 )
+from app.domain.entities.device import Device
 from app.domain.entities.session import Session
 from app.domain.enums.device_status import DeviceStatus
 from app.domain.enums.session_status import SessionStatus
-from app.domain.repositories.device_repository import DeviceRepository
-from app.domain.repositories.session_repository import SessionRepository
+from app.domain.repositories.session_repository import (
+    SessionRepository,
+)
 
 
 @dataclass(frozen=True)
 class StartSessionCommand:
-    device_id: UUID
+    device: Device
 
 
 @dataclass(frozen=True)
@@ -34,32 +35,25 @@ class StartSessionUseCase:
 
     def __init__(
         self,
-        device_repository: DeviceRepository,
         session_repository: SessionRepository,
     ) -> None:
-        self._device_repository = device_repository
         self._session_repository = session_repository
 
     def execute(
         self,
         command: StartSessionCommand,
     ) -> StartSessionResult:
-        device = self._device_repository.find_by_id(
-            command.device_id
-        )
-
-        if device is None:
-            raise DeviceNotFoundError("Device not found.")
+        device = command.device
 
         if device.status != DeviceStatus.ACTIVE:
             raise DeviceNotActiveError(
-                f"Device cannot start a Session while status is "
+                "Device cannot start a Session while status is "
                 f"{device.status.value}."
             )
 
         active_session = (
             self._session_repository.find_active_by_device_id(
-                command.device_id
+                device.device_id
             )
         )
 
@@ -92,4 +86,3 @@ class StartSessionUseCase:
             expires_at=session.expires_at,
             last_seen=session.last_seen,
         )
-

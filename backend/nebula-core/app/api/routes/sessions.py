@@ -1,19 +1,20 @@
-from uuid import UUID
-
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.dependencies.device_repository import get_device_repository
-from app.api.dependencies.session_repository import get_session_repository
-from app.api.schemas.session import (
-    StartSessionRequest,
-    StartSessionResponse,
+from app.api.dependencies.session_repository import (
+    get_session_repository,
 )
-from app.api.schemas.session_heartbeat import SessionHeartbeatResponse
-from app.api.schemas.session_termination import EndSessionResponse
+from app.api.schemas.session import StartSessionResponse
+from app.api.schemas.session_heartbeat import (
+    SessionHeartbeatResponse,
+)
+from app.api.schemas.session_termination import (
+    EndSessionResponse,
+)
+from app.api.security.current_device import get_current_device
+from app.api.security.current_session import get_current_session
 from app.application.exceptions import (
     ActiveSessionAlreadyExistsError,
     DeviceNotActiveError,
-    DeviceNotFoundError,
     SessionAlreadyClosedError,
     SessionNotActiveError,
     SessionNotFoundError,
@@ -30,8 +31,11 @@ from app.application.use_cases.start_session import (
     StartSessionCommand,
     StartSessionUseCase,
 )
-from app.domain.repositories.device_repository import DeviceRepository
-from app.domain.repositories.session_repository import SessionRepository
+from app.domain.entities.device import Device
+from app.domain.entities.session import Session
+from app.domain.repositories.session_repository import (
+    SessionRepository,
+)
 
 
 router = APIRouter(
@@ -45,34 +49,29 @@ router = APIRouter(
     response_model=StartSessionResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Start Session",
-    description="Starts a new Session for an active Device.",
+    description=(
+        "Starts a new Session for the Device authenticated "
+        "through a Bearer access token."
+    ),
 )
 def start_session(
-    request: StartSessionRequest,
-    device_repository: DeviceRepository = Depends(
-        get_device_repository
+    current_device: Device = Depends(
+        get_current_device
     ),
     session_repository: SessionRepository = Depends(
         get_session_repository
     ),
 ) -> StartSessionResponse:
     use_case = StartSessionUseCase(
-        device_repository=device_repository,
         session_repository=session_repository,
     )
 
     try:
         result = use_case.execute(
             StartSessionCommand(
-                device_id=request.device_id,
+                device=current_device,
             )
         )
-
-    except DeviceNotFoundError as error:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(error),
-        ) from error
 
     except DeviceNotActiveError as error:
         raise HTTPException(
@@ -101,10 +100,15 @@ def start_session(
     response_model=SessionHeartbeatResponse,
     status_code=status.HTTP_200_OK,
     summary="Session Heartbeat",
-    description="Updates the presence timestamp of an active Session.",
+    description=(
+        "Updates the presence timestamp of a Session owned "
+        "by the authenticated Device."
+    ),
 )
 def heartbeat_session(
-    session_id: UUID,
+    current_session: Session = Depends(
+        get_current_session
+    ),
     repository: SessionRepository = Depends(
         get_session_repository
     ),
@@ -114,7 +118,7 @@ def heartbeat_session(
     try:
         result = use_case.execute(
             HeartbeatSessionCommand(
-                session_id=session_id,
+                session_id=current_session.session_id,
             )
         )
 
@@ -142,10 +146,15 @@ def heartbeat_session(
     response_model=EndSessionResponse,
     status_code=status.HTTP_200_OK,
     summary="End Session",
-    description="Ends an active Session.",
+    description=(
+        "Ends an active Session owned by the authenticated "
+        "Device."
+    ),
 )
 def end_session(
-    session_id: UUID,
+    current_session: Session = Depends(
+        get_current_session
+    ),
     repository: SessionRepository = Depends(
         get_session_repository
     ),
@@ -154,7 +163,9 @@ def end_session(
 
     try:
         result = use_case.execute(
-            EndSessionCommand(session_id=session_id)
+            EndSessionCommand(
+                session_id=current_session.session_id,
+            )
         )
 
     except SessionNotFoundError as error:

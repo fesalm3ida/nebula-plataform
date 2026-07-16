@@ -53,7 +53,10 @@ def test_should_authenticate_active_device_through_http(
 
     body = response.json()
 
-    assert body["access_token"]
+    assert body["access_token"] == (
+        f"fake-jwt:{device.device_id}"
+    )
+    assert body["token_type"] == "bearer"
     assert body["expires_at"]
     assert body["device_status"] == "active"
 

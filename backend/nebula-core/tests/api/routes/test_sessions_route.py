@@ -28,10 +28,14 @@ def parse_api_datetime(value: str) -> datetime:
     )
 
 
-def make_device(active: bool = True) -> Device:
+def make_device(
+    fingerprint: str = "a" * 64,
+    mac_address: str = "AA:BB:CC:DD:EE:FF",
+    active: bool = True,
+) -> Device:
     device = Device(
-        fingerprint=DeviceFingerprint("a" * 64),
-        mac_address=MacAddress("AA:BB:CC:DD:EE:FF"),
+        fingerprint=DeviceFingerprint(fingerprint),
+        mac_address=MacAddress(mac_address),
         platform=DevicePlatform.ANDROID_TV,
         app_version=AppVersion("0.1.0"),
     )
@@ -42,10 +46,22 @@ def make_device(active: bool = True) -> Device:
     return device
 
 
-def start_session_for_device(device: Device) -> dict:
+def authorization_headers(
+    device: Device,
+) -> dict[str, str]:
+    return {
+        "Authorization": (
+            f"Bearer fake-jwt:{device.device_id}"
+        ),
+    }
+
+
+def start_session_for_device(
+    device: Device,
+) -> dict:
     response = client.post(
         "/sessions",
-        json={"device_id": str(device.device_id)},
+        headers=authorization_headers(device),
     )
 
     assert response.status_code == 201
@@ -61,7 +77,7 @@ def test_should_start_session_through_http(
 
     response = client.post(
         "/sessions",
-        json={"device_id": str(device.device_id)},
+        headers=authorization_headers(device),
     )
 
     assert response.status_code == 201
@@ -77,13 +93,34 @@ def test_should_start_session_through_http(
     assert body["last_seen"] == body["started_at"]
 
 
-def test_should_reject_unknown_device() -> None:
+def test_should_reject_missing_bearer_token() -> None:
+    response = client.post("/sessions")
+
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+def test_should_reject_invalid_bearer_token() -> None:
     response = client.post(
         "/sessions",
-        json={"device_id": str(uuid4())},
+        headers={
+            "Authorization": "Bearer invalid-access-token",
+        },
     )
 
-    assert response.status_code == 404
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+def test_should_reject_token_for_unknown_device() -> None:
+    response = client.post(
+        "/sessions",
+        headers={
+            "Authorization": f"Bearer fake-jwt:{uuid4()}",
+        },
+    )
+
+    assert response.status_code == 401
 
 
 def test_should_reject_pending_device(
@@ -94,7 +131,7 @@ def test_should_reject_pending_device(
 
     response = client.post(
         "/sessions",
-        json={"device_id": str(device.device_id)},
+        headers=authorization_headers(device),
     )
 
     assert response.status_code == 403
@@ -106,31 +143,47 @@ def test_should_reject_second_active_session(
     device = make_device()
     device_repository.save(device)
 
-    payload = {
-        "device_id": str(device.device_id),
-    }
+    headers = authorization_headers(device)
 
     first_response = client.post(
         "/sessions",
-        json=payload,
+        headers=headers,
     )
 
     second_response = client.post(
         "/sessions",
-        json=payload,
+        headers=headers,
     )
 
     assert first_response.status_code == 201
     assert second_response.status_code == 409
 
 
-def test_should_reject_invalid_request_schema() -> None:
+def test_should_ignore_submitted_device_id(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    authenticated_device = make_device()
+    device_repository.save(authenticated_device)
+
+    another_device_id = uuid4()
+
     response = client.post(
         "/sessions",
-        json={"device_id": "invalid-uuid"},
+        headers=authorization_headers(
+            authenticated_device
+        ),
+        json={
+            "device_id": str(another_device_id),
+        },
     )
 
-    assert response.status_code == 422
+    assert response.status_code == 201
+    assert response.json()["device_id"] == str(
+        authenticated_device.device_id
+    )
+    assert response.json()["device_id"] != str(
+        another_device_id
+    )
 
 
 def test_should_update_session_presence_through_http(
@@ -147,7 +200,8 @@ def test_should_update_session_presence_through_http(
     )
 
     response = client.post(
-        f"/sessions/{session_id}/heartbeat"
+        f"/sessions/{session_id}/heartbeat",
+        headers=authorization_headers(device),
     )
 
     assert response.status_code == 200
@@ -163,12 +217,84 @@ def test_should_update_session_presence_through_http(
     assert updated_last_seen >= original_last_seen
 
 
-def test_should_return_not_found_for_unknown_heartbeat_session() -> None:
+def test_should_reject_heartbeat_without_bearer_token(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    device = make_device()
+    device_repository.save(device)
+
+    session_body = start_session_for_device(device)
+    session_id = session_body["session_id"]
+
     response = client.post(
-        f"/sessions/{uuid4()}/heartbeat"
+        f"/sessions/{session_id}/heartbeat"
+    )
+
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+def test_should_reject_heartbeat_with_invalid_token(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    device = make_device()
+    device_repository.save(device)
+
+    session_body = start_session_for_device(device)
+    session_id = session_body["session_id"]
+
+    response = client.post(
+        f"/sessions/{session_id}/heartbeat",
+        headers={
+            "Authorization": "Bearer invalid-access-token",
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+def test_should_return_not_found_for_unknown_heartbeat_session(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    device = make_device()
+    device_repository.save(device)
+
+    response = client.post(
+        f"/sessions/{uuid4()}/heartbeat",
+        headers=authorization_headers(device),
     )
 
     assert response.status_code == 404
+
+
+def test_should_reject_heartbeat_for_session_owned_by_another_device(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    owner_device = make_device()
+
+    authenticated_device = make_device(
+        fingerprint="b" * 64,
+        mac_address="11:22:33:44:55:66",
+    )
+
+    device_repository.save(owner_device)
+    device_repository.save(authenticated_device)
+
+    session_body = start_session_for_device(
+        owner_device
+    )
+    session_id = session_body["session_id"]
+
+    response = client.post(
+        f"/sessions/{session_id}/heartbeat",
+        headers=authorization_headers(
+            authenticated_device
+        ),
+    )
+
+    assert response.status_code == 403
+    assert "not authorized" in response.json()["detail"]
 
 
 def test_should_reject_heartbeat_for_ended_session(
@@ -179,15 +305,18 @@ def test_should_reject_heartbeat_for_ended_session(
 
     session_body = start_session_for_device(device)
     session_id = session_body["session_id"]
+    headers = authorization_headers(device)
 
     end_response = client.post(
-        f"/sessions/{session_id}/end"
+        f"/sessions/{session_id}/end",
+        headers=headers,
     )
 
     assert end_response.status_code == 200
 
     response = client.post(
-        f"/sessions/{session_id}/heartbeat"
+        f"/sessions/{session_id}/heartbeat",
+        headers=headers,
     )
 
     assert response.status_code == 409
@@ -214,7 +343,8 @@ def test_should_reject_heartbeat_for_expired_session(
     session_repository.save(session)
 
     response = client.post(
-        f"/sessions/{session_id}/heartbeat"
+        f"/sessions/{session_id}/heartbeat",
+        headers=authorization_headers(device),
     )
 
     assert response.status_code == 409
@@ -231,7 +361,8 @@ def test_should_end_active_session_through_http(
     session_id = session_body["session_id"]
 
     response = client.post(
-        f"/sessions/{session_id}/end"
+        f"/sessions/{session_id}/end",
+        headers=authorization_headers(device),
     )
 
     assert response.status_code == 200
@@ -243,12 +374,84 @@ def test_should_end_active_session_through_http(
     assert body["ended_at"]
 
 
-def test_should_return_not_found_when_ending_unknown_session() -> None:
+def test_should_reject_end_session_without_bearer_token(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    device = make_device()
+    device_repository.save(device)
+
+    session_body = start_session_for_device(device)
+    session_id = session_body["session_id"]
+
     response = client.post(
-        f"/sessions/{uuid4()}/end"
+        f"/sessions/{session_id}/end"
+    )
+
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+def test_should_reject_end_session_with_invalid_token(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    device = make_device()
+    device_repository.save(device)
+
+    session_body = start_session_for_device(device)
+    session_id = session_body["session_id"]
+
+    response = client.post(
+        f"/sessions/{session_id}/end",
+        headers={
+            "Authorization": "Bearer invalid-access-token",
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+def test_should_return_not_found_when_ending_unknown_session(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    device = make_device()
+    device_repository.save(device)
+
+    response = client.post(
+        f"/sessions/{uuid4()}/end",
+        headers=authorization_headers(device),
     )
 
     assert response.status_code == 404
+
+
+def test_should_reject_end_session_owned_by_another_device(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    owner_device = make_device()
+
+    authenticated_device = make_device(
+        fingerprint="b" * 64,
+        mac_address="11:22:33:44:55:66",
+    )
+
+    device_repository.save(owner_device)
+    device_repository.save(authenticated_device)
+
+    session_body = start_session_for_device(
+        owner_device
+    )
+    session_id = session_body["session_id"]
+
+    response = client.post(
+        f"/sessions/{session_id}/end",
+        headers=authorization_headers(
+            authenticated_device
+        ),
+    )
+
+    assert response.status_code == 403
+    assert "not authorized" in response.json()["detail"]
 
 
 def test_should_return_conflict_when_session_is_already_ended(
@@ -259,14 +462,20 @@ def test_should_return_conflict_when_session_is_already_ended(
 
     session_body = start_session_for_device(device)
     session_id = session_body["session_id"]
+    headers = authorization_headers(device)
 
     first_response = client.post(
-        f"/sessions/{session_id}/end"
+        f"/sessions/{session_id}/end",
+        headers=headers,
     )
 
     second_response = client.post(
-        f"/sessions/{session_id}/end"
+        f"/sessions/{session_id}/end",
+        headers=headers,
     )
 
     assert first_response.status_code == 200
     assert second_response.status_code == 409
+
+
+
