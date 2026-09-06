@@ -46,6 +46,10 @@ class SessionNotActiveError(Exception):
     """Raised when an operation requires an active Session."""
 
 
+class SessionOwnershipError(Exception):
+    """Raised when a Session does not belong to the authenticated Device."""
+
+
 class PlaylistNotFoundError(Exception):
     """Raised when the requested Playlist does not exist."""
 

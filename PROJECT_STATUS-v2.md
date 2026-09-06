@@ -57,7 +57,7 @@ Monitor.
 | API HTTP | ✅ Funcional |
 | Persistência | ✅ Validada E2E (testes de integração PostgreSQL) |
 | Segurança | ✅ Foundation Complete |
-| Observabilidade | 🟢 Decisões consolidadas (ADR-022/023/024/025) · implementação pendente |
+| Observabilidade | 🟢 Subdomínio implementado (TelemetryEvent/Log) · ADR-022/023 |
 | Player Android | ⏳ Não iniciado |
 | Admin | ⏳ Não iniciado |
 | Playlist (M5) | 🟢 Domínio iniciado (ADR-021) |
@@ -156,6 +156,8 @@ Monitor.
 | POST | /playlists/{playlist_id}/status | ✅ (admin) |
 | POST | /playlists/assignments | ✅ (admin) |
 | GET | /me/provisioning | ✅ (Player, Bearer) |
+| POST | /me/telemetry | ✅ (Player, Bearer, ADR-022/023) |
+| POST | /me/logs | ✅ (Player, Bearer, ADR-022) |
 
 ### Segurança da API
 
@@ -210,7 +212,7 @@ Todos os endpoints relacionados ao ciclo de vida de Session utilizam:
 
 ## Testes Automatizados
 
-- ✅ **259 testes aprovados**
+- ✅ **291 testes aprovados**
 - ✅ **0 falhas**
 - ⚠️ **1 warning conhecido**
 
@@ -295,7 +297,7 @@ entregue ao Player via `GET /me/provisioning`.
 | M4 | PostgreSQL Persistence | ✅ Validada (integração E2E com PostgreSQL) |
 | M5 | Playlist Domain | 🟢 Implementado (entidade+repos+CRUD+provisioning) — falta Auth Admin |
 | M6 | Provisioning | ✅ Provisionamento (ciclo de vida administrativo + device + ContentEndpoints) |
-| M7 | Telemetry | ⏳ |
+| M7 | Telemetry | 🟢 Subdomínio de observabilidade implementado (TelemetryEvent/Log) |
 
 ---
 
@@ -329,7 +331,7 @@ entregue ao Player via `GET /me/provisioning`.
 
 ## Quality
 
-- ✅ 259 Automated Tests
+- ✅ 291 Automated Tests
 
 ---
 
@@ -363,6 +365,6 @@ Nesta versão foram consolidados:
 - Docker Secrets
 - PostgreSQL
 - Session Lifecycle
-- 259 testes automatizados
+- 291 testes automatizados
 
 A partir desta versão o desenvolvimento migra da construção da fundação para a implementação dos módulos de negócio da plataforma.
