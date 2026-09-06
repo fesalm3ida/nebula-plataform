@@ -57,7 +57,7 @@ Monitor.
 | API HTTP | ✅ Funcional |
 | Persistência | ✅ Validada E2E (testes de integração PostgreSQL) |
 | Segurança | ✅ Foundation Complete |
-| Observabilidade | ⏳ Planejada |
+| Observabilidade | 🟢 Decisões consolidadas (ADR-022/023/024/025) · implementação pendente |
 | Player Android | ⏳ Não iniciado |
 | Admin | ⏳ Não iniciado |
 | Playlist (M5) | 🟢 Domínio iniciado (ADR-021) |
