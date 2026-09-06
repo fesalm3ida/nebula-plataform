@@ -1,3 +1,27 @@
+---
+tipo: Banco de Dados
+id: arch-005-database
+projeto: Nebula Platform
+modulo: Nebula Plataforma
+versao: 0.1.0
+status: Em desenvolvimento
+atualizacao: '2026-07-02'
+responsavel: Felipe Almeida
+relacionados:
+- '[[arch-003-architecture]]'
+- '[[arch-004-domain]]'
+- '[[arch-006-API]]'
+- '[[arch-007-telemetry]]'
+- '[[arch-008-security]]'
+- '[[arch-010-glossary]]'
+- '[[arch-011-principles]]'
+tags:
+- banco-de-dados
+- nebula-plataforma
+aliases:
+- arch-005-database
+---
+
 # Documento
 
 **Projeto:** Nebula Platform

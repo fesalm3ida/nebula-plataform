@@ -1,3 +1,18 @@
+---
+tipo: Modelo Conceitual
+id: nebula-player-conceptual-003-device-content-authorization
+projeto: Nebula Platform
+modulo: Nebula Player
+relacionados:
+- '[[ADR-011]]'
+tags:
+- modelo-conceitual
+- nebula-player
+aliases:
+- 'Entidade: DeviceContentAuthorization'
+- nebula-player-conceptual-003-device-content-authorization
+---
+
 
 # Entidade: DeviceContentAuthorization
 

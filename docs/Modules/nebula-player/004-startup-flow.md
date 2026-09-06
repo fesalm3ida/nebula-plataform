@@ -1,3 +1,22 @@
+---
+tipo: Fluxo de Inicializacao
+id: nebula-player-004-startup-flow
+projeto: Nebula Platform
+modulo: Nebula Player
+status: Em elaboração
+relacionados:
+- '[[nebula-player-000-vision]]'
+- '[[nebula-player-001-ecosystem]]'
+- '[[nebula-player-002-MVP]]'
+- '[[nebula-player-003-architecture]]'
+tags:
+- fluxo-de-inicializacao
+- nebula-player
+aliases:
+- Fluxo de Inicialização do Nebula Player
+- nebula-player-004-startup-flow
+---
+
 # Fluxo de Inicialização do Nebula Player
 
 **Projeto:** Nebula Platform

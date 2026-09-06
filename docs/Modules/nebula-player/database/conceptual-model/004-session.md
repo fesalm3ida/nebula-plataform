@@ -1,3 +1,21 @@
+---
+tipo: Modelo Conceitual
+id: nebula-player-conceptual-004-session
+projeto: Nebula Platform
+modulo: Nebula Player
+relacionados:
+- '[[INV-SESSION-001]]'
+- '[[INV-SESSION-002]]'
+- '[[INV-SESSION-003]]'
+- '[[INV-SESSION-004]]'
+tags:
+- modelo-conceitual
+- nebula-player
+aliases:
+- 'Entidade: Session'
+- nebula-player-conceptual-004-session
+---
+
 # Entidade: Session
 
 ## Definição

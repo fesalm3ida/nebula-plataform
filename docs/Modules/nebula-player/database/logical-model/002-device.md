@@ -1,3 +1,18 @@
+---
+tipo: Modelo Logico
+id: nebula-player-logical-002-device
+projeto: Nebula Platform
+modulo: Nebula Player
+relacionados:
+- '[[ADR-009]]'
+tags:
+- modelo-logico
+- nebula-player
+aliases:
+- 'Entidade: Device'
+- nebula-player-logical-002-device
+---
+
 # Entidade: Device
 
 ## Descrição Lógica

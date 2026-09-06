@@ -1,3 +1,22 @@
+---
+tipo: Status do Projeto
+id: PROJECT_STATUS
+projeto: Nebula Platform
+versao: 0.3.0-dev
+status: Em desenvolvimento
+atualizacao: '2026-07-12'
+fase_atual: First Light
+milestone: M3 — Session Presence
+relacionados:
+- '[[ADR-001]]'
+- '[[ADR-016]]'
+tags:
+- status-do-projeto
+aliases:
+- Nebula Platform
+- PROJECT_STATUS
+---
+
 # Nebula Platform
 
 ## Status do Projeto

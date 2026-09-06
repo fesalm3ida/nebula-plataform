@@ -1,3 +1,18 @@
+---
+tipo: Modelo Conceitual
+id: nebula-player-conceptual-001-client
+projeto: Nebula Platform
+modulo: Nebula Player
+relacionados:
+- '[[ADR-008]]'
+tags:
+- modelo-conceitual
+- nebula-player
+aliases:
+- 'Entidade: Client'
+- nebula-player-conceptual-001-client
+---
+
 # Entidade: Client
 
 ## Definição

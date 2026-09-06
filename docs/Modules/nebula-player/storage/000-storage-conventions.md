@@ -1,3 +1,18 @@
+---
+tipo: Armazenamento Local
+id: nebula-player-storage-000-storage-conventions
+projeto: Nebula Platform
+modulo: Nebula Player
+relacionados:
+- '[[ADR-013]]'
+tags:
+- armazenamento-local
+- nebula-player
+aliases:
+- Convenções de Armazenamento Local
+- nebula-player-storage-000-storage-conventions
+---
+
 # Convenções de Armazenamento Local
 
 ## Objetivo

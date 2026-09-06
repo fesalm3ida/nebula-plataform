@@ -1,3 +1,23 @@
+---
+tipo: Modelo Conceitual
+id: nebula-player-conceptual-005-heartbeat
+projeto: Nebula Platform
+modulo: Nebula Player
+relacionados:
+- '[[nebula-player-conceptual-001-client]]'
+- '[[nebula-player-conceptual-002-device]]'
+- '[[nebula-player-conceptual-003-device-content-authorization]]'
+- '[[nebula-player-conceptual-004-session]]'
+- '[[nebula-player-conceptual-006-telemetry-event]]'
+- '[[nebula-player-conceptual-007-log]]'
+tags:
+- modelo-conceitual
+- nebula-player
+aliases:
+- 'Entidade: Heartbeat'
+- nebula-player-conceptual-005-heartbeat
+---
+
 # Entidade: Heartbeat
 
 ## Definição

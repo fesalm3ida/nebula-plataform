@@ -1,3 +1,16 @@
+---
+tipo: Modelo Fisico
+id: nebula-player-physical-000-convention
+projeto: Nebula Platform
+modulo: Nebula Player
+tags:
+- modelo-fisico
+- nebula-player
+aliases:
+- Convenções do Modelo Físico
+- nebula-player-physical-000-convention
+---
+
 # Convenções do Modelo Físico
 
 ## Nomenclatura

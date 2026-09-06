@@ -1,3 +1,24 @@
+---
+tipo: Visao
+id: nebula-player-000-vision
+projeto: Nebula Platform
+modulo: Nebula Player
+versao: 0.1.0
+status: Em desenvolvimento
+atualizacao: '2026-07-01'
+responsavel: Felipe Almeida
+relacionados:
+- '[[nebula-player-001-ecosystem]]'
+- '[[nebula-player-002-MVP]]'
+- '[[nebula-player-003-architecture]]'
+- '[[nebula-player-004-startup-flow]]'
+tags:
+- visao
+- nebula-player
+aliases:
+- nebula-player-000-vision
+---
+
 # Documento
 
 **Projeto:** Nebula Platform

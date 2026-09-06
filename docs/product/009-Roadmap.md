@@ -1,3 +1,23 @@
+---
+tipo: Roadmap
+id: prod-009-Roadmap
+projeto: Nebula Platform
+modulo: Nebula Plataforma
+versao: 0.1.0
+status: Em desenvolvimento
+atualizacao: '2026-07-01'
+responsavel: Felipe Almeida
+relacionados:
+- '[[prod-000-vision]]'
+- '[[prod-001-ecosystem]]'
+- '[[prod-002-MVP]]'
+tags:
+- roadmap
+- nebula-plataforma
+aliases:
+- prod-009-Roadmap
+---
+
 # Documento
 
 **Projeto:** Nebula Platform

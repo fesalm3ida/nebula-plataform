@@ -1,3 +1,19 @@
+---
+tipo: Modelo Conceitual
+id: nebula-player-conceptual-002-device
+projeto: Nebula Platform
+modulo: Nebula Player
+relacionados:
+- '[[ADR-003]]'
+- '[[ADR-009]]'
+tags:
+- modelo-conceitual
+- nebula-player
+aliases:
+- 'Entidade: Device'
+- nebula-player-conceptual-002-device
+---
+
 
 # Entidade: Device
 

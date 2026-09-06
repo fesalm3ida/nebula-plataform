@@ -1,3 +1,26 @@
+---
+tipo: Modelo Logico
+id: nebula-player-logical-003-device-content-authorization
+projeto: Nebula Platform
+modulo: Nebula Player
+relacionados:
+- '[[nebula-player-logical-000-normalization-review]]'
+- '[[nebula-player-logical-001-client]]'
+- '[[nebula-player-logical-002-device]]'
+- '[[nebula-player-logical-004-session]]'
+- '[[nebula-player-logical-005-heartbeat]]'
+- '[[nebula-player-logical-006-telemetry-event]]'
+- '[[nebula-player-logical-007-log]]'
+- '[[nebula-player-logical-008-event-type]]'
+- '[[nebula-player-logical-009-log-level]]'
+tags:
+- modelo-logico
+- nebula-player
+aliases:
+- 'Entidade: DeviceContentAuthorization'
+- nebula-player-logical-003-device-content-authorization
+---
+
 # Entidade: DeviceContentAuthorization
 
 ## Descrição

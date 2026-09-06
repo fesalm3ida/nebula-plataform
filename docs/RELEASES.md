@@ -1,3 +1,17 @@
+---
+tipo: Releases
+id: docs-RELEASES
+projeto: Nebula Platform
+status: Em desenvolvimento
+atualizacao: '2026-07-12'
+milestone: Session Presence and Heartbeat
+tags:
+- releases
+aliases:
+- '`docs/RELEASES.md`'
+- docs-RELEASES
+---
+
 
 # `docs/RELEASES.md`
 

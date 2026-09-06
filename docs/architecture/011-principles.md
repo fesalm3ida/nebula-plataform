@@ -1,3 +1,23 @@
+---
+tipo: Principios
+id: arch-011-principles
+projeto: Nebula Platform
+versao: 0.1.0
+atualizacao: '2026-07-01'
+relacionados:
+- '[[arch-003-architecture]]'
+- '[[arch-004-domain]]'
+- '[[arch-005-database]]'
+- '[[arch-006-API]]'
+- '[[arch-007-telemetry]]'
+- '[[arch-008-security]]'
+- '[[arch-010-glossary]]'
+tags:
+- principios
+aliases:
+- arch-011-principles
+---
+
 
 # Documento
 
