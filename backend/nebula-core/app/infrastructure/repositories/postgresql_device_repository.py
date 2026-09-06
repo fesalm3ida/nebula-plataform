@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session as SQLAlchemySession
 
 from app.domain.entities.device import Device
 from app.domain.repositories.device_repository import DeviceRepository
+from app.domain.value_objects.device_fingerprint import DeviceFingerprint
+from app.domain.value_objects.device_key import DeviceKey
+from app.domain.value_objects.mac_address import MacAddress
 from app.infrastructure.persistence.mappers.device_mapper import (
     DeviceMapper,
 )
@@ -45,10 +48,10 @@ class PostgreSQLDeviceRepository(DeviceRepository):
 
     def find_by_mac_address(
         self,
-        mac_address: str,
+        mac_address: MacAddress,
     ) -> Device | None:
         statement = select(DeviceModel).where(
-            DeviceModel.mac_address == mac_address.upper()
+            DeviceModel.mac_address == mac_address.value
         )
 
         model = self._database_session.execute(
@@ -62,10 +65,10 @@ class PostgreSQLDeviceRepository(DeviceRepository):
 
     def find_by_fingerprint(
         self,
-        fingerprint: str,
+        fingerprint: DeviceFingerprint,
     ) -> Device | None:
         statement = select(DeviceModel).where(
-            DeviceModel.fingerprint == fingerprint.lower()
+            DeviceModel.fingerprint == fingerprint.value
         )
 
         model = self._database_session.execute(
@@ -79,10 +82,10 @@ class PostgreSQLDeviceRepository(DeviceRepository):
 
     def find_by_device_key(
         self,
-        device_key: str,
+        device_key: DeviceKey,
     ) -> Device | None:
         statement = select(DeviceModel).where(
-            DeviceModel.device_key == device_key
+            DeviceModel.device_key == device_key.value
         )
 
         model = self._database_session.execute(
@@ -96,10 +99,10 @@ class PostgreSQLDeviceRepository(DeviceRepository):
 
     def exists_by_fingerprint(
         self,
-        fingerprint: str,
+        fingerprint: DeviceFingerprint,
     ) -> bool:
         statement = select(DeviceModel.device_id).where(
-            DeviceModel.fingerprint == fingerprint.lower()
+            DeviceModel.fingerprint == fingerprint.value
         )
 
         device_id = self._database_session.execute(

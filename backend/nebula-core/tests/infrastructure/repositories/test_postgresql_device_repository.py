@@ -121,7 +121,7 @@ def test_should_find_device_by_mac_address(
     repository.save(device)
 
     restored = repository.find_by_mac_address(
-        "aa:bb:cc:dd:ee:ff"
+        MacAddress("AA:BB:CC:DD:EE:FF")
     )
 
     assert restored is not None
@@ -139,7 +139,7 @@ def test_should_find_device_by_fingerprint(
     repository.save(device)
 
     restored = repository.find_by_fingerprint(
-        "A" * 64
+        DeviceFingerprint("a" * 64)
     )
 
     assert restored is not None
@@ -157,7 +157,7 @@ def test_should_find_device_by_device_key(
     repository.save(device)
 
     restored = repository.find_by_device_key(
-        str(device.device_key)
+        device.device_key
     )
 
     assert restored is not None
@@ -175,7 +175,7 @@ def test_should_confirm_existing_fingerprint(
     repository.save(device)
 
     assert repository.exists_by_fingerprint(
-        str(device.fingerprint)
+        device.fingerprint
     ) is True
 
 
@@ -187,7 +187,7 @@ def test_should_report_missing_fingerprint(
     )
 
     assert repository.exists_by_fingerprint(
-        "b" * 64
+        DeviceFingerprint("b" * 64)
     ) is False
 
 
@@ -201,20 +201,14 @@ def test_should_return_none_when_device_does_not_exist(
 
     assert repository.find_by_id(device.device_id) is None
     assert (
-        repository.find_by_mac_address(
-            str(device.mac_address)
-        )
+        repository.find_by_mac_address(device.mac_address)
         is None
     )
     assert (
-        repository.find_by_fingerprint(
-            str(device.fingerprint)
-        )
+        repository.find_by_fingerprint(device.fingerprint)
         is None
     )
     assert (
-        repository.find_by_device_key(
-            str(device.device_key)
-        )
+        repository.find_by_device_key(device.device_key)
         is None
     )
