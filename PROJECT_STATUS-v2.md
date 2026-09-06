@@ -59,7 +59,7 @@ Monitor.
 | Segurança | ✅ Foundation Complete |
 | Observabilidade | 🟢 Subdomínio implementado (TelemetryEvent/Log) · ADR-022/023 |
 | Player Android | ⏳ Não iniciado |
-| Admin | ⏳ Não iniciado |
+| Admin | 🟢 Desenho aprovado (ADR-026) · serviço BFF iniciado (auth + BFF de playlists) |
 | Playlist (M5) | 🟢 Domínio iniciado (ADR-021) |
 
 ---

@@ -119,24 +119,41 @@ Sua função é exclusivamente observar, registrar e analisar o comportamento da
 
 ---
 
-# 4. Painel Administrativo
+# 4. Nebula Admin
 
-O **Painel Administrativo** é utilizado pelos administradores da plataforma para gerenciamento e monitoramento.
+O **Nebula Admin** é o serviço e a interface utilizados pelos administradores para gerenciamento e monitoramento.
+
+## Arquitetura
+
+```
+Flutter Admin (UI)  →  Nebula Admin (FastAPI / BFF)  →  Nebula Core
+```
+
+- **Nebula Admin** é um **serviço BFF** (Backend for Frontend): autentica
+  administradores (Admin JWT), aplica RBAC, compõe/adapta respostas do Core e
+  **nunca acessa diretamente o PostgreSQL** (só o Core toca o banco).
+- A comunicação Admin → Core é **service-to-service** e centralizada em um
+  `NebulaCoreGateway`.
+- O **Flutter Admin** é a interface gráfica (desacoplada; em produção servida
+  via Nginx, fazendo proxy para o Nebula Admin).
 
 ## Responsabilidades
 
+- Autenticação e autorização de administradores
+- RBAC e tokens administrativos
 - Cadastro de clientes
-- Cadastro de ContentEndpoints
+- Cadastro de ContentEndpoints / Playlists
 - Cadastro de servidores
-- Ativação de dispositivos
-- Bloqueio e desbloqueio de dispositivos
-- Visualização de métricas
-- Visualização de dashboards
+- Ativação, bloqueio e revogação de dispositivos
+- Visualização de métricas e dashboards
 - Geração de relatórios
+- Auditoria administrativa
 
 ## Observações
 
-O acesso ao painel é restrito aos administradores da plataforma.
+O acesso é restrito a administradores. O Nebula Admin não possui regras de
+domínio nem persistência de entidades do Core (a regra de negócio e o banco
+pertencem ao Nebula Core).
 
 ---
 

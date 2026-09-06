@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "nebula-admin"
+version = "0.1.0.dev0"
+description = "Nebula Admin service (Backend for Frontend) for the Nebula Platform."
+requires-python = ">=3.10,<4.0"
+
+authors = [
+    { name = "Nebula Software House" }
+]
+
+dependencies = [
+    "fastapi>=0.139,<1.0",
+    "pydantic-settings>=2.14,<3.0",
+    "httpx>=0.28,<1.0",
+    "PyJWT>=2.10,<3.0",
+    "uvicorn[standard]>=0.51,<1.0",
+]
+
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0,<10.0",
+]
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+exclude = ["tests*"]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = [
+    "-ra",
+]
