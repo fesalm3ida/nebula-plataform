@@ -23,7 +23,7 @@ class HomeMenuScreen extends StatelessWidget {
       _MenuItem('Conta', Icons.person, (_) => const AccountScreen()),
       _MenuItem('Configurações', Icons.settings_suggest,
           (_) => const SettingsScreen()),
-      _MenuItem('Recarregar', Icons.refresh, null),
+      const _MenuItem('Recarregar', Icons.refresh, null),
     ];
 
     return NebulaTheme.background(

@@ -52,8 +52,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
       setState(() => _status = 'Autenticando...');
       final token = await _client.authenticateDevice(
-        deviceId: deviceId!,
-        deviceKey: deviceKey!,
+        deviceId: deviceId,
+        deviceKey: deviceKey,
         fingerprint: fingerprint,
       );
 

@@ -4,7 +4,7 @@ import 'package:nebula_player/m3u/m3u_parser.dart';
 
 void main() {
   test('parses a simple M3U playlist', () {
-    const content = [
+    final content = [
       '#EXTM3U',
       '#EXTINF:-1 tvg-id="a" tvg-logo="http://logo.png" '
           'group-title="Esportes",Canal 1',
@@ -22,7 +22,7 @@ void main() {
   });
 
   test('handles EXTGRP and ignores empty/comment lines', () {
-    const content = [
+    final content = [
       '#EXTM3U',
       '#EXTGRP:Filmes',
       '#EXTINF:-1,Nome',
