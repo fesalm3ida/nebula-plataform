@@ -34,4 +34,20 @@ class SessionNotActiveError(Exception):
     """Raised when an operation requires an active Session."""
 
 
+class PlaylistNotFoundError(Exception):
+    """Raised when the requested Playlist does not exist."""
+
+
+class PlaylistNotAvailableError(Exception):
+    """Raised when a Playlist is not available for provisioning."""
+
+
+class NoPlaylistAssignedError(Exception):
+    """Raised when a Device has no active Playlist assigned."""
+
+
+class PlaylistAssignmentAlreadyExistsError(Exception):
+    """Raised when a Device already has an active PlaylistAssignment."""
+
+
 

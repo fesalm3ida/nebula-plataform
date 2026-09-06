@@ -1,0 +1,358 @@
+---
+tipo: Status do Projeto
+id: PROJECT_STATUS-v2
+projeto: Nebula Platform
+versao: 0.3.0
+status: 🚧 Em desenvolvimento ativo
+atualizacao: '2026-09-05'
+milestone: M5 — Playlist Domain
+codename: Core Foundation Complete
+relacionados:
+- '[[CHANGELOG]]'
+- '[[CONTRIBUTING]]'
+- '[[PROJECT_STATUS]]'
+- '[[README]]'
+- '[[RELEASES]]'
+tags:
+- status-do-projeto
+aliases:
+- Nebula Platform
+- PROJECT_STATUS-v2
+---
+
+# Nebula Platform
+
+# PROJECT STATUS v2.0
+
+## Status do Projeto
+
+- **Versão atual:** **0.3.0** (próximo release: **v0.4.0 — Persistência PostgreSQL**)
+- **Codename:** **Core Foundation Complete**
+- **Milestone atual:** **M5 — Playlist Domain** (M4 concluída)
+- **Status geral:** 🚧 Em desenvolvimento ativo
+- **Última atualização:** **05/09/2026**
+
+---
+
+# Visão Geral
+
+A Nebula Platform é um ecossistema modular para gerenciamento, autenticação,
+provisionamento, reprodução e monitoramento de dispositivos Android e Android TV.
+
+O desenvolvimento atual está concentrado no **Nebula Core**, responsável pelas
+regras de negócio, autenticação, autorização, ciclo de vida de Sessions,
+persistência e futura integração com o Nebula Player, Nebula Admin e Nebula
+Monitor.
+
+---
+
+# Situação Geral
+
+| Área | Status |
+|------|--------|
+| Arquitetura | ✅ Consolidada |
+| Domínio | ✅ Consolidado |
+| Application Layer | ✅ Consolidada |
+| Infrastructure Layer | ✅ Consolidada |
+| API HTTP | ✅ Funcional |
+| Persistência | ✅ Validada E2E (testes de integração PostgreSQL) |
+| Segurança | ✅ Foundation Complete |
+| Observabilidade | ⏳ Planejada |
+| Player Android | ⏳ Não iniciado |
+| Admin | ⏳ Não iniciado |
+| Playlist (M5) | 🟢 Domínio iniciado (ADR-021) |
+
+---
+
+# Documentação
+
+| Documento | Status |
+|-----------|--------|
+| Visão do Produto | ✅ |
+| Ecossistema | ✅ |
+| MVP | ✅ |
+| Arquitetura | ✅ |
+| Modelo de Domínio | ✅ |
+| Banco de Dados | ✅ |
+| API | 🔄 |
+| Segurança | ✅ |
+| ADRs | ✅ Atualizadas |
+| RFCs | ✅ Estrutura consolidada |
+
+---
+
+# Nebula Core
+
+## Ambiente
+
+- ✅ Ubuntu / WSL2
+- ✅ Python 3.10+
+- ✅ Virtual Environment
+- ✅ FastAPI
+- ✅ Uvicorn
+- ✅ Pytest
+- ✅ PostgreSQL
+- ✅ SQLAlchemy
+- ✅ Alembic
+- ✅ Docker Compose
+- ✅ Docker Secrets
+- ✅ Clean Architecture
+- ✅ Domain Driven Design
+
+---
+
+# Domínio
+
+## Entidades
+
+- ✅ Device
+- ✅ Session
+
+## Value Objects
+
+- ✅ DeviceKey
+- ✅ DeviceFingerprint
+- ✅ MacAddress
+- ✅ AppVersion
+
+## Enums
+
+- ✅ DevicePlatform
+- ✅ DeviceStatus
+- ✅ SessionStatus
+
+---
+
+# Casos de Uso
+
+- ✅ RegisterDeviceUseCase
+- ✅ ActivateDeviceUseCase
+- ✅ AuthenticateDeviceUseCase
+- ✅ StartSessionUseCase
+- ✅ HeartbeatSessionUseCase
+- ✅ EndSessionUseCase
+
+---
+
+# API HTTP
+
+| Método | Endpoint | Status |
+|---------|----------|--------|
+| GET | / | ✅ |
+| GET | /health | ✅ |
+| POST | /devices/register | ✅ |
+| POST | /devices/{device_id}/activate | ✅ Temporário |
+| POST | /auth/device | ✅ |
+| POST | /sessions | ✅ |
+| POST | /sessions/{session_id}/heartbeat | ✅ |
+| POST | /sessions/{session_id}/end | ✅ |
+
+### Segurança da API
+
+Todos os endpoints relacionados ao ciclo de vida de Session utilizam:
+
+- ✅ JWT Authentication
+- ✅ HTTP Bearer
+- ✅ Current Device Resolution
+- ✅ Current Session Resolution
+- ✅ Ownership Validation
+- ✅ Anti-IDOR Protection
+
+---
+
+# Persistência
+
+## Implementado
+
+- ✅ PostgreSQL
+- ✅ SQLAlchemy
+- ✅ Alembic
+- ✅ Docker Secrets
+- ✅ Primeira Migration
+- ✅ Configuração de ambiente segura
+
+## Em evolução
+
+- 🔄 PostgreSQLDeviceRepository
+- 🔄 PostgreSQLSessionRepository
+
+---
+
+# Segurança
+
+## Implementado
+
+- ✅ JWT
+- ✅ AccessTokenService
+- ✅ JWTAccessTokenService
+- ✅ HTTP Bearer Authentication
+- ✅ CurrentDevice
+- ✅ CurrentSession
+- ✅ Ownership Validation
+- ✅ Anti-IDOR
+- ✅ Session Authorization
+- ✅ WWW-Authenticate
+- ✅ Secrets Management
+
+---
+
+# Qualidade
+
+## Testes Automatizados
+
+- ✅ **250 testes aprovados**
+- ✅ **0 falhas**
+- ⚠️ **1 warning conhecido**
+
+### Cobertura
+
+- Domain
+- Application
+- Infrastructure
+- API
+- Security
+- Persistence
+
+---
+
+# Nebula Player
+
+## Status
+
+- ✅ Arquitetura documentada
+- ✅ Estratégia Stateless definida
+- ✅ Fluxo de Provisionamento definido
+- ⏳ Implementação Android pendente
+
+---
+
+# Nebula Admin
+
+## Status
+
+- ✅ Responsabilidades definidas
+- ⏳ Implementação pendente
+
+---
+
+# Nebula Monitor
+
+## Status
+
+- ✅ Modelo de Heartbeat preparado
+- ✅ Session Presence implementada
+- ⏳ Serviço de Monitoramento pendente
+- ⏳ Dashboards pendentes
+
+---
+
+# Próxima Sprint
+
+## Sprint 19 — Playlist Domain Module (em curso)
+
+**ADR-021 (Aceita)** define Playlist como uma abstração de fonte de conteúdo
+(M3U inicial; Xtream/Stalker previstos), cadastrada manualmente via Nebula Admin,
+associada a Devices através da entidade intermediária `PlaylistAssignment`, e
+entregue ao Player via `GET /me/provisioning`.
+
+### ✅ Concluído
+
+- Entidade de domínio `Playlist` (id, name, format, source_url, status, timestamps).
+- Enums `PlaylistFormat`, `PlaylistStatus` e `PlaylistAssignmentStatus`.
+- Entidade `PlaylistAssignment` (Device ↔ Playlist).
+- `PlaylistRepository` e `PlaylistAssignmentRepository` (interfaces + PostgreSQL + in-memory).
+- Persistência: models, mappers e migration de `playlists` e `playlist_assignments`.
+- Use cases de criação, atualização, ativação/desativação, associação e provisionamento.
+- Rotas de gerenciamento (`/playlists`) e endpoint `GET /me/provisioning` (Player).
+- Testes de domínio, repositórios (in-memory + integração PostgreSQL), use cases e rotas.
+
+### ⏳ Restante
+
+- Proteger as rotas `/playlists` com autenticação do Nebula Admin (ainda inexistente).
+- Implementar os formatos Xtream Codes e Stalker (apenas M3U no MVP).
+- UI/gestão de associações no Nebula Admin.
+- Migração aplicada ao ambiente (tabelas já criadas via `create_all` nos testes).
+
+---
+
+# Milestones
+
+| ID | Milestone | Status |
+|----|-----------|--------|
+| M1 | Architectural Foundation | ✅ |
+| M2 | Core Domain & First API | ✅ |
+| M3 | Session Presence | ✅ |
+| M4 | PostgreSQL Persistence | ✅ Validada (integração E2E com PostgreSQL) |
+| M5 | Playlist Domain | 🟢 Implementado (entidade+repos+CRUD+provisioning) — falta Auth Admin |
+| M6 | Provisioning | ⏳ |
+| M7 | Telemetry | ⏳ |
+
+---
+
+# Core Capabilities
+
+## Authentication
+
+- ✅ JWT
+- ✅ Bearer
+
+## Authorization
+
+- ✅ Ownership Validation
+
+## Session Lifecycle
+
+- ✅ Start
+- ✅ Heartbeat
+- ✅ End
+
+## Persistence
+
+- ✅ PostgreSQL
+- ✅ SQLAlchemy
+- ✅ Alembic
+
+## Security
+
+- ✅ Anti-IDOR
+- ✅ Docker Secrets
+
+## Quality
+
+- ✅ 250 Automated Tests
+
+---
+
+# Roadmap Imediato
+
+1. Finalizar PostgreSQL Repositories
+2. Playlist Domain
+3. Xtream Server Module
+4. Device Provisioning
+5. Telemetry
+6. Nebula Player Integration
+7. Nebula Admin
+8. Nebula Monitor
+
+---
+
+# Resumo Executivo
+
+**Nebula Core v0.3.0** representa a conclusão da fundação arquitetural do projeto.
+
+Nesta versão foram consolidados:
+
+- Clean Architecture
+- Domain Driven Design
+- JWT Authentication
+- HTTP Bearer Security
+- Session Ownership
+- Anti-IDOR Protection
+- SQLAlchemy
+- Alembic
+- Docker Secrets
+- PostgreSQL
+- Session Lifecycle
+- 250 testes automatizados
+
+A partir desta versão o desenvolvimento migra da construção da fundação para a implementação dos módulos de negócio da plataforma.

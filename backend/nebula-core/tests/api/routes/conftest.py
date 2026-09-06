@@ -7,6 +7,12 @@ import pytest
 from app.api.dependencies.device_repository import (
     get_device_repository,
 )
+from app.api.dependencies.playlist_assignment_repository import (
+    get_playlist_assignment_repository,
+)
+from app.api.dependencies.playlist_repository import (
+    get_playlist_repository,
+)
 from app.api.dependencies.session_repository import (
     get_session_repository,
 )
@@ -19,6 +25,12 @@ from app.application.security.access_token_service import (
 )
 from app.infrastructure.repositories.in_memory_device_repository import (
     InMemoryDeviceRepository,
+)
+from app.infrastructure.repositories.in_memory_playlist_assignment_repository import (
+    InMemoryPlaylistAssignmentRepository,
+)
+from app.infrastructure.repositories.in_memory_playlist_repository import (
+    InMemoryPlaylistRepository,
 )
 from app.infrastructure.repositories.in_memory_session_repository import (
     InMemorySessionRepository,
@@ -63,6 +75,16 @@ def session_repository() -> InMemorySessionRepository:
 
 
 @pytest.fixture
+def playlist_repository() -> InMemoryPlaylistRepository:
+    return InMemoryPlaylistRepository()
+
+
+@pytest.fixture
+def playlist_assignment_repository() -> InMemoryPlaylistAssignmentRepository:
+    return InMemoryPlaylistAssignmentRepository()
+
+
+@pytest.fixture
 def access_token_service() -> AccessTokenService:
     return FakeAccessTokenService()
 
@@ -71,6 +93,8 @@ def access_token_service() -> AccessTokenService:
 def override_dependencies(
     device_repository: InMemoryDeviceRepository,
     session_repository: InMemorySessionRepository,
+    playlist_repository: InMemoryPlaylistRepository,
+    playlist_assignment_repository: InMemoryPlaylistAssignmentRepository,
     access_token_service: AccessTokenService,
 ) -> Generator[None, None, None]:
     app.dependency_overrides[get_device_repository] = (
@@ -78,6 +102,12 @@ def override_dependencies(
     )
     app.dependency_overrides[get_session_repository] = (
         lambda: session_repository
+    )
+    app.dependency_overrides[get_playlist_repository] = (
+        lambda: playlist_repository
+    )
+    app.dependency_overrides[get_playlist_assignment_repository] = (
+        lambda: playlist_assignment_repository
     )
     app.dependency_overrides[get_access_token_service] = (
         lambda: access_token_service
@@ -92,6 +122,14 @@ def override_dependencies(
         )
         app.dependency_overrides.pop(
             get_session_repository,
+            None,
+        )
+        app.dependency_overrides.pop(
+            get_playlist_repository,
+            None,
+        )
+        app.dependency_overrides.pop(
+            get_playlist_assignment_repository,
             None,
         )
         app.dependency_overrides.pop(

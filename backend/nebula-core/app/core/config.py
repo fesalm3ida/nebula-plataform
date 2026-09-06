@@ -131,6 +131,14 @@ class Settings(BaseSettings):
         ),
     )
 
+    admin_api_key: str = Field(
+        default="dev-admin-key",
+        validation_alias=AliasChoices(
+            "ADMIN_API_KEY",
+            "admin_api_key",
+        ),
+    )
+
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
         env_file_encoding="utf-8",
