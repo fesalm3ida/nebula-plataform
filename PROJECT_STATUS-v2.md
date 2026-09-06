@@ -5,7 +5,7 @@ projeto: Nebula Platform
 versao: 0.3.0
 status: 🚧 Em desenvolvimento ativo
 atualizacao: '2026-09-05'
-milestone: M5 — Playlist Domain
+milestone: M6 — Provisioning
 codename: Core Foundation Complete
 relacionados:
 - '[[CHANGELOG]]'
@@ -28,7 +28,7 @@ aliases:
 
 - **Versão atual:** **0.3.0** (próximo release: **v0.4.0 — Persistência PostgreSQL**)
 - **Codename:** **Core Foundation Complete**
-- **Milestone atual:** **M5 — Playlist Domain** (M4 concluída)
+- **Milestone atual:** **M6 — Provisioning** (M4 e M5 concluídas)
 - **Status geral:** 🚧 Em desenvolvimento ativo
 - **Última atualização:** **05/09/2026**
 
@@ -141,11 +141,21 @@ Monitor.
 | GET | / | ✅ |
 | GET | /health | ✅ |
 | POST | /devices/register | ✅ |
-| POST | /devices/{device_id}/activate | ✅ Temporário |
+| POST | /devices/{device_id}/activate | ✅ (admin) |
+| POST | /devices/{device_id}/block | ✅ (admin) |
+| POST | /devices/{device_id}/revoke | ✅ (admin) |
+| POST | /devices/{device_id}/expire | ✅ (admin) |
 | POST | /auth/device | ✅ |
 | POST | /sessions | ✅ |
 | POST | /sessions/{session_id}/heartbeat | ✅ |
 | POST | /sessions/{session_id}/end | ✅ |
+| POST | /playlists | ✅ (admin) |
+| GET | /playlists | ✅ (admin) |
+| GET | /playlists/{playlist_id} | ✅ (admin) |
+| PATCH | /playlists/{playlist_id} | ✅ (admin) |
+| POST | /playlists/{playlist_id}/status | ✅ (admin) |
+| POST | /playlists/assignments | ✅ (admin) |
+| GET | /me/provisioning | ✅ (Player, Bearer) |
 
 ### Segurança da API
 
@@ -200,7 +210,7 @@ Todos os endpoints relacionados ao ciclo de vida de Session utilizam:
 
 ## Testes Automatizados
 
-- ✅ **250 testes aprovados**
+- ✅ **258 testes aprovados**
 - ✅ **0 falhas**
 - ⚠️ **1 warning conhecido**
 
@@ -284,7 +294,7 @@ entregue ao Player via `GET /me/provisioning`.
 | M3 | Session Presence | ✅ |
 | M4 | PostgreSQL Persistence | ✅ Validada (integração E2E com PostgreSQL) |
 | M5 | Playlist Domain | 🟢 Implementado (entidade+repos+CRUD+provisioning) — falta Auth Admin |
-| M6 | Provisioning | ⏳ |
+| M6 | Provisioning | 🟢 Em progresso — ciclo de vida administrativo (activate/block/revoke/expire) + provisionamento |
 | M7 | Telemetry | ⏳ |
 
 ---
@@ -319,7 +329,7 @@ entregue ao Player via `GET /me/provisioning`.
 
 ## Quality
 
-- ✅ 250 Automated Tests
+- ✅ 258 Automated Tests
 
 ---
 
@@ -353,6 +363,6 @@ Nesta versão foram consolidados:
 - Docker Secrets
 - PostgreSQL
 - Session Lifecycle
-- 250 testes automatizados
+- 258 testes automatizados
 
 A partir desta versão o desenvolvimento migra da construção da fundação para a implementação dos módulos de negócio da plataforma.

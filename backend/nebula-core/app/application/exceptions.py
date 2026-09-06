@@ -18,6 +18,18 @@ class DeviceAlreadyActiveError(Exception):
     """Raised when an already active Device is activated again."""
 
 
+class DeviceAlreadyBlockedError(Exception):
+    """Raised when an already blocked Device is blocked again."""
+
+
+class DeviceAlreadyRevokedError(Exception):
+    """Raised when an already revoked Device is revoked again."""
+
+
+class DeviceAlreadyExpiredError(Exception):
+    """Raised when an already expired Device is expired again."""
+
+
 class ActiveSessionAlreadyExistsError(Exception):
     """Raised when a Device already has an active Session."""
 

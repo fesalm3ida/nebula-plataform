@@ -1,22 +1,46 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from collections.abc import Callable
+from typing import Any
 from uuid import UUID
 
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.dependencies.device_repository import get_device_repository
+from app.api.schemas.device_activation import DeviceActivationResponse
 from app.api.schemas.device_registration import (
     DeviceRegistrationRequest,
     DeviceRegistrationResponse,
 )
-from app.application.exceptions import DeviceAlreadyRegisteredError
+from app.api.security.admin import require_admin
+from app.application.exceptions import (
+    DeviceAlreadyActiveError,
+    DeviceAlreadyBlockedError,
+    DeviceAlreadyExpiredError,
+    DeviceAlreadyRegisteredError,
+    DeviceAlreadyRevokedError,
+    DeviceNotFoundError,
+)
+from app.application.use_cases.activate_device import (
+    ActivateDeviceCommand,
+    ActivateDeviceUseCase,
+)
+from app.application.use_cases.block_device import (
+    BlockDeviceCommand,
+    BlockDeviceUseCase,
+)
+from app.application.use_cases.expire_device import (
+    ExpireDeviceCommand,
+    ExpireDeviceUseCase,
+)
 from app.application.use_cases.register_device import (
     RegisterDeviceCommand,
     RegisterDeviceUseCase,
 )
+from app.application.use_cases.revoke_device import (
+    RevokeDeviceCommand,
+    RevokeDeviceUseCase,
+)
 from app.domain.repositories.device_repository import DeviceRepository
 
-from app.api.schemas.device_activation import DeviceActivationResponse
-from app.application.exceptions import ( DeviceAlreadyActiveError,  DeviceAlreadyRegisteredError, DeviceNotFoundError, )
-from app.application.use_cases.activate_device import ( ActivateDeviceCommand, ActivateDeviceUseCase,)
 
 router = APIRouter(
     prefix="/devices",
@@ -28,18 +52,19 @@ router = APIRouter(
     "/register",
     response_model=DeviceRegistrationResponse,
     status_code=status.HTTP_201_CREATED,
+    summary="Register Device",
 )
 def register_device(
-    request: DeviceRegistrationRequest,
+    payload: DeviceRegistrationRequest,
     repository: DeviceRepository = Depends(get_device_repository),
 ) -> DeviceRegistrationResponse:
     use_case = RegisterDeviceUseCase(repository)
 
     command = RegisterDeviceCommand(
-        fingerprint=request.fingerprint,
-        mac_address=request.mac_address,
-        platform=request.platform,
-        app_version=request.app_version,
+        fingerprint=payload.fingerprint,
+        mac_address=payload.mac_address,
+        platform=payload.platform,
+        app_version=payload.app_version,
     )
 
     try:
@@ -53,7 +78,7 @@ def register_device(
 
     except (TypeError, ValueError) as error:
         raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(error),
         ) from error
 
@@ -63,40 +88,138 @@ def register_device(
         status=result.status,
     )
 
+
 @router.post(
     "/{device_id}/activate",
     response_model=DeviceActivationResponse,
     status_code=status.HTTP_200_OK,
     summary="Activate Device",
     description=(
-        "Temporary development endpoint. "
-        "It will later be replaced by a protected administrative flow."
+        "Administrative operation. Moves a Device from Pending to Active. "
+        "Protected by the administration guard (X-Admin-Token)."
     ),
+    dependencies=[Depends(require_admin)],
 )
 def activate_device(
     device_id: UUID,
     repository: DeviceRepository = Depends(get_device_repository),
 ) -> DeviceActivationResponse:
-    use_case = ActivateDeviceUseCase(repository)
-
-    try:
-        result = use_case.execute(
+    result = _lifecycle(
+        execute=lambda: ActivateDeviceUseCase(repository).execute(
             ActivateDeviceCommand(device_id=device_id)
-        )
-
-    except DeviceNotFoundError as error:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(error),
-        ) from error
-
-    except DeviceAlreadyActiveError as error:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(error),
-        ) from error
+        ),
+        not_found=DeviceNotFoundError,
+        conflict=DeviceAlreadyActiveError,
+    )
 
     return DeviceActivationResponse(
         device_id=result.device_id,
         status=result.status,
     )
+
+
+@router.post(
+    "/{device_id}/block",
+    response_model=DeviceActivationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Block Device",
+    description=(
+        "Administrative operation. Blocks a Device. "
+        "Protected by the administration guard (X-Admin-Token)."
+    ),
+    dependencies=[Depends(require_admin)],
+)
+def block_device(
+    device_id: UUID,
+    repository: DeviceRepository = Depends(get_device_repository),
+) -> DeviceActivationResponse:
+    result = _lifecycle(
+        execute=lambda: BlockDeviceUseCase(repository).execute(
+            BlockDeviceCommand(device_id=device_id)
+        ),
+        not_found=DeviceNotFoundError,
+        conflict=DeviceAlreadyBlockedError,
+    )
+
+    return DeviceActivationResponse(
+        device_id=result.device_id,
+        status=result.status,
+    )
+
+
+@router.post(
+    "/{device_id}/revoke",
+    response_model=DeviceActivationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Revoke Device",
+    description=(
+        "Administrative operation. Revokes a Device. "
+        "Protected by the administration guard (X-Admin-Token)."
+    ),
+    dependencies=[Depends(require_admin)],
+)
+def revoke_device(
+    device_id: UUID,
+    repository: DeviceRepository = Depends(get_device_repository),
+) -> DeviceActivationResponse:
+    result = _lifecycle(
+        execute=lambda: RevokeDeviceUseCase(repository).execute(
+            RevokeDeviceCommand(device_id=device_id)
+        ),
+        not_found=DeviceNotFoundError,
+        conflict=DeviceAlreadyRevokedError,
+    )
+
+    return DeviceActivationResponse(
+        device_id=result.device_id,
+        status=result.status,
+    )
+
+
+@router.post(
+    "/{device_id}/expire",
+    response_model=DeviceActivationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Expire Device",
+    description=(
+        "Administrative operation. Expires a Device. "
+        "Protected by the administration guard (X-Admin-Token)."
+    ),
+    dependencies=[Depends(require_admin)],
+)
+def expire_device(
+    device_id: UUID,
+    repository: DeviceRepository = Depends(get_device_repository),
+) -> DeviceActivationResponse:
+    result = _lifecycle(
+        execute=lambda: ExpireDeviceUseCase(repository).execute(
+            ExpireDeviceCommand(device_id=device_id)
+        ),
+        not_found=DeviceNotFoundError,
+        conflict=DeviceAlreadyExpiredError,
+    )
+
+    return DeviceActivationResponse(
+        device_id=result.device_id,
+        status=result.status,
+    )
+
+
+def _lifecycle(
+    *,
+    execute: Callable[[], Any],
+    not_found: type[Exception],
+    conflict: type[Exception],
+) -> Any:
+    try:
+        return execute()
+    except not_found as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+    except conflict as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error
