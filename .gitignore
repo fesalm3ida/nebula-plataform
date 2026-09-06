@@ -42,3 +42,10 @@ infra/docker/.env
 # Local secrets
 .secrets/
 **/.secrets/
+
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+**/generated_plugin_registrant.dart

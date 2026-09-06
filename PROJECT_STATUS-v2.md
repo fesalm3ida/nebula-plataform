@@ -58,8 +58,8 @@ Monitor.
 | Persistência | ✅ Validada E2E (testes de integração PostgreSQL) |
 | Segurança | ✅ Foundation Complete |
 | Observabilidade | 🟢 Subdomínio implementado (TelemetryEvent/Log) · ADR-022/023 |
-| Player Android | ⏳ Não iniciado |
-| Admin | 🟢 Desenho aprovado (ADR-026) · serviço BFF iniciado (auth + BFF de playlists) |
+| Player Android | 🟢 Startflow implementado (scaffold Flutter em frontend/nebula-player) |
+| Admin | 🟢 Serviço BFF (ADR-026) + UI Flutter Web (frontend/nebula-admin) |
 | Playlist (M5) | 🟢 Domínio iniciado (ADR-021) |
 
 ---
