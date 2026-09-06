@@ -5,7 +5,7 @@ projeto: Nebula Platform
 versao: 0.3.0
 status: 🚧 Em desenvolvimento ativo
 atualizacao: '2026-09-05'
-milestone: M6 — Provisioning
+milestone: M7 — Telemetry
 codename: Core Foundation Complete
 relacionados:
 - '[[CHANGELOG]]'
@@ -28,7 +28,7 @@ aliases:
 
 - **Versão atual:** **0.3.0** (próximo release: **v0.4.0 — Persistência PostgreSQL**)
 - **Codename:** **Core Foundation Complete**
-- **Milestone atual:** **M6 — Provisioning** (M4 e M5 concluídas)
+- **Milestone atual:** **M7 — Telemetry** (M4, M5 e M6 concluídas)
 - **Status geral:** 🚧 Em desenvolvimento ativo
 - **Última atualização:** **05/09/2026**
 
@@ -210,7 +210,7 @@ Todos os endpoints relacionados ao ciclo de vida de Session utilizam:
 
 ## Testes Automatizados
 
-- ✅ **258 testes aprovados**
+- ✅ **259 testes aprovados**
 - ✅ **0 falhas**
 - ⚠️ **1 warning conhecido**
 
@@ -294,7 +294,7 @@ entregue ao Player via `GET /me/provisioning`.
 | M3 | Session Presence | ✅ |
 | M4 | PostgreSQL Persistence | ✅ Validada (integração E2E com PostgreSQL) |
 | M5 | Playlist Domain | 🟢 Implementado (entidade+repos+CRUD+provisioning) — falta Auth Admin |
-| M6 | Provisioning | 🟢 Em progresso — ciclo de vida administrativo (activate/block/revoke/expire) + provisionamento |
+| M6 | Provisioning | ✅ Provisionamento (ciclo de vida administrativo + device + ContentEndpoints) |
 | M7 | Telemetry | ⏳ |
 
 ---
@@ -329,7 +329,7 @@ entregue ao Player via `GET /me/provisioning`.
 
 ## Quality
 
-- ✅ 258 Automated Tests
+- ✅ 259 Automated Tests
 
 ---
 
@@ -363,6 +363,6 @@ Nesta versão foram consolidados:
 - Docker Secrets
 - PostgreSQL
 - Session Lifecycle
-- 258 testes automatizados
+- 259 testes automatizados
 
 A partir desta versão o desenvolvimento migra da construção da fundação para a implementação dos módulos de negócio da plataforma.

@@ -37,3 +37,14 @@ class InMemoryPlaylistAssignmentRepository(
             ),
             None,
         )
+
+    def find_all_active_by_device_id(
+        self,
+        device_id: UUID,
+    ) -> list[PlaylistAssignment]:
+        return [
+            assignment
+            for assignment in self._assignments.values()
+            if assignment.device_id == device_id
+            and assignment.status == PlaylistAssignmentStatus.ACTIVE
+        ]

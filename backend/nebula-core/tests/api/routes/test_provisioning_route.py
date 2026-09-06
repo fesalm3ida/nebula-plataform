@@ -74,11 +74,17 @@ def test_should_provision_active_device(
 
     body = response.json()
 
-    assert body["playlist_id"] == str(playlist.playlist_id)
-    assert body["name"] == "Lista Principal"
-    assert body["format"] == "m3u"
-    assert body["source_url"] == "https://example.com/playlist.m3u"
-    assert body["status"] == "active"
+    assert body["device_id"] == str(device.device_id)
+    assert body["device_status"] == "active"
+    assert len(body["content_endpoints"]) == 1
+
+    endpoint = body["content_endpoints"][0]
+
+    assert endpoint["playlist_id"] == str(playlist.playlist_id)
+    assert endpoint["name"] == "Lista Principal"
+    assert endpoint["format"] == "m3u"
+    assert endpoint["source_url"] == "https://example.com/playlist.m3u"
+    assert endpoint["status"] == "active"
 
 
 def test_should_return_not_found_when_no_assignment(

@@ -4,7 +4,10 @@ from app.api.dependencies.playlist_assignment_repository import (
     get_playlist_assignment_repository,
 )
 from app.api.dependencies.playlist_repository import get_playlist_repository
-from app.api.schemas.provisioning import ProvisioningResponse
+from app.api.schemas.provisioning import (
+    ProvisionedContentEndpointResponse,
+    ProvisioningResponse,
+)
 from app.api.security.current_device import get_current_device
 from app.application.exceptions import (
     NoPlaylistAssignedError,
@@ -33,8 +36,8 @@ router = APIRouter(
     status_code=status.HTTP_200_OK,
     summary="Device Provisioning",
     description=(
-        "Resolves the active Playlist assigned to the authenticated "
-        "Device and returns its provisioning data (M3U source URL)."
+        "Resolves the operational provisioning for the authenticated Device: "
+        "its state and the list of authorized content endpoints (Playlists)."
     ),
 )
 def get_provisioning(
@@ -71,9 +74,16 @@ def get_provisioning(
         ) from error
 
     return ProvisioningResponse(
-        playlist_id=result.playlist_id,
-        name=result.name,
-        format=result.format,
-        source_url=result.source_url,
-        status=result.status,
+        device_id=current_device.device_id,
+        device_status=current_device.status,
+        content_endpoints=[
+            ProvisionedContentEndpointResponse(
+                playlist_id=endpoint.playlist_id,
+                name=endpoint.name,
+                format=endpoint.format,
+                source_url=endpoint.source_url,
+                status=endpoint.status,
+            )
+            for endpoint in result.content_endpoints
+        ],
     )

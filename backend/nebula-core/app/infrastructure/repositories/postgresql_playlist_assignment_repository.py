@@ -68,3 +68,22 @@ class PostgreSQLPlaylistAssignmentRepository(
             return None
 
         return PlaylistAssignmentMapper.to_domain(model)
+
+    def find_all_active_by_device_id(
+        self,
+        device_id: UUID,
+    ) -> list[PlaylistAssignment]:
+        statement = select(PlaylistAssignmentModel).where(
+            PlaylistAssignmentModel.device_id == device_id,
+            PlaylistAssignmentModel.status
+            == PlaylistAssignmentStatus.ACTIVE.value,
+        )
+
+        models = self._database_session.execute(
+            statement
+        ).scalars().all()
+
+        return [
+            PlaylistAssignmentMapper.to_domain(model)
+            for model in models
+        ]

@@ -20,12 +20,20 @@ class ProvisionDeviceCommand:
 
 
 @dataclass(frozen=True)
-class ProvisionDeviceResult:
+class ProvisionedContentEndpoint:
+    """Fonte de conteudo autorizada e fornecida ao Player (ADR-021)."""
+
     playlist_id: UUID
     name: str
     format: PlaylistFormat
     source_url: str
     status: PlaylistStatus
+
+
+@dataclass(frozen=True)
+class ProvisionDeviceResult:
+    device_id: UUID
+    content_endpoints: list[ProvisionedContentEndpoint]
 
 
 class ProvisionDeviceUseCase:
@@ -41,33 +49,45 @@ class ProvisionDeviceUseCase:
         self,
         command: ProvisionDeviceCommand,
     ) -> ProvisionDeviceResult:
-        assignment = self._assignment_repository.find_active_by_device_id(
-            command.device_id
+        assignments = (
+            self._assignment_repository.find_all_active_by_device_id(
+                command.device_id
+            )
         )
 
-        if assignment is None:
+        if not assignments:
             raise NoPlaylistAssignedError(
                 "Device does not have an active Playlist assigned."
             )
 
-        playlist = self._playlist_repository.find_by_id(
-            assignment.playlist_id
-        )
+        content_endpoints: list[ProvisionedContentEndpoint] = []
 
-        if playlist is None:
-            raise PlaylistNotFoundError(
-                f"Playlist {assignment.playlist_id} does not exist."
+        for assignment in assignments:
+            playlist = self._playlist_repository.find_by_id(
+                assignment.playlist_id
             )
 
-        if not playlist.is_available_for_provisioning:
-            raise PlaylistNotAvailableError(
-                "A disabled Playlist cannot be provisioned."
+            if playlist is None:
+                raise PlaylistNotFoundError(
+                    f"Playlist {assignment.playlist_id} does not exist."
+                )
+
+            if not playlist.is_available_for_provisioning:
+                raise PlaylistNotAvailableError(
+                    "A disabled Playlist cannot be provisioned."
+                )
+
+            content_endpoints.append(
+                ProvisionedContentEndpoint(
+                    playlist_id=playlist.playlist_id,
+                    name=playlist.name,
+                    format=playlist.format,
+                    source_url=playlist.source_url,
+                    status=playlist.status,
+                )
             )
 
         return ProvisionDeviceResult(
-            playlist_id=playlist.playlist_id,
-            name=playlist.name,
-            format=playlist.format,
-            source_url=playlist.source_url,
-            status=playlist.status,
+            device_id=command.device_id,
+            content_endpoints=content_endpoints,
         )

@@ -22,3 +22,10 @@ class PlaylistAssignmentRepository(ABC):
         device_id: UUID,
     ) -> PlaylistAssignment | None:
         """Find the active PlaylistAssignment for a given Device."""
+
+    @abstractmethod
+    def find_all_active_by_device_id(
+        self,
+        device_id: UUID,
+    ) -> list[PlaylistAssignment]:
+        """Return all active PlaylistAssignments for a given Device."""
