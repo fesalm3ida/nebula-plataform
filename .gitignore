@@ -49,3 +49,6 @@ infra/docker/.env
 .flutter-plugins-dependencies
 build/
 **/generated_plugin_registrant.dart
+
+# Local Flutter SDK checkout (nao versionar)
+develop/

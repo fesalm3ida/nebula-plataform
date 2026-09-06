@@ -2,7 +2,7 @@
 tipo: Status do Projeto
 id: PROJECT_STATUS-v2
 projeto: Nebula Platform
-versao: 0.3.0
+versao: 0.5.0
 status: 🚧 Em desenvolvimento ativo
 atualizacao: '2026-09-05'
 milestone: M7 — Telemetry
@@ -26,7 +26,7 @@ aliases:
 
 ## Status do Projeto
 
-- **Versão atual:** **0.3.0** (próximo release: **v0.4.0 — Persistência PostgreSQL**)
+- **Versão atual:** **0.5.0** (Nebula Admin + Player Android + Observabilidade)
 - **Codename:** **Core Foundation Complete**
 - **Milestone atual:** **M7 — Telemetry** (M4, M5 e M6 concluídas)
 - **Status geral:** 🚧 Em desenvolvimento ativo
