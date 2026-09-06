@@ -1,6 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.dependencies.nebula_core_gateway import get_nebula_core_gateway
+from app.api.schemas.assignments import (
+    PlaylistAssignmentRequest,
+    PlaylistAssignmentResponse,
+)
 from app.api.schemas.playlists import (
     PlaylistCreateRequest,
     PlaylistListResponse,
@@ -9,6 +13,10 @@ from app.api.schemas.playlists import (
 from app.api.security.current_admin import get_current_admin
 from app.application.exceptions import CoreCommunicationError
 from app.application.ports.nebula_core_gateway import NebulaCoreGateway
+from app.application.use_cases.assignments import (
+    AssignPlaylistCommand,
+    AssignPlaylistUseCase,
+)
 from app.application.use_cases.playlists import (
     CreatePlaylistCommand,
     CreatePlaylistUseCase,
@@ -84,3 +92,36 @@ async def create_playlist(
         ) from error
 
     return _to_out(result)
+
+
+@router.post(
+    "/assignments",
+    response_model=PlaylistAssignmentResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Assign Playlist to Device (BFF)",
+)
+async def assign_playlist(
+    payload: PlaylistAssignmentRequest,
+    gateway: NebulaCoreGateway = Depends(get_nebula_core_gateway),
+) -> PlaylistAssignmentResponse:
+    use_case = AssignPlaylistUseCase(gateway)
+
+    try:
+        result = await use_case.execute(
+            AssignPlaylistCommand(
+                device_id=payload.device_id,
+                playlist_id=payload.playlist_id,
+            )
+        )
+    except CoreCommunicationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
+
+    return PlaylistAssignmentResponse(
+        assignment_id=result.assignment_id,
+        device_id=result.device_id,
+        playlist_id=result.playlist_id,
+        status=result.status,
+    )

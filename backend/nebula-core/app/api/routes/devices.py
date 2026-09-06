@@ -10,6 +10,10 @@ from app.api.schemas.device_registration import (
     DeviceRegistrationRequest,
     DeviceRegistrationResponse,
 )
+from app.api.schemas.device_summary import (
+    DeviceListResponse,
+    DeviceSummaryResponse,
+)
 from app.api.security.admin import require_admin
 from app.application.exceptions import (
     DeviceAlreadyActiveError,
@@ -31,6 +35,7 @@ from app.application.use_cases.expire_device import (
     ExpireDeviceCommand,
     ExpireDeviceUseCase,
 )
+from app.application.use_cases.list_devices import ListDevicesUseCase
 from app.application.use_cases.register_device import (
     RegisterDeviceCommand,
     RegisterDeviceUseCase,
@@ -86,6 +91,37 @@ def register_device(
         device_id=result.device_id,
         device_key=result.device_key,
         status=result.status,
+    )
+
+
+@router.get(
+    "",
+    response_model=DeviceListResponse,
+    status_code=status.HTTP_200_OK,
+    summary="List Devices",
+    description=(
+        "Administrative operation. Returns registered Devices "
+        "(without sensitive identity fields). "
+        "Protected by the administration guard (X-Admin-Token)."
+    ),
+    dependencies=[Depends(require_admin)],
+)
+def list_devices(
+    repository: DeviceRepository = Depends(get_device_repository),
+) -> DeviceListResponse:
+    result = ListDevicesUseCase(repository).execute()
+
+    return DeviceListResponse(
+        devices=[
+            DeviceSummaryResponse(
+                device_id=device.device_id,
+                platform=device.platform,
+                status=device.status,
+                app_version=device.app_version,
+                created_at=device.created_at,
+            )
+            for device in result.devices
+        ]
     )
 
 

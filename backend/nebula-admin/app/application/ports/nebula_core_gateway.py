@@ -14,6 +14,27 @@ class CorePlaylist:
     status: str
 
 
+@dataclass(frozen=True)
+class CoreDevice:
+    """Subconjunto do contrato de Device do Core consumido pelo Admin."""
+
+    device_id: UUID
+    platform: str
+    status: str
+    app_version: str
+    created_at: str
+
+
+@dataclass(frozen=True)
+class CorePlaylistAssignment:
+    """Subconjunto do contrato de PlaylistAssignment do Core."""
+
+    assignment_id: UUID
+    device_id: UUID
+    playlist_id: UUID
+    status: str
+
+
 class NebulaCoreGateway(ABC):
     """Porta de comunicação com o Nebula Core (único dono do domínio/persistência)."""
 
@@ -29,3 +50,15 @@ class NebulaCoreGateway(ABC):
         source_url: str,
     ) -> CorePlaylist:
         """Create a playlist in the Nebula Core."""
+
+    @abstractmethod
+    async def list_devices(self) -> list[CoreDevice]:
+        """List devices from the Nebula Core (admin)."""
+
+    @abstractmethod
+    async def assign_playlist_to_device(
+        self,
+        device_id: UUID,
+        playlist_id: UUID,
+    ) -> CorePlaylistAssignment:
+        """Assign a playlist to a device in the Nebula Core (admin)."""

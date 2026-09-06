@@ -55,3 +55,9 @@ class InMemoryDeviceRepository(DeviceRepository):
             ),
             None,
         )
+
+    def find_all(self) -> list[Device]:
+        return sorted(
+            self._devices.values(),
+            key=lambda device: device.created_at,
+        )

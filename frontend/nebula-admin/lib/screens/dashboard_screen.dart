@@ -165,7 +165,7 @@ class _PlaylistFormState extends State<_PlaylistForm> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _format,
+            initialValue: _format,
             items: const [
               DropdownMenuItem(value: 'm3u', child: Text('m3u')),
             ],

@@ -59,7 +59,7 @@ Monitor.
 | Segurança | ✅ Foundation Complete |
 | Observabilidade | 🟢 Subdomínio implementado (TelemetryEvent/Log) · ADR-022/023 |
 | Player Android | 🟢 Startflow implementado (scaffold Flutter em frontend/nebula-player) |
-| Admin | 🟢 Serviço BFF (ADR-026) + UI Flutter Web (frontend/nebula-admin) |
+| Admin | 🟢 Serviço BFF (ADR-026) + UI Flutter Web · BFF ampliado (devices + associações) |
 | Playlist (M5) | 🟢 Domínio iniciado (ADR-021) |
 
 ---
@@ -141,6 +141,7 @@ Monitor.
 | GET | / | ✅ |
 | GET | /health | ✅ |
 | POST | /devices/register | ✅ |
+| GET | /devices | ✅ (admin, lista de devices) |
 | POST | /devices/{device_id}/activate | ✅ (admin) |
 | POST | /devices/{device_id}/block | ✅ (admin) |
 | POST | /devices/{device_id}/revoke | ✅ (admin) |

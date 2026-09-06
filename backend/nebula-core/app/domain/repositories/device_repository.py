@@ -36,3 +36,7 @@ class DeviceRepository(ABC):
         device_key: DeviceKey,
     ) -> Device | None:
         """Find a Device by its DeviceKey."""
+
+    @abstractmethod
+    def find_all(self) -> list[Device]:
+        """Return all registered Devices (ordered by creation)."""

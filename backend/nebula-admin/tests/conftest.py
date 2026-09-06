@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,7 +8,9 @@ from app.api.dependencies.admin_repository import get_admin_repository
 from app.api.dependencies.admin_token_service import get_admin_token_service
 from app.api.dependencies.nebula_core_gateway import get_nebula_core_gateway
 from app.application.ports.nebula_core_gateway import (
+    CoreDevice,
     CorePlaylist,
+    CorePlaylistAssignment,
     NebulaCoreGateway,
 )
 from app.application.security.admin_token_service import AdminTokenService
@@ -31,6 +33,8 @@ TEST_SECRET = "test-admin-secret-key-0123456789abcdef"
 class FakeNebulaCoreGateway(NebulaCoreGateway):
     def __init__(self) -> None:
         self._playlists: list[CorePlaylist] = []
+        self._devices: list[CoreDevice] = []
+        self._assignments: list[CorePlaylistAssignment] = []
 
     async def list_playlists(self) -> list[CorePlaylist]:
         return list(self._playlists)
@@ -51,6 +55,24 @@ class FakeNebulaCoreGateway(NebulaCoreGateway):
         self._playlists.append(playlist)
 
         return playlist
+
+    async def list_devices(self) -> list[CoreDevice]:
+        return list(self._devices)
+
+    async def assign_playlist_to_device(
+        self,
+        device_id: UUID,
+        playlist_id: UUID,
+    ) -> CorePlaylistAssignment:
+        assignment = CorePlaylistAssignment(
+            assignment_id=uuid4(),
+            device_id=device_id,
+            playlist_id=playlist_id,
+            status="active",
+        )
+        self._assignments.append(assignment)
+
+        return assignment
 
 
 @pytest.fixture

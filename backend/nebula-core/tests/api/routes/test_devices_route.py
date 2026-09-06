@@ -218,3 +218,30 @@ def test_should_reject_lifecycle_with_invalid_admin_token(
     )
 
     assert response.status_code == 401
+
+
+def test_should_list_devices(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    register_device()
+
+    response = client.get("/devices", headers=admin_headers())
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert len(body["devices"]) == 1
+    assert body["devices"][0]["status"] == "pending"
+    assert "device_id" in body["devices"][0]
+
+
+def test_should_reject_list_without_admin_token(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    register_device()
+
+    response = client.get("/devices")
+
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "Bearer"

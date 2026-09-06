@@ -4,7 +4,9 @@ import httpx
 
 from app.application.exceptions import CoreCommunicationError
 from app.application.ports.nebula_core_gateway import (
+    CoreDevice,
     CorePlaylist,
+    CorePlaylistAssignment,
     NebulaCoreGateway,
 )
 
@@ -75,6 +77,49 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
 
         return self._to_core_playlist(payload)
 
+    async def list_devices(self) -> list[CoreDevice]:
+        try:
+            async with httpx.AsyncClient(transport=self._transport) as client:
+                response = await client.get(
+                    f"{self._base_url}/devices",
+                    headers=self._headers(),
+                )
+                response.raise_for_status()
+                data = response.json()
+        except httpx.HTTPError as error:
+            raise CoreCommunicationError(
+                "Failed to reach the Nebula Core."
+            ) from error
+
+        return [
+            self._to_core_device(payload)
+            for payload in data.get("devices", [])
+        ]
+
+    async def assign_playlist_to_device(
+        self,
+        device_id: UUID,
+        playlist_id: UUID,
+    ) -> CorePlaylistAssignment:
+        try:
+            async with httpx.AsyncClient(transport=self._transport) as client:
+                response = await client.post(
+                    f"{self._base_url}/playlists/assignments",
+                    headers=self._headers(),
+                    json={
+                        "device_id": str(device_id),
+                        "playlist_id": str(playlist_id),
+                    },
+                )
+                response.raise_for_status()
+                payload = response.json()
+        except httpx.HTTPError as error:
+            raise CoreCommunicationError(
+                "Failed to reach the Nebula Core."
+            ) from error
+
+        return self._to_core_assignment(payload)
+
     @staticmethod
     def _to_core_playlist(payload: dict) -> CorePlaylist:
         return CorePlaylist(
@@ -82,5 +127,24 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
             name=payload["name"],
             format=payload["format"],
             source_url=payload["source_url"],
+            status=payload["status"],
+        )
+
+    @staticmethod
+    def _to_core_device(payload: dict) -> CoreDevice:
+        return CoreDevice(
+            device_id=UUID(payload["device_id"]),
+            platform=payload["platform"],
+            status=payload["status"],
+            app_version=payload["app_version"],
+            created_at=payload["created_at"],
+        )
+
+    @staticmethod
+    def _to_core_assignment(payload: dict) -> CorePlaylistAssignment:
+        return CorePlaylistAssignment(
+            assignment_id=UUID(payload["assignment_id"]),
+            device_id=UUID(payload["device_id"]),
+            playlist_id=UUID(payload["playlist_id"]),
             status=payload["status"],
         )

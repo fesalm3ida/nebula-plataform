@@ -107,3 +107,14 @@ class PostgreSQLDeviceRepository(DeviceRepository):
         ).scalar_one_or_none()
 
         return device_id is not None
+
+    def find_all(self) -> list[Device]:
+        statement = select(DeviceModel).order_by(
+            DeviceModel.created_at
+        )
+
+        models = self._database_session.execute(
+            statement
+        ).scalars().all()
+
+        return [DeviceMapper.to_domain(model) for model in models]

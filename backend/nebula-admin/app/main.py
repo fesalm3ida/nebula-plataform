@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api.routes.auth import router as admin_auth_router
+from app.api.routes.devices import router as admin_devices_router
 from app.api.routes.playlists import router as admin_playlists_router
 
 
@@ -10,6 +11,7 @@ app = FastAPI(
 )
 
 app.include_router(admin_auth_router)
+app.include_router(admin_devices_router)
 app.include_router(admin_playlists_router)
 
 

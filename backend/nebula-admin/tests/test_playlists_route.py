@@ -79,3 +79,24 @@ def test_should_reject_invalid_token(client: TestClient) -> None:
     )
 
     assert response.status_code == 401
+
+
+def test_should_assign_playlist_to_device(
+    client: TestClient,
+    admin_token_service: AdminTokenService,
+) -> None:
+    response = client.post(
+        "/admin/playlists/assignments",
+        headers=auth_headers(admin_token_service),
+        json={
+            "device_id": str(uuid4()),
+            "playlist_id": str(uuid4()),
+        },
+    )
+
+    assert response.status_code == 201
+
+    body = response.json()
+
+    assert body["status"] == "active"
+    assert "assignment_id" in body
