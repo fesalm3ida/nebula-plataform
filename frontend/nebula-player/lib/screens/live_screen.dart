@@ -1,0 +1,273 @@
+import 'package:flutter/material.dart';
+
+import '../models/m3u_channel.dart';
+import '../player/playback_controller.dart';
+import '../services/playlist_service.dart';
+import '../theme/nebula_theme.dart';
+
+/// Tela "Ao vivo": sidebar de grupos + lista de canais + preview do canal.
+class LiveScreen extends StatefulWidget {
+  const LiveScreen({super.key, this.sourceUrl});
+
+  final String? sourceUrl;
+
+  @override
+  State<LiveScreen> createState() => _LiveScreenState();
+}
+
+class _LiveScreenState extends State<LiveScreen> {
+  final PlaylistService _service = PlaylistService();
+  final PlaybackController _controller = StubPlaybackController();
+
+  List<M3uChannel> _channels = [];
+  List<String> _groups = [];
+  String? _selectedGroup;
+  M3uChannel? _selected;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final url = widget.sourceUrl;
+
+    if (url == null || url.isEmpty) {
+      setState(() {
+        _loading = false;
+        _error = 'Nenhuma lista configurada.';
+      });
+      return;
+    }
+
+    try {
+      final channels = await _service.loadChannels(url);
+      final groups = <String>[];
+
+      for (final channel in channels) {
+        final group = channel.group;
+        if (group != null && group.isNotEmpty && !groups.contains(group)) {
+          groups.add(group);
+        }
+      }
+
+      setState(() {
+        _channels = channels;
+        _groups = groups;
+        _loading = false;
+      });
+    } catch (error) {
+      setState(() {
+        _loading = false;
+        _error = error.toString();
+      });
+    }
+  }
+
+  List<M3uChannel> get _filtered {
+    if (_selectedGroup == null || _selectedGroup == 'Todos') {
+      return _channels;
+    }
+
+    return _channels
+        .where((channel) =>
+            channel.group != null && channel.group == _selectedGroup)
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NebulaTheme.background(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          title: const Text('Ao vivo'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                setState(() => _loading = true);
+                _load();
+              },
+            ),
+          ],
+        ),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: NebulaColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  )
+                : Row(
+                    children: [
+                      _GroupsSidebar(
+                        groups: _groups,
+                        selected: _selectedGroup ?? 'Todos',
+                        onSelect: (group) =>
+                            setState(() => _selectedGroup = group),
+                      ),
+                      _ChannelList(
+                        channels: _filtered,
+                        selected: _selected,
+                        onSelect: (channel) {
+                          setState(() => _selected = channel);
+                          if (channel.streamUrl != null) {
+                            _controller.play(channel.streamUrl!);
+                          }
+                        },
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: _Preview(
+                          controller: _controller,
+                          channel: _selected,
+                        ),
+                      ),
+                    ],
+                  ),
+      ),
+    );
+  }
+}
+
+class _GroupsSidebar extends StatelessWidget {
+  const _GroupsSidebar({
+    required this.groups,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final List<String> groups;
+  final String selected;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 190,
+      color: NebulaColors.surface,
+      child: ListView(
+        children: [
+          for (final group in ['Todos', ...groups])
+            ListTile(
+              selected: group == selected,
+              selectedTileColor: NebulaColors.primaryDark,
+              title: Text(
+                group,
+                style: const TextStyle(color: NebulaColors.textPrimary),
+              ),
+              onTap: () => onSelect(group),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChannelList extends StatelessWidget {
+  const _ChannelList({
+    required this.channels,
+    this.selected,
+    required this.onSelect,
+  });
+
+  final List<M3uChannel> channels;
+  final M3uChannel? selected;
+  final ValueChanged<M3uChannel> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 230,
+      color: Colors.black54,
+      child: ListView.builder(
+        itemCount: channels.length,
+        itemBuilder: (context, index) {
+          final channel = channels[index];
+          final isSelected = identical(selected, channel);
+
+          return InkWell(
+            onTap: () => onSelect(channel),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              color: isSelected ? NebulaColors.primaryDark : Colors.transparent,
+              child: Row(
+                children: [
+                  if (channel.logo != null && channel.logo!.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: Image.network(
+                        channel.logo!,
+                        width: 32,
+                        height: 24,
+                        errorBuilder: (_, __, ___) =>
+                            const SizedBox(width: 32, height: 24),
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 32, height: 24),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      channel.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: NebulaColors.textPrimary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _Preview extends StatelessWidget {
+  const _Preview({required this.controller, this.channel});
+
+  final PlaybackController controller;
+  final M3uChannel? channel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Expanded(child: controller.buildVideo()),
+        if (channel != null)
+          Container(
+            width: double.infinity,
+            color: Colors.black,
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              channel!.displayName,
+              style: const TextStyle(
+                color: NebulaColors.textPrimary,
+                fontSize: 18,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}

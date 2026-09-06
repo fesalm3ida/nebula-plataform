@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../api/nebula_core_client.dart';
-import '../models/provisioning.dart';
 import '../services/device_identity_service.dart';
+import '../theme/nebula_theme.dart';
+import 'home_menu_screen.dart';
 
+/// Tela de boot: executa o fluxo de inicialização (registro -> autenticação ->
+/// sessão -> provisionamento) e navega para o [HomeMenuScreen] com a URL da
+/// lista de reprodução provisionada.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -16,9 +20,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final DeviceIdentityService _identity = DeviceIdentityService();
 
   String _status = 'Inicializando...';
-  String? _sessionId;
-  String? _token;
-  Provisioning? _provisioning;
 
   @override
   void initState() {
@@ -37,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (deviceId == null || deviceKey == null) {
         final identity = await _client.registerDevice(
           fingerprint: fingerprint,
-          macAddress: 'AA:BB:CC:DD:EE:FF', // identificar no dispositivo real
+          macAddress: 'AA:BB:CC:DD:EE:FF',
           platform: 'android_tv',
           appVersion: '0.1.0',
         );
@@ -55,96 +56,47 @@ class _HomeScreenState extends State<HomeScreen> {
         deviceKey: deviceKey!,
         fingerprint: fingerprint,
       );
-      _token = token;
 
       setState(() => _status = 'Iniciando sessão...');
-      final sessionId = await _client.startSession(token);
-      _sessionId = sessionId;
+      await _client.startSession(token);
 
       setState(() => _status = 'Sincronizando (provisionamento)...');
       final provisioning = await _client.getProvisioning(token);
-      _provisioning = provisioning;
 
-      setState(() => _status = 'Player pronto.');
+      if (!mounted) return;
+
+      final sourceUrl = provisioning.contentEndpoints.isNotEmpty
+          ? provisioning.contentEndpoints.first.sourceUrl
+          : null;
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => HomeMenuScreen(channelsSourceUrl: sourceUrl),
+        ),
+      );
     } catch (error) {
       if (!mounted) return;
       setState(() => _status = 'Erro: $error');
     }
   }
 
-  Future<void> _heartbeat() async {
-    try {
-      await _client.heartbeat(_token!, _sessionId!);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Heartbeat enviado.')),
-      );
-    } catch (_) {
-      // ignore
-    }
-  }
-
-  Future<void> _sendTelemetry() async {
-    try {
-      await _client.sendTelemetry(
-        _token!,
-        _sessionId!,
-        'playback_started',
-        {'duration_ms': 0},
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Evento de telemetria enviado.')),
-      );
-    } catch (_) {
-      // ignore
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final endpoints = _provisioning?.contentEndpoints ?? [];
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Nebula Player')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _status,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 24),
-            const Text('ContentEndpoints autorizados:'),
-            ...endpoints.map(
-              (endpoint) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(endpoint.name),
-                subtitle: Text(endpoint.sourceUrl),
-                trailing: Chip(label: Text(endpoint.format)),
+    return NebulaTheme.background(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: NebulaColors.textPrimary),
+              const SizedBox(height: 16),
+              Text(
+                _status,
+                style: const TextStyle(color: NebulaColors.textPrimary),
               ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                FilledButton(
-                  onPressed: _token == null || _sessionId == null
-                      ? null
-                      : _heartbeat,
-                  child: const Text('Heartbeat'),
-                ),
-                const SizedBox(width: 12),
-                OutlinedButton(
-                  onPressed: _token == null || _sessionId == null
-                      ? null
-                      : _sendTelemetry,
-                  child: const Text('Telemetria'),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
