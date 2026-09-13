@@ -27,8 +27,10 @@ class HomeMenuScreen extends StatelessWidget {
     final items = <_MenuItem>[
       _MenuItem('Ao vivo', Icons.live_tv,
           (sourceUrl) => LiveScreen(sourceUrl: sourceUrl)),
-      _MenuItem('Filmes', Icons.movie, (_) => const MoviesScreen()),
-      _MenuItem('Séries', Icons.video_library, (_) => const SeriesScreen()),
+      _MenuItem('Filmes', Icons.movie,
+          (sourceUrl) => MoviesScreen(sourceUrl: sourceUrl)),
+      _MenuItem('Séries', Icons.video_library,
+          (sourceUrl) => SeriesScreen(sourceUrl: sourceUrl)),
       _MenuItem('Conta', Icons.person, (_) => const AccountScreen()),
       _MenuItem('Mudar lista', Icons.playlist_add,
           (_) => const ChangePlaylistScreen()),

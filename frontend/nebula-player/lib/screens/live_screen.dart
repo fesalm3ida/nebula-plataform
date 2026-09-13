@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../models/m3u_channel.dart';
+import '../models/media_kind.dart';
 import '../player/media_kit_playback_controller.dart';
 import '../player/playback_controller.dart';
+import '../services/catalog_service.dart';
 import '../services/local_playlist_service.dart';
-import '../services/playlist_service.dart';
 import '../theme/nebula_theme.dart';
 import 'change_playlist_screen.dart';
 import 'player_screen.dart';
@@ -26,7 +27,6 @@ class LiveScreen extends StatefulWidget {
 class _LiveScreenState extends State<LiveScreen> {
   static const double _wideBreakpoint = 720;
 
-  final PlaylistService _service = PlaylistService();
   final LocalPlaylistService _localPlaylist = LocalPlaylistService();
   final PlaybackController _controller = MediaKitPlaybackController();
 
@@ -83,7 +83,10 @@ class _LiveScreenState extends State<LiveScreen> {
     }
 
     try {
-      final channels = await _service.loadChannels(url);
+      final channels = await CatalogService.instance.loadFor(
+        url,
+        MediaKind.live,
+      );
       final groups = <String>[];
 
       for (final channel in channels) {

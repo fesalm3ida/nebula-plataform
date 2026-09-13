@@ -1,4 +1,5 @@
 import '../models/m3u_channel.dart';
+import '../models/media_kind.dart';
 
 /// Parser de playlists M3U (m3u_plus) do IPTV.
 ///
@@ -60,6 +61,7 @@ class M3uParser {
               logo: currentLogo,
               streamUrl: url,
               originalIndex: index,
+              kind: _kindFromUrl(url),
             ),
           );
           index++;
@@ -72,6 +74,20 @@ class M3uParser {
     }
 
     return channels;
+  }
+
+  /// Classifica a entrada pelo segmento da URL (padrão Xtream):
+  /// `/movie/` = filme, `/series/` = série, caso contrário = ao vivo.
+  static MediaKind _kindFromUrl(String url) {
+    if (url.contains('/movie/')) {
+      return MediaKind.movie;
+    }
+
+    if (url.contains('/series/')) {
+      return MediaKind.series;
+    }
+
+    return MediaKind.live;
   }
 
   static String? _attribute(String line, String key) {
