@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/nebula_core_client.dart';
+import '../models/device_identity.dart';
 import '../services/device_identity_service.dart';
 import '../theme/nebula_theme.dart';
 import 'home_menu_screen.dart';
@@ -27,35 +28,61 @@ class _HomeScreenState extends State<HomeScreen> {
     _start();
   }
 
+  Future<DeviceIdentity> _register(String fingerprint) async {
+    final identity = await _client.registerDevice(
+      fingerprint: fingerprint,
+      macAddress: 'AA:BB:CC:DD:EE:FF',
+      platform: 'android_tv',
+      appVersion: '0.1.0',
+    );
+    await _identity.saveDeviceIdentity(
+      deviceId: identity.deviceId,
+      deviceKey: identity.deviceKey,
+    );
+
+    return identity;
+  }
+
+  Future<String> _ensureToken(String fingerprint) async {
+    var deviceId = await _identity.getDeviceId();
+    var deviceKey = await _identity.getDeviceKey();
+
+    if (deviceId == null || deviceKey == null) {
+      final identity = await _register(fingerprint);
+      deviceId = identity.deviceId;
+      deviceKey = identity.deviceKey;
+    }
+
+    try {
+      return await _client.authenticateDevice(
+        deviceId: deviceId,
+        deviceKey: deviceKey,
+        fingerprint: fingerprint,
+      );
+    } on NebulaCoreException catch (error) {
+      // 401 = o Core nao reconhece mais este device (ex.: banco recriado).
+      // Descarta a identidade local e registra novamente.
+      if (error.statusCode != 401) rethrow;
+
+      await _identity.clear();
+      final identity = await _register(fingerprint);
+
+      return _client.authenticateDevice(
+        deviceId: identity.deviceId,
+        deviceKey: identity.deviceKey,
+        fingerprint: fingerprint,
+      );
+    }
+  }
+
   Future<void> _start() async {
     setState(() => _status = 'Registrando dispositivo...');
 
     try {
       final fingerprint = await _identity.getOrCreateFingerprint();
-      var deviceId = await _identity.getDeviceId();
-      var deviceKey = await _identity.getDeviceKey();
-
-      if (deviceId == null || deviceKey == null) {
-        final identity = await _client.registerDevice(
-          fingerprint: fingerprint,
-          macAddress: 'AA:BB:CC:DD:EE:FF',
-          platform: 'android_tv',
-          appVersion: '0.1.0',
-        );
-        await _identity.saveDeviceIdentity(
-          deviceId: identity.deviceId,
-          deviceKey: identity.deviceKey,
-        );
-        deviceId = identity.deviceId;
-        deviceKey = identity.deviceKey;
-      }
 
       setState(() => _status = 'Autenticando...');
-      final token = await _client.authenticateDevice(
-        deviceId: deviceId,
-        deviceKey: deviceKey,
-        fingerprint: fingerprint,
-      );
+      final token = await _ensureToken(fingerprint);
 
       setState(() => _status = 'Iniciando sessão...');
       await _client.startSession(token);

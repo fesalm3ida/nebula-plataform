@@ -40,6 +40,15 @@ class DeviceIdentityService {
     await prefs.setString(_deviceKeyKey, deviceKey);
   }
 
+  /// Descarta a identidade local (device_id/device_key). Usado quando o Core
+  /// não reconhece mais o device (ex.: banco recriado) para forçar um novo
+  /// registro.
+  Future<void> clear() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_deviceIdKey);
+    await prefs.remove(_deviceKeyKey);
+  }
+
   String _generateFingerprint() {
     final random = Random.secure();
 

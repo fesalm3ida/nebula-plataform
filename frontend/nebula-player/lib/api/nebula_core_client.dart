@@ -61,6 +61,7 @@ class NebulaCoreClient {
     if (response.statusCode != 200) {
       throw NebulaCoreException(
         'Falha na autenticação (${response.statusCode}).',
+        statusCode: response.statusCode,
       );
     }
 
@@ -144,9 +145,10 @@ class NebulaCoreClient {
 }
 
 class NebulaCoreException implements Exception {
-  NebulaCoreException(this.message);
+  NebulaCoreException(this.message, {this.statusCode});
 
   final String message;
+  final int? statusCode;
 
   @override
   String toString() => message;
