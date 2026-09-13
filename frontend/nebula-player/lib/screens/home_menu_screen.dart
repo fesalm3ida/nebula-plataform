@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../theme/nebula_theme.dart';
 import 'account_screen.dart';
+import 'change_playlist_screen.dart';
+import 'home_screen.dart';
 import 'live_screen.dart';
 import 'movies_screen.dart';
 import 'series_screen.dart';
@@ -13,6 +15,13 @@ class HomeMenuScreen extends StatelessWidget {
 
   final String? channelsSourceUrl;
 
+  void _reload(BuildContext context) {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = <_MenuItem>[
@@ -21,9 +30,10 @@ class HomeMenuScreen extends StatelessWidget {
       _MenuItem('Filmes', Icons.movie, (_) => const MoviesScreen()),
       _MenuItem('Séries', Icons.video_library, (_) => const SeriesScreen()),
       _MenuItem('Conta', Icons.person, (_) => const AccountScreen()),
+      _MenuItem('Mudar lista', Icons.playlist_add,
+          (_) => const ChangePlaylistScreen()),
       _MenuItem('Configurações', Icons.settings_suggest,
           (_) => const SettingsScreen()),
-      const _MenuItem('Recarregar', Icons.refresh, null),
     ];
 
     return NebulaTheme.background(
@@ -35,35 +45,49 @@ class HomeMenuScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Nebula Player',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: NebulaColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Expanded(
-                  child: GridView.count(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    childAspectRatio: 1.8,
-                    children: [
-                      for (final item in items)
-                        _MenuTile(
-                          item: item,
-                          onTap: item.builder == null
-                              ? null
-                              : () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          item.builder!(channelsSourceUrl),
-                                    ),
-                                  ),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Nebula Player',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: NebulaColors.textPrimary,
                         ),
-                    ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Recarregar',
+                      icon: const Icon(Icons.refresh,
+                          color: NebulaColors.textPrimary),
+                      onPressed: () => _reload(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: GridView.builder(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      mainAxisExtent: 130,
+                    ),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+
+                      return _MenuTile(
+                        item: item,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => item.builder(channelsSourceUrl),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -77,15 +101,17 @@ class HomeMenuScreen extends StatelessWidget {
 
 class _MenuItem {
   const _MenuItem(this.label, this.icon, this.builder);
+
   final String label;
   final IconData icon;
-  final Widget Function(String? sourceUrl)? builder;
+  final Widget Function(String? sourceUrl) builder;
 }
 
 class _MenuTile extends StatelessWidget {
-  const _MenuTile({required this.item, this.onTap});
+  const _MenuTile({required this.item, required this.onTap});
+
   final _MenuItem item;
-  final VoidCallback? onTap;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -99,14 +125,16 @@ class _MenuTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(item.icon, size: 40, color: NebulaColors.textPrimary),
+              Icon(item.icon, size: 38, color: NebulaColors.textPrimary),
               const SizedBox(height: 8),
               Text(
                 item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: NebulaColors.textPrimary,
                   fontSize: 16,

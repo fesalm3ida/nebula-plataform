@@ -85,22 +85,45 @@ class _HomeScreenState extends State<HomeScreen> {
       final token = await _ensureToken(fingerprint);
 
       setState(() => _status = 'Iniciando sessão...');
-      await _client.startSession(token);
+      try {
+        await _client.startSession(token);
+      } on NebulaCoreException {
+        // A sessao e necessaria apenas para heartbeat/telemetria; o menu
+        // pode ser aberto mesmo assim.
+      }
 
       setState(() => _status = 'Sincronizando (provisionamento)...');
-      final provisioning = await _client.getProvisioning(token);
+      String? sourceUrl;
+      try {
+        final provisioning = await _client.getProvisioning(token);
+        if (provisioning.contentEndpoints.isNotEmpty) {
+          sourceUrl = provisioning.contentEndpoints.first.sourceUrl;
+        }
+      } on NebulaCoreException {
+        // Sem lista provisionada: abre o menu; o usuario pode adicionar
+        // uma lista local em "Mudar lista".
+        sourceUrl = null;
+      }
 
       if (!mounted) return;
-
-      final sourceUrl = provisioning.contentEndpoints.isNotEmpty
-          ? provisioning.contentEndpoints.first.sourceUrl
-          : null;
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => HomeMenuScreen(channelsSourceUrl: sourceUrl),
         ),
       );
+    } on NebulaCoreException catch (error) {
+      if (!mounted) return;
+
+      if (error.statusCode == 403) {
+        setState(
+          () => _status =
+              'Dispositivo aguardando ativação pelo administrador.',
+        );
+        return;
+      }
+
+      setState(() => _status = 'Erro: $error');
     } catch (error) {
       if (!mounted) return;
       setState(() => _status = 'Erro: $error');

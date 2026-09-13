@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../models/m3u_channel.dart';
 import '../player/playback_controller.dart';
+import '../services/local_playlist_service.dart';
 import '../services/playlist_service.dart';
 import '../theme/nebula_theme.dart';
+import 'change_playlist_screen.dart';
 
 /// Tela "Ao vivo": sidebar de grupos + lista de canais + preview do canal.
 class LiveScreen extends StatefulWidget {
@@ -19,11 +21,14 @@ class _LiveScreenState extends State<LiveScreen> {
   final PlaylistService _service = PlaylistService();
   final PlaybackController _controller = StubPlaybackController();
 
+  final LocalPlaylistService _localPlaylist = LocalPlaylistService();
+
   List<M3uChannel> _channels = [];
   List<String> _groups = [];
   String? _selectedGroup;
   M3uChannel? _selected;
   bool _loading = true;
+  bool _noPlaylist = false;
   String? _error;
 
   @override
@@ -38,13 +43,34 @@ class _LiveScreenState extends State<LiveScreen> {
     super.dispose();
   }
 
+  Future<void> _openChangePlaylist() async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const ChangePlaylistScreen()),
+    );
+
+    if (changed == true) {
+      setState(() => _loading = true);
+      await _load();
+    }
+  }
+
   Future<void> _load() async {
-    final url = widget.sourceUrl;
+    setState(() {
+      _loading = true;
+      _noPlaylist = false;
+      _error = null;
+    });
+
+    var url = widget.sourceUrl;
+
+    if (url == null || url.isEmpty) {
+      url = await _localPlaylist.getUrl();
+    }
 
     if (url == null || url.isEmpty) {
       setState(() {
         _loading = false;
-        _error = 'Nenhuma lista configurada.';
+        _noPlaylist = true;
       });
       return;
     }
@@ -103,7 +129,9 @@ class _LiveScreenState extends State<LiveScreen> {
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
-            : _error != null
+            : _noPlaylist
+                ? _NoPlaylistPrompt(onAdd: _openChangePlaylist)
+                : _error != null
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
@@ -268,6 +296,50 @@ class _Preview extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Estado amigável quando não há lista disponível (sem mensagem de erro).
+class _NoPlaylistPrompt extends StatelessWidget {
+  const _NoPlaylistPrompt({required this.onAdd});
+
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.playlist_add,
+                size: 56, color: NebulaColors.textSecondary),
+            const SizedBox(height: 16),
+            const Text(
+              'Nenhuma lista de reprodução disponível.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: NebulaColors.textPrimary,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Adicione uma lista (M3U) para começar a assistir.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: NebulaColors.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: const Text('Adicionar lista'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
