@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:media_kit/media_kit.dart';
 
 import 'app.dart';
 
-void main() => runApp(const NebulaPlayerApp());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
+  runApp(const NebulaPlayerApp());
+}

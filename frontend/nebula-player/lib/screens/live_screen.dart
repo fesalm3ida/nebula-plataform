@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/m3u_channel.dart';
+import '../player/media_kit_playback_controller.dart';
 import '../player/playback_controller.dart';
 import '../services/local_playlist_service.dart';
 import '../services/playlist_service.dart';
@@ -19,7 +20,7 @@ class LiveScreen extends StatefulWidget {
 
 class _LiveScreenState extends State<LiveScreen> {
   final PlaylistService _service = PlaylistService();
-  final PlaybackController _controller = StubPlaybackController();
+  final PlaybackController _controller = MediaKitPlaybackController();
 
   final LocalPlaylistService _localPlaylist = LocalPlaylistService();
 

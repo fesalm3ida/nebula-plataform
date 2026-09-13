@@ -10,6 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.0
+  # Player de video (libmpv) para IPTV (mpegts/HLS).
+  media_kit: ^1.0.0
+  media_kit_video: ^1.0.0
+  media_kit_libs_video: ^1.0.0
   shared_preferences: ^2.3.0
 
 dev_dependencies:
