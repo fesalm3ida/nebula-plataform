@@ -4,6 +4,9 @@ import '../models/m3u_channel.dart';
 ///
 /// Lê `#EXTM3U`, `#EXTINF:-1 tvg-id="..." tvg-logo="..." group-title="Grupo",Nome`
 /// (e `#EXTGRP:Grupo`) e a linha de URL que segue, produzindo [M3uChannel].
+///
+/// `#EXTGRP` define um grupo "sticky" aplicado às entradas seguintes; um
+/// `group-title` no `#EXTINF` tem precedência sobre ele.
 class M3uParser {
   static List<M3uChannel> parse(String content) {
     final channels = <M3uChannel>[];
@@ -13,6 +16,7 @@ class M3uParser {
     }
 
     var index = 0;
+    String? stickyGroup;
     String? currentName;
     String? currentGroup;
     String? currentLogo;
@@ -25,18 +29,25 @@ class M3uParser {
       }
 
       if (line.startsWith('#EXTINF')) {
-        currentGroup = _attribute(line, 'group-title');
+        final attributeGroup = _attribute(line, 'group-title');
+        currentGroup =
+            (attributeGroup != null && attributeGroup.isNotEmpty)
+                ? attributeGroup
+                : stickyGroup;
         currentLogo = _attribute(line, 'tvg-logo');
+
         final comma = line.lastIndexOf(',');
         currentName = comma >= 0
             ? line.substring(comma + 1).trim()
             : (currentName ?? '');
       } else if (line.startsWith('#EXTGRP')) {
-        currentGroup = line.substring('#EXTGRP'.length).trim();
+        stickyGroup = line.substring('#EXTGRP'.length).trim();
+        currentGroup = stickyGroup;
       } else if (line.startsWith('#')) {
         continue;
       } else {
         final url = line;
+
         if (url.startsWith('http')) {
           channels.add(
             M3uChannel(
@@ -51,6 +62,7 @@ class M3uParser {
           );
           index++;
         }
+
         currentName = null;
         currentGroup = null;
         currentLogo = null;
