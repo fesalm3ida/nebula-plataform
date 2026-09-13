@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
 import '../m3u/m3u_parser.dart';
@@ -15,6 +17,14 @@ class PlaylistService {
       throw Exception('Falha ao carregar lista (${response.statusCode})');
     }
 
-    return M3uParser.parse(response.body);
+    // Muitos provedores nao informam charset no Content-Type; o http do Dart
+    // assume latin-1 nesse caso, o que quebra acentos e emojis. Decodifica
+    // explicitamente como UTF-8 (tolerando bytes invalidos).
+    final content = utf8.decode(
+      response.bodyBytes,
+      allowMalformed: true,
+    );
+
+    return M3uParser.parse(content);
   }
 }

@@ -7,8 +7,13 @@ import '../services/local_playlist_service.dart';
 import '../services/playlist_service.dart';
 import '../theme/nebula_theme.dart';
 import 'change_playlist_screen.dart';
+import 'player_screen.dart';
 
-/// Tela "Ao vivo": sidebar de grupos + lista de canais + preview do canal.
+/// Tela "Ao vivo".
+///
+/// Em telas largas (paisagem): sidebar de grupos + lista de canais + preview.
+/// Em telas estreitas (retrato): chips de grupos + lista de canais, e o canal
+/// abre em um player de tela cheia.
 class LiveScreen extends StatefulWidget {
   const LiveScreen({super.key, this.sourceUrl});
 
@@ -19,10 +24,11 @@ class LiveScreen extends StatefulWidget {
 }
 
 class _LiveScreenState extends State<LiveScreen> {
-  final PlaylistService _service = PlaylistService();
-  final PlaybackController _controller = MediaKitPlaybackController();
+  static const double _wideBreakpoint = 720;
 
+  final PlaylistService _service = PlaylistService();
   final LocalPlaylistService _localPlaylist = LocalPlaylistService();
+  final PlaybackController _controller = MediaKitPlaybackController();
 
   List<M3uChannel> _channels = [];
   List<String> _groups = [];
@@ -111,6 +117,26 @@ class _LiveScreenState extends State<LiveScreen> {
         .toList();
   }
 
+  void _playInline(M3uChannel channel) {
+    setState(() => _selected = channel);
+
+    final url = channel.streamUrl;
+    if (url != null && url.isNotEmpty) {
+      _controller.play(url);
+    }
+  }
+
+  void _openFullscreen(M3uChannel channel) {
+    final url = channel.streamUrl;
+    if (url == null || url.isEmpty) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PlayerScreen(url: url, title: channel.displayName),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return NebulaTheme.background(
@@ -121,10 +147,7 @@ class _LiveScreenState extends State<LiveScreen> {
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
-              onPressed: () {
-                setState(() => _loading = true);
-                _load();
-              },
+              onPressed: _load,
             ),
           ],
         ),
@@ -133,46 +156,76 @@ class _LiveScreenState extends State<LiveScreen> {
             : _noPlaylist
                 ? _NoPlaylistPrompt(onAdd: _openChangePlaylist)
                 : _error != null
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        _error!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: NebulaColors.textPrimary,
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            _error!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: NebulaColors.textPrimary,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  )
-                : Row(
-                    children: [
-                      _GroupsSidebar(
-                        groups: _groups,
-                        selected: _selectedGroup ?? 'Todos',
-                        onSelect: (group) =>
-                            setState(() => _selectedGroup = group),
-                      ),
-                      _ChannelList(
-                        channels: _filtered,
-                        selected: _selected,
-                        onSelect: (channel) {
-                          setState(() => _selected = channel);
-                          if (channel.streamUrl != null) {
-                            _controller.play(channel.streamUrl!);
+                      )
+                    : LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isWide =
+                              constraints.maxWidth >= _wideBreakpoint;
+
+                          if (isWide) {
+                            return _wideLayout();
                           }
+
+                          return _narrowLayout();
                         },
                       ),
-                      Expanded(
-                        flex: 3,
-                        child: _Preview(
-                          controller: _controller,
-                          channel: _selected,
-                        ),
-                      ),
-                    ],
-                  ),
       ),
+    );
+  }
+
+  Widget _wideLayout() {
+    return Row(
+      children: [
+        SizedBox(
+          width: 190,
+          child: _GroupsSidebar(
+            groups: _groups,
+            selected: _selectedGroup ?? 'Todos',
+            onSelect: (group) => setState(() => _selectedGroup = group),
+          ),
+        ),
+        SizedBox(
+          width: 230,
+          child: _ChannelList(
+            channels: _filtered,
+            selected: _selected,
+            onSelect: _playInline,
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: _Preview(controller: _controller, channel: _selected),
+        ),
+      ],
+    );
+  }
+
+  Widget _narrowLayout() {
+    return Column(
+      children: [
+        _GroupChips(
+          groups: _groups,
+          selected: _selectedGroup ?? 'Todos',
+          onSelect: (group) => setState(() => _selectedGroup = group),
+        ),
+        Expanded(
+          child: _ChannelList(
+            channels: _filtered,
+            onSelect: _openFullscreen,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -191,7 +244,6 @@ class _GroupsSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 190,
       color: NebulaColors.surface,
       child: ListView(
         children: [
@@ -201,9 +253,49 @@ class _GroupsSidebar extends StatelessWidget {
               selectedTileColor: NebulaColors.primaryDark,
               title: Text(
                 group,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: NebulaColors.textPrimary),
               ),
               onTap: () => onSelect(group),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GroupChips extends StatelessWidget {
+  const _GroupChips({
+    required this.groups,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final List<String> groups;
+  final String selected;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 56,
+      color: NebulaColors.surface,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        children: [
+          for (final group in ['Todos', ...groups])
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 4,
+                vertical: 8,
+              ),
+              child: ChoiceChip(
+                label: Text(group),
+                selected: group == selected,
+                onSelected: (_) => onSelect(group),
+              ),
             ),
         ],
       ),
@@ -225,7 +317,6 @@ class _ChannelList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 230,
       color: Colors.black54,
       child: ListView.builder(
         itemCount: channels.length,
