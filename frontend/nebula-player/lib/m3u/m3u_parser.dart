@@ -41,7 +41,9 @@ class M3uParser {
             ? line.substring(comma + 1).trim()
             : (currentName ?? '');
       } else if (line.startsWith('#EXTGRP')) {
-        stickyGroup = line.substring('#EXTGRP'.length).trim();
+        final colon = line.indexOf(':');
+        stickyGroup =
+            colon >= 0 ? line.substring(colon + 1).trim() : '';
         currentGroup = stickyGroup;
       } else if (line.startsWith('#')) {
         continue;
