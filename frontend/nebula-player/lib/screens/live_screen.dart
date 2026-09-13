@@ -376,7 +376,7 @@ class _Preview extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Expanded(child: controller.buildVideo()),
+        Expanded(child: controller.buildVideo(controls: true)),
         if (channel != null)
           Container(
             width: double.infinity,

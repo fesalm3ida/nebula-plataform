@@ -23,6 +23,7 @@ class _SeriesScreenState extends State<SeriesScreen> {
   String? _category;
   bool _loading = true;
   bool _empty = false;
+  int? _loadMs;
   String? _error;
 
   @override
@@ -36,6 +37,8 @@ class _SeriesScreenState extends State<SeriesScreen> {
       _loading = true;
       _error = null;
     });
+
+    final watch = Stopwatch()..start();
 
     try {
       final episodes = await CatalogService.instance.loadFor(
@@ -71,12 +74,14 @@ class _SeriesScreenState extends State<SeriesScreen> {
       }
 
       categories.sort();
+      watch.stop();
 
       if (!mounted) return;
 
       setState(() {
         _series = list;
         _categories = categories;
+        _loadMs = watch.elapsedMilliseconds;
         _loading = false;
         _empty = list.isEmpty;
       });
@@ -99,7 +104,14 @@ class _SeriesScreenState extends State<SeriesScreen> {
     return NebulaTheme.background(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(title: const Text('Séries')),
+        appBar: AppBar(
+          title: Text(
+            _loadMs == null
+                ? 'Séries'
+                : 'Séries · ${_series.length} · '
+                    '${(_loadMs! / 1000).toStringAsFixed(1)}s',
+          ),
+        ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null

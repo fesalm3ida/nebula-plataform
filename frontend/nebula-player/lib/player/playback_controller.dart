@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 /// (ex.: media_kit / video_player) será plugada quando decidirmos o pacote,
 /// sem reescrever as telas.
 abstract class PlaybackController {
-  Widget buildVideo({Key? key});
+  /// Constrói a superfície de vídeo. Com [controls] = true, inclui os
+  /// controles (barra de progresso, play/pause, volume, tela cheia).
+  Widget buildVideo({Key? key, bool controls = false});
   Future<void> play(String url);
   Future<void> pause();
   Future<void> dispose();
@@ -15,7 +17,7 @@ class StubPlaybackController implements PlaybackController {
   String? currentUrl;
 
   @override
-  Widget buildVideo({Key? key}) {
+  Widget buildVideo({Key? key, bool controls = false}) {
     return Container(
       key: key,
       alignment: Alignment.center,

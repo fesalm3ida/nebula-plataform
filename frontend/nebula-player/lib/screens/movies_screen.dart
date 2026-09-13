@@ -22,6 +22,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
   String? _category;
   bool _loading = true;
   bool _empty = false;
+  int? _loadMs;
   String? _error;
 
   @override
@@ -36,17 +37,22 @@ class _MoviesScreenState extends State<MoviesScreen> {
       _error = null;
     });
 
+    final watch = Stopwatch()..start();
+
     try {
       final movies = await CatalogService.instance.loadFor(
         widget.sourceUrl,
         MediaKind.movie,
       );
 
+      watch.stop();
+
       if (!mounted) return;
 
       setState(() {
         _movies = movies;
         _categories = CatalogService.categoriesOf(movies);
+        _loadMs = watch.elapsedMilliseconds;
         _loading = false;
         _empty = movies.isEmpty;
       });
@@ -80,7 +86,14 @@ class _MoviesScreenState extends State<MoviesScreen> {
     return NebulaTheme.background(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(title: const Text('Filmes')),
+        appBar: AppBar(
+          title: Text(
+            _loadMs == null
+                ? 'Filmes'
+                : 'Filmes · ${_movies.length} · '
+                    '${(_loadMs! / 1000).toStringAsFixed(1)}s',
+          ),
+        ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null

@@ -35,7 +35,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(title: Text(widget.title)),
-        body: _controller.buildVideo(),
+        body: _controller.buildVideo(controls: true),
       ),
     );
   }

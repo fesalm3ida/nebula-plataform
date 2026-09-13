@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../m3u/m3u_parser.dart';
@@ -11,7 +12,9 @@ class PlaylistService {
   final http.Client _client;
 
   Future<List<M3uChannel>> loadChannels(String url) async {
+    final downloadWatch = Stopwatch()..start();
     final response = await _client.get(Uri.parse(url));
+    downloadWatch.stop();
 
     if (response.statusCode != 200) {
       throw Exception('Falha ao carregar lista (${response.statusCode})');
@@ -25,6 +28,19 @@ class PlaylistService {
       allowMalformed: true,
     );
 
-    return M3uParser.parse(content);
+    final parseWatch = Stopwatch()..start();
+    final items = M3uParser.parse(content);
+    parseWatch.stop();
+
+    final megabytes = response.bodyBytes.length / 1048576;
+
+    debugPrint(
+      '[Nebula] lista: download ${downloadWatch.elapsedMilliseconds} ms '
+      '(${megabytes.toStringAsFixed(1)} MB) | '
+      'parse ${parseWatch.elapsedMilliseconds} ms | '
+      '${items.length} entradas',
+    );
+
+    return items;
   }
 }

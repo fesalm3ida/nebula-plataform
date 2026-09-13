@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
+import '../theme/nebula_theme.dart';
 import 'playback_controller.dart';
 
 /// Implementação de [PlaybackController] com `media_kit` (libmpv), robusta
@@ -15,12 +16,36 @@ class MediaKitPlaybackController implements PlaybackController {
   late final Player _player;
   late final VideoController _controller;
 
+  /// Tema dos controles (barra de progresso / botões) na cor do Nebula.
+  static const MaterialVideoControlsThemeData _controlsTheme =
+      MaterialVideoControlsThemeData(
+    seekBarPositionColor: NebulaColors.primary,
+    seekBarThumbColor: NebulaColors.primary,
+    seekBarBufferColor: Color(0x4DFFFFFF),
+    seekBarBackgroundColor: Color(0x33FFFFFF),
+    buttonBarButtonColor: NebulaColors.textPrimary,
+  );
+
   @override
-  Widget buildVideo({Key? key}) => Video(
+  Widget buildVideo({Key? key, bool controls = false}) {
+    if (!controls) {
+      return Video(
         key: key,
         controller: _controller,
         controls: NoVideoControls,
       );
+    }
+
+    return MaterialVideoControlsTheme(
+      normal: _controlsTheme,
+      fullscreen: _controlsTheme,
+      child: Video(
+        key: key,
+        controller: _controller,
+        controls: MaterialVideoControls,
+      ),
+    );
+  }
 
   @override
   Future<void> play(String url) async {

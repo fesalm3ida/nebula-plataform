@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../models/m3u_channel.dart';
 import '../models/media_kind.dart';
 import 'local_playlist_service.dart';
@@ -42,9 +44,22 @@ class CatalogService {
     if (_cachedUrl != url) {
       _cached = await _playlistService.loadChannels(url);
       _cachedUrl = url;
+    } else {
+      debugPrint(
+        '[Nebula] catalogo: cache reutilizado (${_cached.length} entradas)',
+      );
     }
 
-    return _cached.where((item) => item.kind == kind).toList();
+    final filterWatch = Stopwatch()..start();
+    final items = _cached.where((item) => item.kind == kind).toList();
+    filterWatch.stop();
+
+    debugPrint(
+      '[Nebula] ${kind.name}: ${items.length} itens '
+      '(filtro ${filterWatch.elapsedMilliseconds} ms)',
+    );
+
+    return items;
   }
 
   /// Categorias distintas (group-title) presentes em uma lista de itens.
