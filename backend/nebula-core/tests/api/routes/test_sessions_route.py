@@ -137,7 +137,7 @@ def test_should_reject_pending_device(
     assert response.status_code == 403
 
 
-def test_should_reject_second_active_session(
+def test_should_resume_active_session_on_second_start(
     device_repository: InMemoryDeviceRepository,
 ) -> None:
     device = make_device()
@@ -156,7 +156,11 @@ def test_should_reject_second_active_session(
     )
 
     assert first_response.status_code == 201
-    assert second_response.status_code == 409
+    assert second_response.status_code == 201
+    assert (
+        second_response.json()["session_id"]
+        == first_response.json()["session_id"]
+    )
 
 
 def test_should_ignore_submitted_device_id(

@@ -3,7 +3,6 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from app.application.exceptions import (
-    ActiveSessionAlreadyExistsError,
     DeviceNotActiveError,
 )
 from app.domain.entities.device import Device
@@ -58,9 +57,23 @@ class StartSessionUseCase:
         )
 
         if active_session is not None:
-            raise ActiveSessionAlreadyExistsError(
-                "Device already has an active Session."
-            )
+            # Se a sessao ativa ainda e valida, retoma-a (ex.: o Player
+            # reiniciou/reconectou). Se ja expirou, encerra e cria uma nova.
+            if not active_session.is_expired():
+                return StartSessionResult(
+                    session_id=active_session.session_id,
+                    device_id=active_session.device_id,
+                    status=active_session.status,
+                    started_at=active_session.started_at,
+                    expires_at=active_session.expires_at,
+                    last_seen=(
+                        active_session.last_seen
+                        or active_session.started_at
+                    ),
+                )
+
+            active_session.expire()
+            self._session_repository.save(active_session)
 
         expires_at = datetime.now(timezone.utc) + timedelta(
             minutes=self.SESSION_DURATION_MINUTES

@@ -1,5 +1,4 @@
 from app.application.exceptions import (
-    ActiveSessionAlreadyExistsError,
     DeviceNotActiveError,
 )
 from app.application.use_cases.start_session import (
@@ -112,17 +111,14 @@ def test_should_reject_pending_device() -> None:
         )
 
 
-def test_should_reject_second_active_session() -> None:
+def test_should_resume_existing_active_session() -> None:
     repository = InMemorySessionRepository()
     device = make_device()
 
     use_case = make_use_case(repository)
     command = StartSessionCommand(device=device)
 
-    use_case.execute(command)
+    first = use_case.execute(command)
+    second = use_case.execute(command)
 
-    with pytest.raises(
-        ActiveSessionAlreadyExistsError,
-        match="already has an active Session",
-    ):
-        use_case.execute(command)
+    assert second.session_id == first.session_id
