@@ -31,8 +31,8 @@ da Nebula Platform.
 | 0.2.0 | Modelo de domínio | ✅ Concluída |
 | 0.3.0 | Nebula Core First Light | ✅ Concluída |
 | 0.4.0 | Persistência PostgreSQL | ✅ Concluída |
-| 0.5.0 | Nebula Admin | 🟢 Em curso (Admin BFF + UI Web) |
-| 0.6.0 | Nebula Player Android | 🟢 Em curso (funcional) |
+| 0.5.0 | Nebula Admin | ✅ Concluída (Admin BFF + UI Web) |
+| 0.6.0 | Nebula Player Android | ✅ Concluída (reprodução real) |
 | 0.7.0 | Telemetria e Monitoramento | 🟢 Em curso (subdomínio; Monitor pendente) |
 | 1.0.0 | Primeira versão pública | ⏳ Planejada |
 

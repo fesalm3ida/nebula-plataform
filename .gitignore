@@ -52,3 +52,8 @@ build/
 
 # Local Flutter SDK checkout (nao versionar)
 develop/
+flutter_linux_*.tar.xz
+
+# Notas pessoais de estudo e copias de codigo deslocadas (nao versionar)
+docs/staffbooks/
+docs/ADR/backend/
