@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 
-import '../theme/nebula_theme.dart';
 import 'playback_controller.dart';
 
 /// Implementação de [PlaybackController] com `media_kit` (libmpv), robusta
 /// para streams IPTV (mpegts/HLS).
+///
+/// A superfície de vídeo é entregue **sem** controles embutidos: as telas
+/// desenham os seus próprios controles sobrepostos (ver `PlayerControls`).
 class MediaKitPlaybackController implements PlaybackController {
   MediaKitPlaybackController() {
     _player = Player();
@@ -16,48 +18,40 @@ class MediaKitPlaybackController implements PlaybackController {
   late final Player _player;
   late final VideoController _controller;
 
-  /// Tema dos controles (barra de progresso / botões) na cor do Nebula.
-  static const MaterialVideoControlsThemeData _controlsTheme =
-      MaterialVideoControlsThemeData(
-    seekBarPositionColor: NebulaColors.primary,
-    seekBarThumbColor: NebulaColors.primary,
-    seekBarBufferColor: Color(0x4DFFFFFF),
-    buttonBarButtonColor: NebulaColors.textPrimary,
-  );
-
   @override
-  Widget buildVideo({Key? key, bool controls = false}) {
-    if (!controls) {
-      return Video(
+  Widget buildVideo({Key? key}) => Video(
         key: key,
         controller: _controller,
         controls: NoVideoControls,
       );
-    }
-
-    return MaterialVideoControlsTheme(
-      normal: _controlsTheme,
-      fullscreen: _controlsTheme,
-      child: Video(
-        key: key,
-        controller: _controller,
-        controls: MaterialVideoControls,
-      ),
-    );
-  }
 
   @override
-  Future<void> play(String url) async {
-    await _player.open(Media(url));
-  }
+  Future<void> play(String url) => _player.open(Media(url));
 
   @override
-  Future<void> pause() async {
-    await _player.pause();
-  }
+  Future<void> pause() => _player.pause();
 
   @override
-  Future<void> dispose() async {
-    await _player.dispose();
-  }
+  Future<void> playOrPause() => _player.playOrPause();
+
+  @override
+  Future<void> seek(Duration position) => _player.seek(position);
+
+  @override
+  Future<void> setVolume(double volume) => _player.setVolume(volume);
+
+  @override
+  Stream<Duration> get position => _player.stream.position;
+
+  @override
+  Stream<Duration> get duration => _player.stream.duration;
+
+  @override
+  Stream<bool> get playing => _player.stream.playing;
+
+  @override
+  Stream<double> get volume => _player.stream.volume;
+
+  @override
+  Future<void> dispose() => _player.dispose();
 }

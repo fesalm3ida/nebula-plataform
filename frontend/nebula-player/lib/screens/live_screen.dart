@@ -7,6 +7,7 @@ import '../player/playback_controller.dart';
 import '../services/catalog_service.dart';
 import '../services/local_playlist_service.dart';
 import '../theme/nebula_theme.dart';
+import '../widgets/player_controls.dart';
 import 'change_playlist_screen.dart';
 import 'player_screen.dart';
 
@@ -376,7 +377,19 @@ class _Preview extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Expanded(child: controller.buildVideo(controls: true)),
+        Expanded(
+          child: Stack(
+            children: [
+              Positioned.fill(child: controller.buildVideo()),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: PlayerControls(controller: controller),
+              ),
+            ],
+          ),
+        ),
         if (channel != null)
           Container(
             width: double.infinity,
