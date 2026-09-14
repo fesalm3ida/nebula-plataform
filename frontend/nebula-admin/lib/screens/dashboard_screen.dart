@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/admin_api_client.dart';
 import '../models/auth_session.dart';
 import '../models/playlist.dart';
+import 'devices_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key, required this.session});
@@ -47,6 +48,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: Text('Nebula Admin — ${widget.session.email}'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.devices),
+            tooltip: 'Devices',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => DevicesScreen(session: widget.session),
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _refresh,

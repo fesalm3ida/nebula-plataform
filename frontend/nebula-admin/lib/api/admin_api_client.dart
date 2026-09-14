@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
 import '../models/auth_session.dart';
+import '../models/device.dart';
 import '../models/playlist.dart';
 
 class AdminApiClient {
@@ -75,6 +76,72 @@ class AdminApiClient {
     }
 
     return Playlist.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<List<Device>> listDevices(String token) async {
+    final response = await _client.get(
+      Uri.parse('${ApiConfig.baseUrl}/admin/devices'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      throw AdminApiException(
+        'Falha ao listar devices (${response.statusCode}).',
+      );
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = data['devices'] as List<dynamic>;
+
+    return list
+        .map((item) => Device.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Aplica uma ação de ciclo de vida: activate, block ou revoke.
+  Future<String> setDeviceStatus(
+    String token,
+    String deviceId,
+    String action,
+  ) async {
+    final response = await _client.post(
+      Uri.parse('${ApiConfig.baseUrl}/admin/devices/$deviceId/$action'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      throw AdminApiException(
+        'Falha em "$action" (${response.statusCode}).',
+      );
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+    return data['status'] as String;
+  }
+
+  Future<void> assignPlaylist(
+    String token,
+    String deviceId,
+    String playlistId,
+  ) async {
+    final response = await _client.post(
+      Uri.parse('${ApiConfig.baseUrl}/admin/playlists/assignments'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'device_id': deviceId,
+        'playlist_id': playlistId,
+      }),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw AdminApiException(
+        'Falha ao associar playlist (${response.statusCode}).',
+      );
+    }
   }
 }
 
