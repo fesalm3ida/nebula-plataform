@@ -135,7 +135,17 @@ PYTHONPATH=. ../nebula-core/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port
 
 ---
 
-## 5) Admin UI (Flutter Web) — porta 3000
+## 5) Portal Web (Flutter Web) — porta 3000
+
+O mesmo app serve **dois acessos**:
+
+| Acesso | URL | Login |
+|---|---|---|
+| **Usuário** | `http://<IP_DO_WSL>:3000` | **MAC Address + código de ativação** (exibidos no Player) |
+| **Administrador** | `http://<IP_DO_WSL>:3000/#/gestao-nebula-3f9c` | e-mail + senha |
+
+> A URL do administrador **não é divulgada** ao usuário e pode ser trocada com
+> `--dart-define=ADMIN_PATH=<segredo>`.
 
 Descubra o IP do WSL (usado pelo navegador do Windows):
 ```bash
@@ -144,9 +154,9 @@ hostname -I        # ex.: 172.18.88.46
 ```bash
 cd /home/fealmeida/projects/nebula-plataform/frontend/nebula-admin
 flutter run -d web-server --web-port=3000 --web-hostname=0.0.0.0 \
-  --dart-define=NEBULA_ADMIN_API=http://<IP_DO_WSL>:8001
+  --dart-define=NEBULA_ADMIN_API=http://<IP_DO_WSL>:8001 \
+  --dart-define=ADMIN_PATH=gestao-nebula-3f9c
 ```
-Abra no navegador: `http://<IP_DO_WSL>:3000` → login com `admin@nebula.local`.
 
 > Sobrescreva o IP correto: o app chama o BFF por esse endereço (não use `localhost`, que no navegador é o Windows).
 
