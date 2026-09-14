@@ -59,6 +59,21 @@ class DeviceModel(Base):
         server_default=func.now(),
     )
 
+    activated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    license_type: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+    )
+
+    license_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     sessions: Mapped[list["SessionModel"]] = relationship(
         back_populates="device",
         cascade="all, delete-orphan",

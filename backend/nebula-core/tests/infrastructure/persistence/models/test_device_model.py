@@ -19,6 +19,9 @@ def test_should_expose_expected_device_columns() -> None:
         "device_key",
         "status",
         "created_at",
+        "activated_at",
+        "license_type",
+        "license_expires_at",
     }
 
 

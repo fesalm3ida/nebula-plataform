@@ -1,6 +1,7 @@
 from app.domain.entities.device import Device
 from app.domain.enums.device_platform import DevicePlatform
 from app.domain.enums.device_status import DeviceStatus
+from app.domain.enums.license_type import LicenseType
 from app.domain.value_objects.app_version import AppVersion
 from app.domain.value_objects.device_fingerprint import (
     DeviceFingerprint,
@@ -24,6 +25,13 @@ class DeviceMapper:
             device_key=str(device.device_key),
             status=device.status.value,
             created_at=device.created_at,
+            activated_at=device.activated_at,
+            license_type=(
+                device.license_type.value
+                if device.license_type is not None
+                else None
+            ),
+            license_expires_at=device.license_expires_at,
         )
 
     @staticmethod
@@ -39,5 +47,12 @@ class DeviceMapper:
         device.device_key = DeviceKey(model.device_key)
         device.status = DeviceStatus(model.status)
         device.created_at = model.created_at
+        device.activated_at = model.activated_at
+        device.license_type = (
+            LicenseType(model.license_type)
+            if model.license_type is not None
+            else None
+        )
+        device.license_expires_at = model.license_expires_at
 
         return device
