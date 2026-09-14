@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../api/portal_api_client.dart';
 import '../models/portal.dart';
@@ -126,6 +127,11 @@ class _UserPortalScreenState extends State<UserPortalScreen> {
                     ),
                     const SizedBox(height: 12),
                     _PlaylistCard(playlist: _device!.playlist),
+                    const SizedBox(height: 12),
+                    _PurchaseCard(
+                      api: widget.api,
+                      token: widget.session.accessToken,
+                    ),
                   ],
                 ),
     );
@@ -235,6 +241,99 @@ class _PlaylistCard extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PurchaseCard extends StatefulWidget {
+  const _PurchaseCard({required this.api, required this.token});
+
+  final PortalApiClient api;
+  final String token;
+
+  @override
+  State<_PurchaseCard> createState() => _PurchaseCardState();
+}
+
+class _PurchaseCardState extends State<_PurchaseCard> {
+  late Future<List<PortalPlan>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = widget.api.listPlans(widget.token);
+  }
+
+  Future<void> _buy(PortalPlan plan) async {
+    try {
+      final checkoutUrl = await widget.api.purchase(
+        widget.token,
+        plan.product,
+      );
+
+      final uri = Uri.parse(checkoutUrl);
+
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        throw PortalApiException('Não foi possível abrir o checkout.');
+      }
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$error'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Comprar licença',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            FutureBuilder<List<PortalPlan>>(
+              future: _future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Text(
+                    'Não foi possível carregar os planos: ${snapshot.error}',
+                  );
+                }
+
+                final plans = snapshot.data ?? [];
+
+                return Column(
+                  children: [
+                    for (final plan in plans)
+                      ListTile(
+                        title: Text(plan.title),
+                        subtitle: Text(plan.description),
+                        trailing: FilledButton(
+                          onPressed: () => _buy(plan),
+                          child: Text(plan.priceLabel),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
           ],
         ),
       ),

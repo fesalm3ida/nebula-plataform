@@ -104,6 +104,44 @@ class PortalApiClient {
     );
   }
 
+  Future<List<PortalPlan>> listPlans(String token) async {
+    final response = await _client.get(
+      Uri.parse('$_base/portal/plans'),
+      headers: _headers(token),
+    );
+
+    _ensureOk(response, 'carregar os planos');
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final list = data['plans'] as List<dynamic>;
+
+    return list
+        .map((item) => PortalPlan.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Inicia a compra e devolve a URL do checkout.
+  Future<String> purchase(String token, String product) async {
+    final response = await _client.post(
+      Uri.parse('$_base/portal/purchase'),
+      headers: {
+        'Content-Type': 'application/json',
+        ..._headers(token),
+      },
+      body: jsonEncode({'product': product}),
+    );
+
+    if (response.statusCode != 201) {
+      throw PortalApiException(
+        'Falha ao iniciar a compra (${response.statusCode}).',
+      );
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+    return data['checkout_url'] as String;
+  }
+
   Map<String, String> _headers(String token) => {
         'Authorization': 'Bearer $token',
       };

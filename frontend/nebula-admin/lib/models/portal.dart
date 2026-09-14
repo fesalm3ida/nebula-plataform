@@ -79,6 +79,30 @@ class PortalPlaylist {
       );
 }
 
+class PortalPlan {
+  PortalPlan({
+    required this.product,
+    required this.title,
+    required this.description,
+    required this.priceCents,
+    required this.priceLabel,
+  });
+
+  final String product;
+  final String title;
+  final String description;
+  final int priceCents;
+  final String priceLabel;
+
+  factory PortalPlan.fromJson(Map<String, dynamic> json) => PortalPlan(
+        product: json['product'] as String,
+        title: json['title'] as String,
+        description: json['description'] as String,
+        priceCents: json['price_cents'] as int,
+        priceLabel: json['price_label'] as String,
+      );
+}
+
 class PortalDevice {
   PortalDevice({
     required this.deviceId,
