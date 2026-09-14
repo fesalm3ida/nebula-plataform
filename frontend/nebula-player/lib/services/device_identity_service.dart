@@ -6,6 +6,37 @@ class DeviceIdentityService {
   static const _fingerprintKey = 'nebula.device_fingerprint';
   static const _deviceIdKey = 'nebula.device_id';
   static const _deviceKeyKey = 'nebula.device_key';
+  static const _macAddressKey = 'nebula.mac_address';
+
+  /// MAC Address estável por instalação.
+  ///
+  /// O Android oculta o MAC real (Wi-Fi) desde o Android 6, então geramos um
+  /// **pseudo-MAC localmente administrado** (`02:...`), único por instalação
+  /// e persistido no dispositivo — é o identificador público do Device.
+  Future<String> getOrCreateMacAddress() async {
+    final prefs = await SharedPreferences.getInstance();
+    final existing = prefs.getString(_macAddressKey);
+
+    if (existing != null && existing.isNotEmpty) {
+      return existing;
+    }
+
+    final macAddress = _generateMacAddress();
+    await prefs.setString(_macAddressKey, macAddress);
+
+    return macAddress;
+  }
+
+  String _generateMacAddress() {
+    final random = Random.secure();
+
+    // Primeiro octeto 0x02: localmente administrado e unicast.
+    final octets = <int>[0x02, for (var index = 0; index < 5; index++) random.nextInt(256)];
+
+    return octets
+        .map((octet) => octet.toRadixString(16).padLeft(2, '0').toUpperCase())
+        .join(':');
+  }
 
   Future<String> getOrCreateFingerprint() async {
     final prefs = await SharedPreferences.getInstance();

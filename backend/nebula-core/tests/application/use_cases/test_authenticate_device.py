@@ -19,6 +19,7 @@ from app.application.use_cases.authenticate_device import (
 from app.domain.entities.device import Device
 from app.domain.enums.device_platform import DevicePlatform
 from app.domain.enums.device_status import DeviceStatus
+from app.domain.enums.license_type import LicenseType
 from app.domain.value_objects.app_version import AppVersion
 from app.domain.value_objects.device_fingerprint import (
     DeviceFingerprint,
@@ -205,4 +206,38 @@ def test_should_reject_non_active_device(
         use_case.execute(
             make_command(device)
         )
+
+
+def test_should_expire_device_when_license_has_expired() -> None:
+    repository = InMemoryDeviceRepository()
+
+    device = make_active_device()
+    device.license_expires_at = datetime.now(timezone.utc) - timedelta(
+        seconds=1
+    )
+    repository.save(device)
+
+    use_case = make_use_case(repository)
+
+    with pytest.raises(DeviceNotActiveError, match="license has expired"):
+        use_case.execute(make_command(device))
+
+    persisted = repository.find_by_id(device.device_id)
+
+    assert persisted is not None
+    assert persisted.status == DeviceStatus.EXPIRED
+
+
+def test_should_authenticate_device_with_lifetime_license() -> None:
+    repository = InMemoryDeviceRepository()
+
+    device = make_active_device()
+    device.grant_license(LicenseType.LIFETIME)
+    repository.save(device)
+
+    use_case = make_use_case(repository)
+
+    result = use_case.execute(make_command(device))
+
+    assert result.access_token.startswith("fake-jwt:")
 

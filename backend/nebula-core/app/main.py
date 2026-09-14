@@ -5,6 +5,7 @@ from app.api.routes.sessions import router as sessions_router
 from app.api.routes.playlists import router as playlists_router
 from app.api.routes.provisioning import router as provisioning_router
 from app.api.routes.observability import router as observability_router
+from app.api.routes.license import router as license_router
 
 
 app = FastAPI(
@@ -18,6 +19,7 @@ app.include_router(sessions_router)
 app.include_router(playlists_router)
 app.include_router(provisioning_router)
 app.include_router(observability_router)
+app.include_router(license_router)
 
 
 @app.get("/")

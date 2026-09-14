@@ -73,6 +73,15 @@ class AuthenticateDeviceUseCase:
                 "Invalid Device credentials."
             )
 
+        # Expiracao preguicosa da licenca: o trial vencido encerra o Device.
+        if device.is_license_expired():
+            device.expire()
+            self._repository.save(device)
+
+            raise DeviceNotActiveError(
+                "Device license has expired."
+            )
+
         if device.status != DeviceStatus.ACTIVE:
             raise DeviceNotActiveError(
                 f"Device cannot authenticate while status is "

@@ -29,9 +29,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<DeviceIdentity> _register(String fingerprint) async {
+    final macAddress = await _identity.getOrCreateMacAddress();
+
     final identity = await _client.registerDevice(
       fingerprint: fingerprint,
-      macAddress: 'AA:BB:CC:DD:EE:FF',
+      macAddress: macAddress,
       platform: 'android_tv',
       appVersion: '0.1.0',
     );
