@@ -8,8 +8,12 @@ from app.api.schemas.portal import (
     PortalLicenseOut,
     PortalLoginRequest,
     PortalLoginResponse,
+    PortalPlanOut,
+    PortalPlansResponse,
     PortalPlaylistOut,
     PortalPlaylistRequest,
+    PortalPurchaseRequest,
+    PortalPurchaseResponse,
 )
 from app.application.exceptions import (
     CoreCommunicationError,
@@ -18,8 +22,10 @@ from app.application.exceptions import (
 )
 from app.application.ports.nebula_core_gateway import (
     CoreLicense,
+    CorePlan,
     CorePlaylist,
     CorePortalSession,
+    CorePurchase,
     NebulaCoreGateway,
 )
 
@@ -207,3 +213,67 @@ async def register_playlist(
         _raise_http_error(error)
 
     return _to_playlist(playlist)
+
+
+@router.get(
+    "/plans",
+    response_model=PortalPlansResponse,
+    status_code=status.HTTP_200_OK,
+    summary="License Plans",
+    description="Planos de licença disponíveis para compra.",
+)
+async def list_plans(
+    token: str = Depends(get_device_token),
+    gateway: NebulaCoreGateway = Depends(get_nebula_core_gateway),
+) -> PortalPlansResponse:
+    try:
+        plans: list[CorePlan] = await gateway.list_plans(token)
+    except (
+        CoreCommunicationError,
+        CoreConflictError,
+        CoreResourceNotFoundError,
+    ) as error:
+        _raise_http_error(error)
+
+    return PortalPlansResponse(
+        plans=[
+            PortalPlanOut(
+                product=plan.product,
+                title=plan.title,
+                description=plan.description,
+                price_cents=plan.price_cents,
+                price_label=plan.price_label,
+            )
+            for plan in plans
+        ]
+    )
+
+
+@router.post(
+    "/purchase",
+    response_model=PortalPurchaseResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Purchase License",
+    description="Inicia a compra e devolve a URL do checkout.",
+)
+async def purchase_license(
+    payload: PortalPurchaseRequest,
+    token: str = Depends(get_device_token),
+    gateway: NebulaCoreGateway = Depends(get_nebula_core_gateway),
+) -> PortalPurchaseResponse:
+    try:
+        purchase: CorePurchase = await gateway.create_purchase(
+            token=token,
+            product=payload.product,
+        )
+    except (
+        CoreCommunicationError,
+        CoreConflictError,
+        CoreResourceNotFoundError,
+    ) as error:
+        _raise_http_error(error)
+
+    return PortalPurchaseResponse(
+        payment_id=purchase.payment_id,
+        checkout_url=purchase.checkout_url,
+    )

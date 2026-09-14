@@ -55,6 +55,25 @@ class CorePortalSession:
 
 
 @dataclass(frozen=True)
+class CorePlan:
+    """Plano de licença vendido no portal."""
+
+    product: str
+    title: str
+    description: str
+    price_cents: int
+    price_label: str
+
+
+@dataclass(frozen=True)
+class CorePurchase:
+    """Compra iniciada (checkout) no Core."""
+
+    payment_id: UUID
+    checkout_url: str
+
+
+@dataclass(frozen=True)
 class CoreLicense:
     """Estado de licença de um Device."""
 
@@ -129,6 +148,18 @@ class NebulaCoreGateway(ABC):
         format: str,
     ) -> CorePlaylist:
         """Cadastra a lista do usuario e a associa ao Device dele."""
+
+    @abstractmethod
+    async def list_plans(self, token: str) -> list[CorePlan]:
+        """Lista os planos de licenca disponiveis."""
+
+    @abstractmethod
+    async def create_purchase(
+        self,
+        token: str,
+        product: str,
+    ) -> CorePurchase:
+        """Inicia a compra de uma licenca e devolve o checkout."""
 
     @abstractmethod
     async def assign_playlist_to_device(

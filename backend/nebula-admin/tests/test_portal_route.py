@@ -89,3 +89,29 @@ def test_should_register_user_playlist(
     overview = client.get("/portal/device", headers=device_headers())
 
     assert overview.json()["playlist"]["name"] == "Minha Lista"
+
+
+def test_should_list_license_plans(client: TestClient) -> None:
+    response = client.get("/portal/plans", headers=device_headers())
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert len(body["plans"]) == 2
+    assert body["plans"][0]["price_cents"] == 9900
+
+
+def test_should_create_purchase(client: TestClient) -> None:
+    response = client.post(
+        "/portal/purchase",
+        headers=device_headers(),
+        json={"product": "lifetime"},
+    )
+
+    assert response.status_code == 201
+
+    body = response.json()
+
+    assert body["payment_id"]
+    assert body["checkout_url"].startswith("https://")

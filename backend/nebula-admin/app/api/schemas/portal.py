@@ -43,3 +43,24 @@ class PortalDeviceResponse(BaseModel):
     device_id: UUID
     license: PortalLicenseOut
     playlist: PortalPlaylistOut | None = None
+
+
+class PortalPlanOut(BaseModel):
+    product: str
+    title: str
+    description: str
+    price_cents: int
+    price_label: str
+
+
+class PortalPlansResponse(BaseModel):
+    plans: list[PortalPlanOut]
+
+
+class PortalPurchaseRequest(BaseModel):
+    product: str = Field(min_length=1)
+
+
+class PortalPurchaseResponse(BaseModel):
+    payment_id: UUID
+    checkout_url: str

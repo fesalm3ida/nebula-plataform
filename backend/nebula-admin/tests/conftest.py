@@ -12,9 +12,11 @@ from app.application.ports.nebula_core_gateway import (
     CoreDevice,
     CoreDeviceStatus,
     CoreLicense,
+    CorePlan,
     CorePlaylist,
     CorePlaylistAssignment,
     CorePortalSession,
+    CorePurchase,
     NebulaCoreGateway,
 )
 from app.application.security.admin_token_service import AdminTokenService
@@ -166,6 +168,34 @@ class FakeNebulaCoreGateway(NebulaCoreGateway):
         self._own_playlist = playlist
 
         return playlist
+
+    async def list_plans(self, token: str) -> list[CorePlan]:
+        return [
+            CorePlan(
+                product="annual",
+                title="Licença anual",
+                description="12 meses de acesso, renovável.",
+                price_cents=9900,
+                price_label="R$ 99,00",
+            ),
+            CorePlan(
+                product="lifetime",
+                title="Licença vitalícia",
+                description="Acesso para sempre, sem renovação.",
+                price_cents=29900,
+                price_label="R$ 299,00",
+            ),
+        ]
+
+    async def create_purchase(
+        self,
+        token: str,
+        product: str,
+    ) -> CorePurchase:
+        return CorePurchase(
+            payment_id=uuid4(),
+            checkout_url="https://checkout.mercadopago.fake/abc",
+        )
 
     async def assign_playlist_to_device(
         self,

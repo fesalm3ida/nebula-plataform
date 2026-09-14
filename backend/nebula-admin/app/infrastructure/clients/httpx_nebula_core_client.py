@@ -11,9 +11,11 @@ from app.application.ports.nebula_core_gateway import (
     CoreDevice,
     CoreDeviceStatus,
     CoreLicense,
+    CorePlan,
     CorePlaylist,
     CorePlaylistAssignment,
     CorePortalSession,
+    CorePurchase,
     NebulaCoreGateway,
 )
 
@@ -268,6 +270,55 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
             ) from error
 
         return self._to_core_playlist(payload)
+
+    async def list_plans(self, token: str) -> list[CorePlan]:
+        try:
+            async with httpx.AsyncClient(transport=self._transport) as client:
+                response = await client.get(
+                    f"{self._base_url}/me/plans",
+                    headers=self._bearer(token),
+                )
+                self._ensure_success(response)
+                data = response.json()
+        except httpx.HTTPError as error:
+            raise CoreCommunicationError(
+                "Failed to reach the Nebula Core."
+            ) from error
+
+        return [
+            CorePlan(
+                product=item["product"],
+                title=item["title"],
+                description=item["description"],
+                price_cents=item["price_cents"],
+                price_label=item["price_label"],
+            )
+            for item in data.get("plans", [])
+        ]
+
+    async def create_purchase(
+        self,
+        token: str,
+        product: str,
+    ) -> CorePurchase:
+        try:
+            async with httpx.AsyncClient(transport=self._transport) as client:
+                response = await client.post(
+                    f"{self._base_url}/me/purchase",
+                    headers=self._bearer(token),
+                    json={"product": product},
+                )
+                self._ensure_success(response)
+                payload = response.json()
+        except httpx.HTTPError as error:
+            raise CoreCommunicationError(
+                "Failed to reach the Nebula Core."
+            ) from error
+
+        return CorePurchase(
+            payment_id=UUID(payload["payment_id"]),
+            checkout_url=payload["checkout_url"],
+        )
 
     @staticmethod
     def _ensure_success(response: httpx.Response) -> None:
