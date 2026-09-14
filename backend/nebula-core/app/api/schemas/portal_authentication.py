@@ -8,7 +8,7 @@ from app.domain.enums.device_status import DeviceStatus
 
 class PortalAuthenticationRequest(BaseModel):
     mac_address: str
-    device_key: str
+    activation_code: str
 
 
 class PortalAuthenticationResponse(BaseModel):

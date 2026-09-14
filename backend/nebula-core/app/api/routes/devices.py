@@ -90,6 +90,8 @@ def register_device(
     return DeviceRegistrationResponse(
         device_id=result.device_id,
         device_key=result.device_key,
+        activation_code=result.activation_code,
+        mac_address=result.mac_address,
         status=result.status,
     )
 

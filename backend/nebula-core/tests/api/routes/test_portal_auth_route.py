@@ -28,7 +28,12 @@ def make_device(*, active: bool = False) -> Device:
     return device
 
 
-def test_should_authenticate_owner_with_mac_and_device_key(
+def wrong_code(device: Device) -> str:
+    """Retorna um codigo de 6 digitos garantidamente diferente."""
+    return f"{(int(str(device.activation_code)) + 1) % 1000000:06d}"
+
+
+def test_should_authenticate_user_with_mac_and_activation_code(
     device_repository: InMemoryDeviceRepository,
 ) -> None:
     device = make_device()
@@ -38,7 +43,7 @@ def test_should_authenticate_owner_with_mac_and_device_key(
         "/auth/portal",
         json={
             "mac_address": str(device.mac_address),
-            "device_key": str(device.device_key),
+            "activation_code": str(device.activation_code),
         },
     )
 
@@ -51,7 +56,7 @@ def test_should_authenticate_owner_with_mac_and_device_key(
     assert body["access_token"]
 
 
-def test_should_reject_wrong_device_key(
+def test_should_reject_wrong_activation_code(
     device_repository: InMemoryDeviceRepository,
 ) -> None:
     device = make_device()
@@ -61,7 +66,24 @@ def test_should_reject_wrong_device_key(
         "/auth/portal",
         json={
             "mac_address": str(device.mac_address),
-            "device_key": "z" * 32,
+            "activation_code": wrong_code(device),
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_should_reject_malformed_activation_code(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    device = make_device()
+    device_repository.save(device)
+
+    response = client.post(
+        "/auth/portal",
+        json={
+            "mac_address": str(device.mac_address),
+            "activation_code": "abc",
         },
     )
 
@@ -75,7 +97,7 @@ def test_should_reject_unknown_mac_address(
         "/auth/portal",
         json={
             "mac_address": "02:99:99:99:99:99",
-            "device_key": "123456",
+            "activation_code": "123456",
         },
     )
 
@@ -93,7 +115,7 @@ def test_should_reject_revoked_device(
         "/auth/portal",
         json={
             "mac_address": str(device.mac_address),
-            "device_key": str(device.device_key),
+            "activation_code": str(device.activation_code),
         },
     )
 

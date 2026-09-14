@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 from app.domain.enums.device_platform import DevicePlatform
 from app.domain.enums.device_status import DeviceStatus
 from app.domain.enums.license_type import LicenseType
+from app.domain.value_objects.activation_code import ActivationCode
 from app.domain.value_objects.app_version import AppVersion
 from app.domain.value_objects.device_fingerprint import DeviceFingerprint
 from app.domain.value_objects.device_key import DeviceKey
@@ -34,6 +35,9 @@ class Device:
     app_version: AppVersion
     device_id: UUID = field(default_factory=uuid4)
     device_key: DeviceKey = field(default_factory=DeviceKey.generate)
+    activation_code: ActivationCode = field(
+        default_factory=ActivationCode.generate
+    )
     status: DeviceStatus = DeviceStatus.PENDING
     created_at: datetime = field(default_factory=_utcnow)
     activated_at: datetime | None = None

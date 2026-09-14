@@ -127,7 +127,7 @@ def authenticate_portal(
 
     command = AuthenticatePortalCommand(
         mac_address=request.mac_address,
-        device_key=request.device_key,
+        activation_code=request.activation_code,
     )
 
     try:

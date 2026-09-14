@@ -2,6 +2,7 @@ from app.domain.entities.device import Device
 from app.domain.enums.device_platform import DevicePlatform
 from app.domain.enums.device_status import DeviceStatus
 from app.domain.enums.license_type import LicenseType
+from app.domain.value_objects.activation_code import ActivationCode
 from app.domain.value_objects.app_version import AppVersion
 from app.domain.value_objects.device_fingerprint import (
     DeviceFingerprint,
@@ -23,6 +24,7 @@ class DeviceMapper:
             platform=device.platform.value,
             app_version=str(device.app_version),
             device_key=str(device.device_key),
+            activation_code=str(device.activation_code),
             status=device.status.value,
             created_at=device.created_at,
             activated_at=device.activated_at,
@@ -45,6 +47,7 @@ class DeviceMapper:
 
         device.device_id = model.device_id
         device.device_key = DeviceKey(model.device_key)
+        device.activation_code = ActivationCode(model.activation_code)
         device.status = DeviceStatus(model.status)
         device.created_at = model.created_at
         device.activated_at = model.activated_at

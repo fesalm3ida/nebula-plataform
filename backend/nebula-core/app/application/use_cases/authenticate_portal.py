@@ -13,14 +13,14 @@ from app.application.security.access_token_service import (
 )
 from app.domain.enums.device_status import DeviceStatus
 from app.domain.repositories.device_repository import DeviceRepository
-from app.domain.value_objects.device_key import DeviceKey
+from app.domain.value_objects.activation_code import ActivationCode
 from app.domain.value_objects.mac_address import MacAddress
 
 
 @dataclass(frozen=True)
 class AuthenticatePortalCommand:
     mac_address: str
-    device_key: str
+    activation_code: str
 
 
 @dataclass(frozen=True)
@@ -33,11 +33,11 @@ class AuthenticatePortalResult:
 
 
 class AuthenticatePortalUseCase:
-    """Autentica o **dono** do Device no portal web (MAC + Device Key).
+    """Autentica o **usuário** no portal web (MAC Address + código de 6 dígitos).
 
-    Diferente da autenticação do app, aceita Devices que ainda não estão
-    ativos (o dono entra no portal para ativar/licenciar), bloqueando apenas
-    Devices revogados.
+    O código de ativação é exibido pelo Nebula Player. Diferente da
+    autenticação do app, aceita Devices que ainda não estão ativos (o usuário
+    entra no portal para ativar/licenciar), bloqueando apenas os revogados.
     """
 
     def __init__(
@@ -59,14 +59,19 @@ class AuthenticatePortalUseCase:
         if device is None:
             raise DeviceNotFoundError("Device not found.")
 
-        submitted_key = DeviceKey(command.device_key)
+        try:
+            submitted_code = ActivationCode(command.activation_code)
+        except (TypeError, ValueError) as error:
+            raise InvalidDeviceCredentialsError(
+                "Invalid activation code."
+            ) from error
 
         if not compare_digest(
-            str(device.device_key),
-            str(submitted_key),
+            str(device.activation_code),
+            str(submitted_code),
         ):
             raise InvalidDeviceCredentialsError(
-                "Invalid Device credentials."
+                "Invalid activation code."
             )
 
         if device.status == DeviceStatus.REVOKED:

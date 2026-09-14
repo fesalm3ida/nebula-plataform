@@ -47,6 +47,11 @@ class DeviceModel(Base):
         unique=True,
     )
 
+    activation_code: Mapped[str] = mapped_column(
+        String(6),
+        nullable=False,
+    )
+
     status: Mapped[str] = mapped_column(
         String(32),
         nullable=False,

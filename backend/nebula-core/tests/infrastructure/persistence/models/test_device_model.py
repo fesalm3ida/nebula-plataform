@@ -17,6 +17,7 @@ def test_should_expose_expected_device_columns() -> None:
         "platform",
         "app_version",
         "device_key",
+        "activation_code",
         "status",
         "created_at",
         "activated_at",

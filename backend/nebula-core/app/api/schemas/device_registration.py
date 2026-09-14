@@ -15,4 +15,6 @@ class DeviceRegistrationRequest(BaseModel):
 class DeviceRegistrationResponse(BaseModel):
     device_id: UUID
     device_key: str
+    activation_code: str
+    mac_address: str
     status: DeviceStatus

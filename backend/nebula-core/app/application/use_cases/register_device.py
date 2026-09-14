@@ -23,6 +23,8 @@ class RegisterDeviceCommand:
 class RegisterDeviceResult:
     device_id: UUID
     device_key: str
+    activation_code: str
+    mac_address: str
     status: DeviceStatus
 
 
@@ -61,5 +63,7 @@ class RegisterDeviceUseCase:
         return RegisterDeviceResult(
             device_id=device.device_id,
             device_key=str(device.device_key),
+            activation_code=str(device.activation_code),
+            mac_address=str(device.mac_address),
             status=device.status,
         )
