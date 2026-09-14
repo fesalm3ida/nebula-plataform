@@ -4,6 +4,7 @@ import '../api/nebula_core_client.dart';
 import '../models/device_identity.dart';
 import '../services/device_identity_service.dart';
 import '../theme/nebula_theme.dart';
+import 'activation_screen.dart';
 import 'home_menu_screen.dart';
 
 /// Tela de boot: executa o fluxo de inicialização (registro -> autenticação ->
@@ -40,6 +41,8 @@ class _HomeScreenState extends State<HomeScreen> {
     await _identity.saveDeviceIdentity(
       deviceId: identity.deviceId,
       deviceKey: identity.deviceKey,
+      activationCode: identity.activationCode,
+      macAddress: identity.macAddress,
     );
 
     return identity;
@@ -75,6 +78,34 @@ class _HomeScreenState extends State<HomeScreen> {
         fingerprint: fingerprint,
       );
     }
+  }
+
+  /// Mostra a tela de ativação (MAC + código de ativação + status).
+  Future<void> _showActivationScreen() async {
+    final fingerprint = await _identity.getOrCreateFingerprint();
+    final deviceId = await _identity.getDeviceId();
+    final deviceKey = await _identity.getDeviceKey();
+    final activationCode = await _identity.getActivationCode();
+    final macAddress = await _identity.getOrCreateMacAddress();
+
+    if (!mounted) return;
+
+    if (deviceId == null || deviceKey == null) {
+      setState(() => _status = 'Erro: identidade do aparelho indisponível.');
+      return;
+    }
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) => ActivationScreen(
+          deviceId: deviceId,
+          deviceKey: deviceKey,
+          fingerprint: fingerprint,
+          macAddress: macAddress,
+          activationCode: activationCode ?? '',
+        ),
+      ),
+    );
   }
 
   Future<void> _start() async {
@@ -118,10 +149,8 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
 
       if (error.statusCode == 403) {
-        setState(
-          () => _status =
-              'Dispositivo aguardando ativação pelo administrador.',
-        );
+        // Aparelho ainda nao ativado: mostra MAC + codigo de ativacao.
+        await _showActivationScreen();
         return;
       }
 

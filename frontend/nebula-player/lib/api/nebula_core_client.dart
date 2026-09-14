@@ -40,6 +40,8 @@ class NebulaCoreClient {
       fingerprint: fingerprint,
       deviceId: data['device_id'] as String,
       deviceKey: data['device_key'] as String,
+      activationCode: (data['activation_code'] as String?) ?? '',
+      macAddress: (data['mac_address'] as String?) ?? macAddress,
     );
   }
 

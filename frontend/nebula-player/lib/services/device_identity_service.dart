@@ -7,6 +7,7 @@ class DeviceIdentityService {
   static const _deviceIdKey = 'nebula.device_id';
   static const _deviceKeyKey = 'nebula.device_key';
   static const _macAddressKey = 'nebula.mac_address';
+  static const _activationCodeKey = 'nebula.activation_code';
 
   /// MAC Address estável por instalação.
   ///
@@ -65,10 +66,25 @@ class DeviceIdentityService {
   Future<void> saveDeviceIdentity({
     required String deviceId,
     required String deviceKey,
+    String? activationCode,
+    String? macAddress,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_deviceIdKey, deviceId);
     await prefs.setString(_deviceKeyKey, deviceKey);
+
+    if (activationCode != null && activationCode.isNotEmpty) {
+      await prefs.setString(_activationCodeKey, activationCode);
+    }
+
+    if (macAddress != null && macAddress.isNotEmpty) {
+      await prefs.setString(_macAddressKey, macAddress);
+    }
+  }
+
+  Future<String?> getActivationCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_activationCodeKey);
   }
 
   /// Descarta a identidade local (device_id/device_key). Usado quando o Core
@@ -78,6 +94,7 @@ class DeviceIdentityService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_deviceIdKey);
     await prefs.remove(_deviceKeyKey);
+    await prefs.remove(_activationCodeKey);
   }
 
   String _generateFingerprint() {
