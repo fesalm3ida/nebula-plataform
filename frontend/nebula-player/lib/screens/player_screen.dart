@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../player/media_kit_playback_controller.dart';
 import '../theme/nebula_theme.dart';
-import '../widgets/player_controls.dart';
+import '../widgets/player_view.dart';
 
 /// Player em tela cheia (usado em telas estreitas / modo retrato).
 class PlayerScreen extends StatefulWidget {
@@ -36,17 +36,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(title: Text(widget.title)),
-        body: Stack(
-          children: [
-            Positioned.fill(child: _controller.buildVideo()),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: PlayerControls(controller: _controller),
-            ),
-          ],
-        ),
+        body: PlayerView(controller: _controller),
       ),
     );
   }
