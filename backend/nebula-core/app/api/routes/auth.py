@@ -7,6 +7,10 @@ from app.api.schemas.device_authentication import (
     DeviceAuthenticationRequest,
     DeviceAuthenticationResponse,
 )
+from app.api.schemas.portal_authentication import (
+    PortalAuthenticationRequest,
+    PortalAuthenticationResponse,
+)
 from app.api.security.services import (
     get_access_token_service,
 )
@@ -21,6 +25,10 @@ from app.application.security.access_token_service import (
 from app.application.use_cases.authenticate_device import (
     AuthenticateDeviceCommand,
     AuthenticateDeviceUseCase,
+)
+from app.application.use_cases.authenticate_portal import (
+    AuthenticatePortalCommand,
+    AuthenticatePortalUseCase,
 )
 from app.domain.repositories.device_repository import DeviceRepository
 
@@ -89,5 +97,67 @@ def authenticate_device(
         access_token=result.access_token,
         token_type=result.token_type,
         expires_at=result.expires_at,
+        device_status=result.device_status,
+    )
+
+
+@router.post(
+    "/portal",
+    response_model=PortalAuthenticationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Authenticate Device Owner (portal)",
+    description=(
+        "Autentica o dono do Device no portal web usando o MAC Address e o "
+        "Device Key exibidos pelo Nebula Player."
+    ),
+)
+def authenticate_portal(
+    request: PortalAuthenticationRequest,
+    repository: DeviceRepository = Depends(
+        get_device_repository
+    ),
+    access_token_service: AccessTokenService = Depends(
+        get_access_token_service
+    ),
+) -> PortalAuthenticationResponse:
+    use_case = AuthenticatePortalUseCase(
+        repository=repository,
+        access_token_service=access_token_service,
+    )
+
+    command = AuthenticatePortalCommand(
+        mac_address=request.mac_address,
+        device_key=request.device_key,
+    )
+
+    try:
+        result = use_case.execute(command)
+
+    except (
+        DeviceNotFoundError,
+        InvalidDeviceCredentialsError,
+    ) as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Device credentials.",
+        ) from error
+
+    except DeviceNotActiveError as error:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(error),
+        ) from error
+
+    except (TypeError, ValueError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(error),
+        ) from error
+
+    return PortalAuthenticationResponse(
+        access_token=result.access_token,
+        token_type=result.token_type,
+        expires_at=result.expires_at,
+        device_id=result.device_id,
         device_status=result.device_status,
     )

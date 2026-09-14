@@ -30,6 +30,10 @@ class DeviceAlreadyExpiredError(Exception):
     """Raised when an already expired Device is expired again."""
 
 
+class LicenseExpiredError(Exception):
+    """Raised when a Device license (trial or annual) has expired."""
+
+
 class ActiveSessionAlreadyExistsError(Exception):
     """Raised when a Device already has an active Session."""
 

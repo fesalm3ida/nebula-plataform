@@ -101,7 +101,7 @@ def test_should_reject_without_credentials() -> None:
     assert response.status_code == 401
 
 
-def test_should_reject_pending_device(
+def test_should_report_pending_device_as_unlicensed(
     device_repository: InMemoryDeviceRepository,
 ) -> None:
     device = make_device(active=False)
@@ -112,5 +112,47 @@ def test_should_reject_pending_device(
         headers=authorization_headers(device),
     )
 
-    # Device pendente nao esta autorizado a autenticar.
-    assert response.status_code == 403
+    # O portal do dono precisa ver o estado antes da ativacao.
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["status"] == "pending"
+    assert body["license_type"] is None
+    assert body["expired"] is False
+
+
+def test_should_activate_device_granting_trial(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    device = make_device(active=False)
+    device_repository.save(device)
+
+    response = client.post(
+        "/me/activation",
+        headers=authorization_headers(device),
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["status"] == "active"
+    assert body["license_type"] == "trial"
+    assert body["days_remaining"] == Device.TRIAL_DURATION_DAYS - 1
+    assert body["expired"] is False
+
+
+def test_should_reject_activation_when_trial_expired(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    device = make_device()
+    device.license_expires_at = datetime.now(timezone.utc) - timedelta(days=1)
+    device_repository.save(device)
+
+    response = client.post(
+        "/me/activation",
+        headers=authorization_headers(device),
+    )
+
+    assert response.status_code == 409
