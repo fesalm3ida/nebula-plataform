@@ -106,17 +106,29 @@ cd /home/fealmeida/projects/nebula-plataform/backend/nebula-core
 
 ## 4) Nebula Admin (BFF) — porta 8001
 
+O Admin lê automaticamente o arquivo **`backend/nebula-admin/.env`** (ignorado pelo git):
+
+```text
+ADMIN_SEED_EMAIL=admin@nebula.local
+ADMIN_SEED_PASSWORD=nebula@2026
+NEBULA_CORE_BASE_URL=http://localhost:8000
+NEBULA_CORE_SERVICE_TOKEN=dev-admin-key
+ADMIN_JWT_SECRET_KEY=<segredo>
+```
+
 ```bash
 cd /home/fealmeida/projects/nebula-plataform/backend/nebula-admin
-export ADMIN_JWT_SECRET_KEY='troque-por-um-segredo-longo'
-export ADMIN_SEED_PASSWORD='defina-a-senha-do-admin'
-export NEBULA_CORE_BASE_URL=http://localhost:8000
-export NEBULA_CORE_SERVICE_TOKEN=dev-admin-key     # = ADMIN_API_KEY do Core (default: dev-admin-key)
 PYTHONPATH=. ../nebula-core/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
-- Login de administrador no Admin UI: **`admin@nebula.local`** / a senha de `ADMIN_SEED_PASSWORD`.
-- `NEBULA_CORE_SERVICE_TOKEN` **precisa ser igual** ao `ADMIN_API_KEY` do Core.
-- Dica: crie `backend/nebula-admin/.env` com essas variáveis para não exportar toda vez.
+
+- **Login do Admin UI:** **`admin@nebula.local`** / **`nebula@2026`**.
+- `NEBULA_CORE_SERVICE_TOKEN` **precisa ser igual** ao `ADMIN_API_KEY` do Core (default `dev-admin-key`).
+- ⚠️ **Suba da pasta `backend/nebula-admin`**: se rodar de outra pasta, `app.main:app` resolve para o **Core** e a porta 8001 passa a servir as rotas do Core.
+- **Confirme que é o Admin** (e não o Core):
+  ```bash
+  curl -s http://localhost:8001/openapi.json | grep -o '"/admin[^"]*"' | head
+  # esperado: /admin/auth/login, /admin/devices, /admin/playlists, ...
+  ```
 
 ---
 
@@ -227,6 +239,8 @@ docker stop nebula-postgres      # opcional; o container reinicia com o Docker
 | Sintoma | Causa | Solução |
 |---|---|---|
 | Login no Admin falha com `Failed to fetch` | CORS/host errado | BFF com CORS (já habilitado) + `NEBULA_ADMIN_API` apontando para o **IP do WSL** |
+| `openapi.json` da 8001 mostra rotas do **Core** (`/devices`, `/playlists`) | BFF subido da pasta errada | Subir o uvicorn a partir de `backend/nebula-admin` (passo 4) |
+| Não sabe a senha do Admin UI | `ADMIN_SEED_PASSWORD` sem padrão | Definida em `backend/nebula-admin/.env` (`nebula@2026`) |
 | `usbipd attach` → VBoxUsbMon error | driver/usbpcap | reinstalar usbipd + remover USBPcap + reboot (ou usar Wi‑Fi) |
 | `adb: unknown command pair` | adb antigo (apt) | usar `$ANDROID_HOME/platform-tools/adb` |
 | App: `Falha ao iniciar sessão (409)` | sessão ativa antiga | já corrigido (o Core **retoma** a sessão) |
