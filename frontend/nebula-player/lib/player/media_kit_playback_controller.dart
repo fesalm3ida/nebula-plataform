@@ -22,7 +22,6 @@ class MediaKitPlaybackController implements PlaybackController {
     seekBarPositionColor: NebulaColors.primary,
     seekBarThumbColor: NebulaColors.primary,
     seekBarBufferColor: Color(0x4DFFFFFF),
-    seekBarBackgroundColor: Color(0x33FFFFFF),
     buttonBarButtonColor: NebulaColors.textPrimary,
   );
 
