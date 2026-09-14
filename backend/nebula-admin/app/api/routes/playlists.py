@@ -11,7 +11,11 @@ from app.api.schemas.playlists import (
     PlaylistOut,
 )
 from app.api.security.current_admin import get_current_admin
-from app.application.exceptions import CoreCommunicationError
+from app.application.exceptions import (
+    CoreCommunicationError,
+    CoreConflictError,
+    CoreResourceNotFoundError,
+)
 from app.application.ports.nebula_core_gateway import NebulaCoreGateway
 from app.application.use_cases.assignments import (
     AssignPlaylistCommand,
@@ -41,6 +45,26 @@ def _to_out(playlist) -> PlaylistOut:
     )
 
 
+def _raise_http_error(error: Exception) -> None:
+    """Traduz erros do gateway em respostas HTTP do BFF."""
+    if isinstance(error, CoreResourceNotFoundError):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+
+    if isinstance(error, CoreConflictError):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error
+
+    raise HTTPException(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        detail=str(error),
+    ) from error
+
+
 @router.get(
     "",
     response_model=PlaylistListResponse,
@@ -54,11 +78,12 @@ async def list_playlists(
 
     try:
         result = await use_case.execute()
-    except CoreCommunicationError as error:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(error),
-        ) from error
+    except (
+        CoreCommunicationError,
+        CoreConflictError,
+        CoreResourceNotFoundError,
+    ) as error:
+        _raise_http_error(error)
 
     return PlaylistListResponse(
         playlists=[_to_out(playlist) for playlist in result.playlists]
@@ -85,11 +110,12 @@ async def create_playlist(
                 source_url=payload.source_url,
             )
         )
-    except CoreCommunicationError as error:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(error),
-        ) from error
+    except (
+        CoreCommunicationError,
+        CoreConflictError,
+        CoreResourceNotFoundError,
+    ) as error:
+        _raise_http_error(error)
 
     return _to_out(result)
 
@@ -113,11 +139,12 @@ async def assign_playlist(
                 playlist_id=payload.playlist_id,
             )
         )
-    except CoreCommunicationError as error:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=str(error),
-        ) from error
+    except (
+        CoreCommunicationError,
+        CoreConflictError,
+        CoreResourceNotFoundError,
+    ) as error:
+        _raise_http_error(error)
 
     return PlaylistAssignmentResponse(
         assignment_id=result.assignment_id,

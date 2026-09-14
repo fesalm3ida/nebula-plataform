@@ -1,7 +1,11 @@
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 
+from app.application.exceptions import (
+    CoreConflictError,
+    CoreResourceNotFoundError,
+)
 from app.application.ports.nebula_core_gateway import CorePlaylist
 from app.application.security.admin_token_service import AdminTokenService
 from tests.conftest import (
@@ -100,3 +104,57 @@ def test_should_assign_playlist_to_device(
 
     assert body["status"] == "active"
     assert "assignment_id" in body
+
+
+def test_should_map_core_conflict_to_409(
+    client: TestClient,
+    admin_token_service: AdminTokenService,
+    fake_core_gateway: FakeNebulaCoreGateway,
+    monkeypatch,
+) -> None:
+    async def fake_assign(device_id: UUID, playlist_id: UUID):
+        raise CoreConflictError("Device already has an active assignment.")
+
+    monkeypatch.setattr(
+        fake_core_gateway,
+        "assign_playlist_to_device",
+        fake_assign,
+    )
+
+    response = client.post(
+        "/admin/playlists/assignments",
+        headers=auth_headers(admin_token_service),
+        json={
+            "device_id": str(uuid4()),
+            "playlist_id": str(uuid4()),
+        },
+    )
+
+    assert response.status_code == 409
+
+
+def test_should_map_core_not_found_to_404(
+    client: TestClient,
+    admin_token_service: AdminTokenService,
+    fake_core_gateway: FakeNebulaCoreGateway,
+    monkeypatch,
+) -> None:
+    async def fake_assign(device_id: UUID, playlist_id: UUID):
+        raise CoreResourceNotFoundError("Playlist not found.")
+
+    monkeypatch.setattr(
+        fake_core_gateway,
+        "assign_playlist_to_device",
+        fake_assign,
+    )
+
+    response = client.post(
+        "/admin/playlists/assignments",
+        headers=auth_headers(admin_token_service),
+        json={
+            "device_id": str(uuid4()),
+            "playlist_id": str(uuid4()),
+        },
+    )
+
+    assert response.status_code == 404

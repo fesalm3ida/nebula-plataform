@@ -44,7 +44,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
                     f"{self._base_url}/playlists",
                     headers=self._headers(),
                 )
-                response.raise_for_status()
+                self._ensure_success(response)
                 data = response.json()
         except httpx.HTTPError as error:
             raise CoreCommunicationError(
@@ -73,7 +73,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
                         "source_url": source_url,
                     },
                 )
-                response.raise_for_status()
+                self._ensure_success(response)
                 payload = response.json()
         except httpx.HTTPError as error:
             raise CoreCommunicationError(
@@ -89,7 +89,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
                     f"{self._base_url}/devices",
                     headers=self._headers(),
                 )
-                response.raise_for_status()
+                self._ensure_success(response)
                 data = response.json()
         except httpx.HTTPError as error:
             raise CoreCommunicationError(
@@ -139,7 +139,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
                         "playlist_id": str(playlist_id),
                     },
                 )
-                response.raise_for_status()
+                self._ensure_success(response)
                 payload = response.json()
         except httpx.HTTPError as error:
             raise CoreCommunicationError(

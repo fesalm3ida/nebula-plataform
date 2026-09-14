@@ -109,6 +109,16 @@ class AdminApiClient {
       headers: {'Authorization': 'Bearer $token'},
     );
 
+    if (response.statusCode == 404) {
+      throw AdminApiException('Device não encontrado.');
+    }
+
+    if (response.statusCode == 409) {
+      throw AdminApiException(
+        'Transição de status inválida para este device.',
+      );
+    }
+
     if (response.statusCode != 200) {
       throw AdminApiException(
         'Falha em "$action" (${response.statusCode}).',
@@ -136,6 +146,16 @@ class AdminApiClient {
         'playlist_id': playlistId,
       }),
     );
+
+    if (response.statusCode == 409) {
+      throw AdminApiException(
+        'Este device já possui uma playlist associada.',
+      );
+    }
+
+    if (response.statusCode == 404) {
+      throw AdminApiException('Device ou playlist não encontrado.');
+    }
 
     if (response.statusCode != 200 && response.statusCode != 201) {
       throw AdminApiException(
