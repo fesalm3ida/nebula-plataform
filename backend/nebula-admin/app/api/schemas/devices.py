@@ -13,3 +13,8 @@ class DeviceOut(BaseModel):
 
 class DeviceListResponse(BaseModel):
     devices: list[DeviceOut]
+
+
+class DeviceStatusResponse(BaseModel):
+    device_id: UUID
+    status: str

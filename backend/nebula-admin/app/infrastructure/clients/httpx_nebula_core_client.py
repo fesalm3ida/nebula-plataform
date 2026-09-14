@@ -2,9 +2,14 @@ from uuid import UUID
 
 import httpx
 
-from app.application.exceptions import CoreCommunicationError
+from app.application.exceptions import (
+    CoreCommunicationError,
+    CoreConflictError,
+    CoreResourceNotFoundError,
+)
 from app.application.ports.nebula_core_gateway import (
     CoreDevice,
+    CoreDeviceStatus,
     CorePlaylist,
     CorePlaylistAssignment,
     NebulaCoreGateway,
@@ -96,6 +101,29 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
             for payload in data.get("devices", [])
         ]
 
+    async def set_device_status(
+        self,
+        device_id: UUID,
+        action: str,
+    ) -> CoreDeviceStatus:
+        try:
+            async with httpx.AsyncClient(transport=self._transport) as client:
+                response = await client.post(
+                    f"{self._base_url}/devices/{device_id}/{action}",
+                    headers=self._headers(),
+                )
+                self._ensure_success(response)
+                payload = response.json()
+        except httpx.HTTPError as error:
+            raise CoreCommunicationError(
+                "Failed to reach the Nebula Core."
+            ) from error
+
+        return CoreDeviceStatus(
+            device_id=UUID(payload["device_id"]),
+            status=payload["status"],
+        )
+
     async def assign_playlist_to_device(
         self,
         device_id: UUID,
@@ -119,6 +147,22 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
             ) from error
 
         return self._to_core_assignment(payload)
+
+    @staticmethod
+    def _ensure_success(response: httpx.Response) -> None:
+        """Traduz erros do Core em erros do Admin quando possível."""
+        if response.status_code == 404:
+            raise CoreResourceNotFoundError(
+                "Resource not found in the Nebula Core."
+            )
+
+        if response.status_code in (400, 409):
+            raise CoreConflictError(
+                "Nebula Core rejected the operation "
+                f"({response.status_code})."
+            )
+
+        response.raise_for_status()
 
     @staticmethod
     def _to_core_playlist(payload: dict) -> CorePlaylist:

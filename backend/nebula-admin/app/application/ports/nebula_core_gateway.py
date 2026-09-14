@@ -26,6 +26,14 @@ class CoreDevice:
 
 
 @dataclass(frozen=True)
+class CoreDeviceStatus:
+    """Resultado de uma transição de estado de Device no Core."""
+
+    device_id: UUID
+    status: str
+
+
+@dataclass(frozen=True)
 class CorePlaylistAssignment:
     """Subconjunto do contrato de PlaylistAssignment do Core."""
 
@@ -54,6 +62,17 @@ class NebulaCoreGateway(ABC):
     @abstractmethod
     async def list_devices(self) -> list[CoreDevice]:
         """List devices from the Nebula Core (admin)."""
+
+    @abstractmethod
+    async def set_device_status(
+        self,
+        device_id: UUID,
+        action: str,
+    ) -> CoreDeviceStatus:
+        """Apply a lifecycle action to a device in the Nebula Core (admin).
+
+        ``action`` is one of ``activate``, ``block`` or ``revoke``.
+        """
 
     @abstractmethod
     async def assign_playlist_to_device(

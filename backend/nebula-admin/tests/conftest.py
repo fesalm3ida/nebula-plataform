@@ -7,8 +7,10 @@ from fastapi.testclient import TestClient
 from app.api.dependencies.admin_repository import get_admin_repository
 from app.api.dependencies.admin_token_service import get_admin_token_service
 from app.api.dependencies.nebula_core_gateway import get_nebula_core_gateway
+from app.application.exceptions import CoreResourceNotFoundError
 from app.application.ports.nebula_core_gateway import (
     CoreDevice,
+    CoreDeviceStatus,
     CorePlaylist,
     CorePlaylistAssignment,
     NebulaCoreGateway,
@@ -58,6 +60,48 @@ class FakeNebulaCoreGateway(NebulaCoreGateway):
 
     async def list_devices(self) -> list[CoreDevice]:
         return list(self._devices)
+
+    def add_device(self, status: str = "pending") -> CoreDevice:
+        device = CoreDevice(
+            device_id=uuid4(),
+            platform="android_tv",
+            status=status,
+            app_version="0.1.0",
+            created_at="2026-09-14T00:00:00Z",
+        )
+        self._devices.append(device)
+
+        return device
+
+    async def set_device_status(
+        self,
+        device_id: UUID,
+        action: str,
+    ) -> CoreDeviceStatus:
+        status_by_action = {
+            "activate": "active",
+            "block": "blocked",
+            "revoke": "revoked",
+        }
+        new_status = status_by_action[action]
+
+        if not any(item.device_id == device_id for item in self._devices):
+            raise CoreResourceNotFoundError("Device not found.")
+
+        self._devices = [
+            CoreDevice(
+                device_id=item.device_id,
+                platform=item.platform,
+                status=(
+                    new_status if item.device_id == device_id else item.status
+                ),
+                app_version=item.app_version,
+                created_at=item.created_at,
+            )
+            for item in self._devices
+        ]
+
+        return CoreDeviceStatus(device_id=device_id, status=new_status)
 
     async def assign_playlist_to_device(
         self,
