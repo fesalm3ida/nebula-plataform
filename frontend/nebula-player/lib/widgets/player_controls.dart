@@ -33,16 +33,16 @@ class PlayerControls extends StatelessWidget {
           Row(
             children: [
               _PlayPauseButton(controller: controller),
-              const Spacer(),
+              const SizedBox(width: 8),
               const Icon(
                 Icons.volume_up,
                 color: NebulaColors.textPrimary,
                 size: 20,
               ),
-              SizedBox(
-                width: 150,
-                child: _VolumeSlider(controller: controller),
-              ),
+              const SizedBox(width: 4),
+              // Largura flexivel: a barra de volume sempre aparece (e e
+              // ajustavel), mesmo em areas estreitas (preview do Ao vivo).
+              Expanded(child: _VolumeSlider(controller: controller)),
             ],
           ),
           _ProgressBar(controller: controller),
