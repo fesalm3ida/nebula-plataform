@@ -106,6 +106,9 @@ cd /home/fealmeida/projects/nebula-plataform/backend/nebula-core
 
 ## 4) Nebula Admin (BFF) — porta 8001
 
+> ⚠️ **Não confunda as pastas:** o **BFF** (Python) é `backend/nebula-admin`;
+> a **UI** (Flutter Web) é `frontend/nebula-admin`.
+
 O Admin lê automaticamente o arquivo **`backend/nebula-admin/.env`** (ignorado pelo git):
 
 ```text
@@ -241,6 +244,7 @@ docker stop nebula-postgres      # opcional; o container reinicia com o Docker
 | Login no Admin falha com `Failed to fetch` | CORS/host errado | BFF com CORS (já habilitado) + `NEBULA_ADMIN_API` apontando para o **IP do WSL** |
 | `openapi.json` da 8001 mostra rotas do **Core** (`/devices`, `/playlists`) | BFF subido da pasta errada | Subir o uvicorn a partir de `backend/nebula-admin` (passo 4) |
 | Não sabe a senha do Admin UI | `ADMIN_SEED_PASSWORD` sem padrão | Definida em `backend/nebula-admin/.env` (`nebula@2026`) |
+| `no such file or directory: ../nebula-core/.venv/bin/uvicorn` | Rodou o BFF a partir de `frontend/nebula-admin` | O BFF fica em **`backend/`**nebula-admin |
 | `usbipd attach` → VBoxUsbMon error | driver/usbpcap | reinstalar usbipd + remover USBPcap + reboot (ou usar Wi‑Fi) |
 | `adb: unknown command pair` | adb antigo (apt) | usar `$ANDROID_HOME/platform-tools/adb` |
 | App: `Falha ao iniciar sessão (409)` | sessão ativa antiga | já corrigido (o Core **retoma** a sessão) |
