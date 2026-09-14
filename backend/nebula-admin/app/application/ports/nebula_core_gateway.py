@@ -43,6 +43,30 @@ class CorePlaylistAssignment:
     status: str
 
 
+@dataclass(frozen=True)
+class CorePortalSession:
+    """Sessão do **usuário** no portal (token do Device emitido pelo Core)."""
+
+    access_token: str
+    token_type: str
+    expires_at: str
+    device_id: UUID
+    device_status: str
+
+
+@dataclass(frozen=True)
+class CoreLicense:
+    """Estado de licença de um Device."""
+
+    device_id: UUID
+    status: str
+    license_type: str | None
+    activated_at: str | None
+    expires_at: str | None
+    days_remaining: int | None
+    expired: bool
+
+
 class NebulaCoreGateway(ABC):
     """Porta de comunicação com o Nebula Core (único dono do domínio/persistência)."""
 
@@ -73,6 +97,38 @@ class NebulaCoreGateway(ABC):
 
         ``action`` is one of ``activate``, ``block`` or ``revoke``.
         """
+
+    # --- Portal do usuario (autenticado pelo token do Device) ---------------
+
+    @abstractmethod
+    async def authenticate_portal(
+        self,
+        mac_address: str,
+        activation_code: str,
+    ) -> CorePortalSession:
+        """Autentica o usuario no portal (MAC + codigo de ativacao)."""
+
+    @abstractmethod
+    async def get_device_license(self, token: str) -> CoreLicense:
+        """Estado de licenca do Device autenticado."""
+
+    @abstractmethod
+    async def activate_device(self, token: str) -> CoreLicense:
+        """Primeira ativacao (gratuita, concede o trial de 7 dias)."""
+
+    @abstractmethod
+    async def get_own_playlist(self, token: str) -> CorePlaylist | None:
+        """Lista atualmente associada ao Device."""
+
+    @abstractmethod
+    async def register_own_playlist(
+        self,
+        token: str,
+        name: str,
+        source_url: str,
+        format: str,
+    ) -> CorePlaylist:
+        """Cadastra a lista do usuario e a associa ao Device dele."""
 
     @abstractmethod
     async def assign_playlist_to_device(

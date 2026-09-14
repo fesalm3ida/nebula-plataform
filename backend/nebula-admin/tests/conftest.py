@@ -11,8 +11,10 @@ from app.application.exceptions import CoreResourceNotFoundError
 from app.application.ports.nebula_core_gateway import (
     CoreDevice,
     CoreDeviceStatus,
+    CoreLicense,
     CorePlaylist,
     CorePlaylistAssignment,
+    CorePortalSession,
     NebulaCoreGateway,
 )
 from app.application.security.admin_token_service import AdminTokenService
@@ -37,6 +39,8 @@ class FakeNebulaCoreGateway(NebulaCoreGateway):
         self._playlists: list[CorePlaylist] = []
         self._devices: list[CoreDevice] = []
         self._assignments: list[CorePlaylistAssignment] = []
+        self._license_type: str | None = None
+        self._own_playlist: CorePlaylist | None = None
 
     async def list_playlists(self) -> list[CorePlaylist]:
         return list(self._playlists)
@@ -102,6 +106,66 @@ class FakeNebulaCoreGateway(NebulaCoreGateway):
         ]
 
         return CoreDeviceStatus(device_id=device_id, status=new_status)
+
+    async def authenticate_portal(
+        self,
+        mac_address: str,
+        activation_code: str,
+    ) -> CorePortalSession:
+        if not self._devices:
+            self.add_device()
+
+        device = self._devices[0]
+
+        return CorePortalSession(
+            access_token=f"device-token-{device.device_id}",
+            token_type="bearer",
+            expires_at="2026-09-14T12:00:00Z",
+            device_id=device.device_id,
+            device_status=device.status,
+        )
+
+    async def get_device_license(self, token: str) -> CoreLicense:
+        if not self._devices:
+            self.add_device()
+
+        device = self._devices[0]
+
+        return CoreLicense(
+            device_id=device.device_id,
+            status=device.status,
+            license_type=self._license_type,
+            activated_at=None,
+            expires_at=None,
+            days_remaining=7 if self._license_type else None,
+            expired=False,
+        )
+
+    async def activate_device(self, token: str) -> CoreLicense:
+        self._license_type = "trial"
+
+        return await self.get_device_license(token)
+
+    async def get_own_playlist(self, token: str) -> CorePlaylist | None:
+        return self._own_playlist
+
+    async def register_own_playlist(
+        self,
+        token: str,
+        name: str,
+        source_url: str,
+        format: str,
+    ) -> CorePlaylist:
+        playlist = CorePlaylist(
+            playlist_id=uuid4(),
+            name=name,
+            format=format,
+            source_url=source_url,
+            status="active",
+        )
+        self._own_playlist = playlist
+
+        return playlist
 
     async def assign_playlist_to_device(
         self,

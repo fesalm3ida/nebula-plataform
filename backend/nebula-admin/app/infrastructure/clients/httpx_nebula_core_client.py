@@ -10,8 +10,10 @@ from app.application.exceptions import (
 from app.application.ports.nebula_core_gateway import (
     CoreDevice,
     CoreDeviceStatus,
+    CoreLicense,
     CorePlaylist,
     CorePlaylistAssignment,
+    CorePortalSession,
     NebulaCoreGateway,
 )
 
@@ -147,6 +149,125 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
             ) from error
 
         return self._to_core_assignment(payload)
+
+    # --- Portal do usuario ---------------------------------------------------
+
+    @staticmethod
+    def _bearer(token: str) -> dict[str, str]:
+        return {"Authorization": f"Bearer {token}"}
+
+    async def authenticate_portal(
+        self,
+        mac_address: str,
+        activation_code: str,
+    ) -> CorePortalSession:
+        try:
+            async with httpx.AsyncClient(transport=self._transport) as client:
+                response = await client.post(
+                    f"{self._base_url}/auth/portal",
+                    json={
+                        "mac_address": mac_address,
+                        "activation_code": activation_code,
+                    },
+                )
+                self._ensure_success(response)
+                payload = response.json()
+        except httpx.HTTPError as error:
+            raise CoreCommunicationError(
+                "Failed to reach the Nebula Core."
+            ) from error
+
+        return CorePortalSession(
+            access_token=payload["access_token"],
+            token_type=payload["token_type"],
+            expires_at=payload["expires_at"],
+            device_id=UUID(payload["device_id"]),
+            device_status=payload["device_status"],
+        )
+
+    async def get_device_license(self, token: str) -> CoreLicense:
+        return await self._license_request("GET", "/me/license", token)
+
+    async def activate_device(self, token: str) -> CoreLicense:
+        return await self._license_request("POST", "/me/activation", token)
+
+    async def _license_request(
+        self,
+        method: str,
+        path: str,
+        token: str,
+    ) -> CoreLicense:
+        try:
+            async with httpx.AsyncClient(transport=self._transport) as client:
+                response = await client.request(
+                    method,
+                    f"{self._base_url}{path}",
+                    headers=self._bearer(token),
+                )
+                self._ensure_success(response)
+                payload = response.json()
+        except httpx.HTTPError as error:
+            raise CoreCommunicationError(
+                "Failed to reach the Nebula Core."
+            ) from error
+
+        return CoreLicense(
+            device_id=UUID(payload["device_id"]),
+            status=payload["status"],
+            license_type=payload.get("license_type"),
+            activated_at=payload.get("activated_at"),
+            expires_at=payload.get("expires_at"),
+            days_remaining=payload.get("days_remaining"),
+            expired=payload["expired"],
+        )
+
+    async def get_own_playlist(self, token: str) -> CorePlaylist | None:
+        try:
+            async with httpx.AsyncClient(transport=self._transport) as client:
+                response = await client.get(
+                    f"{self._base_url}/me/playlist",
+                    headers=self._bearer(token),
+                )
+                self._ensure_success(response)
+                payload = response.json()
+        except httpx.HTTPError as error:
+            raise CoreCommunicationError(
+                "Failed to reach the Nebula Core."
+            ) from error
+
+        playlist = payload.get("playlist")
+
+        if not playlist:
+            return None
+
+        return self._to_core_playlist(playlist)
+
+    async def register_own_playlist(
+        self,
+        token: str,
+        name: str,
+        source_url: str,
+        format: str,
+    ) -> CorePlaylist:
+        try:
+            async with httpx.AsyncClient(transport=self._transport) as client:
+                response = await client.post(
+                    f"{self._base_url}/me/playlist",
+                    headers=self._bearer(token),
+                    json={
+                        "name": name,
+                        "source_url": source_url,
+                        "format": format,
+                    },
+                )
+                self._ensure_success(response)
+                payload = response.json()
+        except httpx.HTTPError as error:
+            raise CoreCommunicationError(
+                "Failed to reach the Nebula Core."
+            ) from error
+
+        return self._to_core_playlist(payload)
 
     @staticmethod
     def _ensure_success(response: httpx.Response) -> None:
