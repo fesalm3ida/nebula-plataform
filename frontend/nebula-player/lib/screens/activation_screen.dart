@@ -147,9 +147,9 @@ class _ActivationScreenState extends State<ActivationScreen> {
                     style: TextStyle(color: NebulaColors.textSecondary),
                   ),
                   const SizedBox(height: 4),
-                  Text(
+                  const Text(
                     ApiConfig.portalUrl,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: NebulaColors.primary,
                       fontWeight: FontWeight.bold,
                     ),
