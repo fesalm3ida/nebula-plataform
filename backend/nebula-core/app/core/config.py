@@ -139,6 +139,30 @@ class Settings(BaseSettings):
         ),
     )
 
+    mercadopago_access_token: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "MERCADOPAGO_ACCESS_TOKEN",
+            "mercadopago_access_token",
+        ),
+    )
+
+    mercadopago_webhook_secret: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "MERCADOPAGO_WEBHOOK_SECRET",
+            "mercadopago_webhook_secret",
+        ),
+    )
+
+    payment_provider: str = Field(
+        default="mercadopago",
+        validation_alias=AliasChoices(
+            "PAYMENT_PROVIDER",
+            "payment_provider",
+        ),
+    )
+
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
         env_file_encoding="utf-8",

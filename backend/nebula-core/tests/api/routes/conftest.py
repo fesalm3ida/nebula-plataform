@@ -20,6 +20,10 @@ from app.api.dependencies.session_repository import (
 from app.api.dependencies.telemetry_event_repository import (
     get_telemetry_event_repository,
 )
+from app.api.dependencies.payment_gateway import get_payment_gateway
+from app.api.dependencies.payment_repository import (
+    get_payment_repository,
+)
 from app.api.security.services import (
     get_access_token_service,
 )
@@ -41,6 +45,12 @@ from app.infrastructure.repositories.in_memory_playlist_repository import (
 )
 from app.infrastructure.repositories.in_memory_session_repository import (
     InMemorySessionRepository,
+)
+from app.infrastructure.payments.fake_payment_gateway import (
+    FakePaymentGateway,
+)
+from app.infrastructure.repositories.in_memory_payment_repository import (
+    InMemoryPaymentRepository,
 )
 from app.infrastructure.repositories.in_memory_telemetry_event_repository import (
     InMemoryTelemetryEventRepository,
@@ -105,6 +115,16 @@ def log_repository() -> InMemoryLogRepository:
 
 
 @pytest.fixture
+def payment_repository() -> InMemoryPaymentRepository:
+    return InMemoryPaymentRepository()
+
+
+@pytest.fixture
+def payment_gateway() -> FakePaymentGateway:
+    return FakePaymentGateway()
+
+
+@pytest.fixture
 def access_token_service() -> AccessTokenService:
     return FakeAccessTokenService()
 
@@ -118,6 +138,8 @@ def override_dependencies(
     telemetry_event_repository: InMemoryTelemetryEventRepository,
     log_repository: InMemoryLogRepository,
     access_token_service: AccessTokenService,
+    payment_repository: InMemoryPaymentRepository,
+    payment_gateway: FakePaymentGateway,
 ) -> Generator[None, None, None]:
     app.dependency_overrides[get_device_repository] = (
         lambda: device_repository
@@ -139,6 +161,12 @@ def override_dependencies(
     )
     app.dependency_overrides[get_access_token_service] = (
         lambda: access_token_service
+    )
+    app.dependency_overrides[get_payment_repository] = (
+        lambda: payment_repository
+    )
+    app.dependency_overrides[get_payment_gateway] = (
+        lambda: payment_gateway
     )
 
     try:

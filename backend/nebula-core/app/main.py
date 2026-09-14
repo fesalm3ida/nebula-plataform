@@ -7,6 +7,7 @@ from app.api.routes.provisioning import router as provisioning_router
 from app.api.routes.observability import router as observability_router
 from app.api.routes.license import router as license_router
 from app.api.routes.portal import router as portal_router
+from app.api.routes.payments import router as payments_router
 
 
 app = FastAPI(
@@ -22,6 +23,7 @@ app.include_router(provisioning_router)
 app.include_router(observability_router)
 app.include_router(license_router)
 app.include_router(portal_router)
+app.include_router(payments_router)
 
 
 @app.get("/")
