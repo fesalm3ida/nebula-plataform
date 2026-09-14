@@ -163,6 +163,14 @@ class Settings(BaseSettings):
         ),
     )
 
+    mercadopago_notification_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "MERCADOPAGO_NOTIFICATION_URL",
+            "mercadopago_notification_url",
+        ),
+    )
+
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
         env_file_encoding="utf-8",

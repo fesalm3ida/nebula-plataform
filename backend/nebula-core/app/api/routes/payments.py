@@ -26,6 +26,7 @@ from app.application.use_cases.create_license_purchase import (
     CreateLicensePurchaseCommand,
     CreateLicensePurchaseUseCase,
 )
+from app.core.config import get_settings
 from app.domain.entities.device import Device
 from app.domain.enums.license_product import LicenseProduct
 from app.domain.licensing.catalog import list_plans
@@ -89,6 +90,9 @@ async def purchase_license(
         CreateLicensePurchaseCommand(
             device=current_device,
             product=LicenseProduct(payload.product),
+            notification_url=(
+                get_settings().mercadopago_notification_url
+            ),
         )
     )
 

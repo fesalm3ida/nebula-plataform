@@ -16,6 +16,7 @@ from app.domain.repositories.payment_repository import PaymentRepository
 class CreateLicensePurchaseCommand:
     device: Device
     product: LicenseProduct
+    notification_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,7 @@ class CreateLicensePurchaseUseCase:
                 title=plan.title,
                 unit_price_cents=plan.price_cents,
                 external_reference=str(payment.payment_id),
+                notification_url=command.notification_url,
             )
         )
 
