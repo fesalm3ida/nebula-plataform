@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../player/playback_controller.dart';
 import '../theme/nebula_theme.dart';
 
-/// Controles do player: barra de progresso (seek), play/pause e volume.
+/// Controles do player, sobrepostos ao vídeo pelo chamador (via `Stack`).
 ///
-/// É sobreposto ao vídeo pelo chamador (via `Stack`), garantindo o mesmo
-/// posicionamento em retrato e paisagem.
+/// Ordem vertical: **volume** (topo), **barra de progresso** (meio) e
+/// **play/pause** (base). Em streams ao vivo, a barra de progresso é omitida.
 class PlayerControls extends StatelessWidget {
   const PlayerControls({super.key, required this.controller});
 
@@ -26,110 +26,149 @@ class PlayerControls extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.black54,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          StreamBuilder<Duration>(
-            stream: controller.duration,
-            initialData: Duration.zero,
-            builder: (context, durationSnapshot) {
-              final duration = durationSnapshot.data ?? Duration.zero;
+          _VolumeRow(controller: controller),
+          _ProgressBar(controller: controller),
+          _PlayPauseRow(controller: controller),
+        ],
+      ),
+    );
+  }
+}
 
-              // Streams ao vivo não têm duração: sem barra de progresso.
-              if (duration.inSeconds <= 0) {
-                return const SizedBox.shrink();
-              }
+/// Volume — fica na **parte superior** da barra de progresso.
+class _VolumeRow extends StatelessWidget {
+  const _VolumeRow({required this.controller});
 
-              return StreamBuilder<Duration>(
-                stream: controller.position,
-                initialData: Duration.zero,
-                builder: (context, positionSnapshot) {
-                  final position = positionSnapshot.data ?? Duration.zero;
-                  final max = duration.inMilliseconds.toDouble();
-                  final raw = position.inMilliseconds.toDouble();
-                  final value = raw > max ? max : (raw < 0 ? 0.0 : raw);
+  final PlaybackController controller;
 
-                  return Row(
-                    children: [
-                      Text(
-                        _format(position),
-                        style: const TextStyle(
-                          color: NebulaColors.textPrimary,
-                          fontSize: 12,
-                        ),
-                      ),
-                      Expanded(
-                        child: Slider(
-                          value: value,
-                          max: max,
-                          activeColor: NebulaColors.primary,
-                          inactiveColor: Colors.white24,
-                          onChanged: (value) => controller.seek(
-                            Duration(milliseconds: value.round()),
-                          ),
-                        ),
-                      ),
-                      Text(
-                        _format(duration),
-                        style: const TextStyle(
-                          color: NebulaColors.textPrimary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  );
-                },
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        const Icon(
+          Icons.volume_up,
+          color: NebulaColors.textPrimary,
+          size: 20,
+        ),
+        SizedBox(
+          width: 150,
+          child: StreamBuilder<double>(
+            stream: controller.volume,
+            initialData: 100,
+            builder: (context, snapshot) {
+              final volume = (snapshot.data ?? 100).clamp(0, 100).toDouble();
+
+              return Slider(
+                value: volume,
+                max: 100,
+                activeColor: NebulaColors.primary,
+                inactiveColor: Colors.white24,
+                onChanged: controller.setVolume,
               );
             },
           ),
-          Row(
-            children: [
-              StreamBuilder<bool>(
-                stream: controller.playing,
-                initialData: false,
-                builder: (context, snapshot) {
-                  final playing = snapshot.data ?? false;
+        ),
+      ],
+    );
+  }
+}
 
-                  return IconButton(
-                    tooltip: playing ? 'Pausar' : 'Reproduzir',
-                    icon: Icon(
-                      playing ? Icons.pause : Icons.play_arrow,
-                      color: NebulaColors.textPrimary,
-                    ),
-                    onPressed: controller.playOrPause,
-                  );
-                },
-              ),
-              const Spacer(),
-              const Icon(
-                Icons.volume_up,
-                color: NebulaColors.textPrimary,
-                size: 20,
-              ),
-              SizedBox(
-                width: 140,
-                child: StreamBuilder<double>(
-                  stream: controller.volume,
-                  initialData: 100,
-                  builder: (context, snapshot) {
-                    final volume =
-                        (snapshot.data ?? 100).clamp(0, 100).toDouble();
+/// Barra de progresso (posição / duração) — oculta em transmissões ao vivo.
+class _ProgressBar extends StatelessWidget {
+  const _ProgressBar({required this.controller});
 
-                    return Slider(
-                      value: volume,
-                      max: 100,
-                      activeColor: NebulaColors.primary,
-                      inactiveColor: Colors.white24,
-                      onChanged: controller.setVolume,
-                    );
-                  },
+  final PlaybackController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<Duration>(
+      stream: controller.duration,
+      initialData: Duration.zero,
+      builder: (context, durationSnapshot) {
+        final duration = durationSnapshot.data ?? Duration.zero;
+
+        // Streams ao vivo não têm duração: sem barra de progresso.
+        if (duration.inSeconds <= 0) {
+          return const SizedBox.shrink();
+        }
+
+        return StreamBuilder<Duration>(
+          stream: controller.position,
+          initialData: Duration.zero,
+          builder: (context, positionSnapshot) {
+            final position = positionSnapshot.data ?? Duration.zero;
+            final max = duration.inMilliseconds.toDouble();
+            final raw = position.inMilliseconds.toDouble();
+            final value = raw > max ? max : (raw < 0 ? 0.0 : raw);
+
+            return Row(
+              children: [
+                Text(
+                  PlayerControls._format(position),
+                  style: const TextStyle(
+                    color: NebulaColors.textPrimary,
+                    fontSize: 12,
+                  ),
                 ),
+                Expanded(
+                  child: Slider(
+                    value: value,
+                    max: max,
+                    activeColor: NebulaColors.primary,
+                    inactiveColor: Colors.white24,
+                    onChanged: (value) => controller.seek(
+                      Duration(milliseconds: value.round()),
+                    ),
+                  ),
+                ),
+                Text(
+                  PlayerControls._format(duration),
+                  style: const TextStyle(
+                    color: NebulaColors.textPrimary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// Play/pause.
+class _PlayPauseRow extends StatelessWidget {
+  const _PlayPauseRow({required this.controller});
+
+  final PlaybackController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        StreamBuilder<bool>(
+          stream: controller.playing,
+          initialData: false,
+          builder: (context, snapshot) {
+            final playing = snapshot.data ?? false;
+
+            return IconButton(
+              tooltip: playing ? 'Pausar' : 'Reproduzir',
+              icon: Icon(
+                playing ? Icons.pause : Icons.play_arrow,
+                color: NebulaColors.textPrimary,
               ),
-            ],
-          ),
-        ],
-      ),
+              onPressed: controller.playOrPause,
+            );
+          },
+        ),
+      ],
     );
   }
 }
