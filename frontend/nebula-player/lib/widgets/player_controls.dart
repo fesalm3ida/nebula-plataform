@@ -48,7 +48,7 @@ class PlayerControls extends StatelessWidget {
                   final position = positionSnapshot.data ?? Duration.zero;
                   final max = duration.inMilliseconds.toDouble();
                   final raw = position.inMilliseconds.toDouble();
-                  final value = raw > max ? max : (raw < 0 ? 0 : raw);
+                  final value = raw > max ? max : (raw < 0 ? 0.0 : raw);
 
                   return Row(
                     children: [
