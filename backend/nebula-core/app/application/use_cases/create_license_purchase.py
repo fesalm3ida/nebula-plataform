@@ -17,6 +17,7 @@ class CreateLicensePurchaseCommand:
     device: Device
     product: LicenseProduct
     notification_url: str | None = None
+    back_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -54,6 +55,7 @@ class CreateLicensePurchaseUseCase:
                 unit_price_cents=plan.price_cents,
                 external_reference=str(payment.payment_id),
                 notification_url=command.notification_url,
+                back_url=command.back_url,
             )
         )
 

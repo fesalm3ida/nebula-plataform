@@ -1,5 +1,6 @@
 import httpx
 
+from app.application.exceptions import PaymentGatewayError
 from app.application.ports.payment_gateway import (
     CheckoutRequest,
     CheckoutResult,
@@ -38,20 +39,33 @@ class MercadoPagoClient(PaymentGateway):
                 }
             ],
             "external_reference": request.external_reference,
-            "auto_return": "approved",
         }
 
         if request.notification_url:
             payload["notification_url"] = request.notification_url
 
-        async with httpx.AsyncClient(transport=self._transport) as client:
-            response = await client.post(
-                f"{self.BASE_URL}/checkout/preferences",
-                headers=self._headers(),
-                json=payload,
-            )
-            response.raise_for_status()
-            data = response.json()
+        # O Mercado Pago exige `back_urls` quando `auto_return` e enviado.
+        if request.back_url:
+            payload["back_urls"] = {
+                "success": request.back_url,
+                "pending": request.back_url,
+                "failure": request.back_url,
+            }
+            payload["auto_return"] = "approved"
+
+        try:
+            async with httpx.AsyncClient(transport=self._transport) as client:
+                response = await client.post(
+                    f"{self.BASE_URL}/checkout/preferences",
+                    headers=self._headers(),
+                    json=payload,
+                )
+                response.raise_for_status()
+                data = response.json()
+        except httpx.HTTPError as error:
+            raise PaymentGatewayError(
+                "Falha ao criar o checkout no Mercado Pago."
+            ) from error
 
         return CheckoutResult(
             provider_reference=data["id"],
@@ -62,13 +76,18 @@ class MercadoPagoClient(PaymentGateway):
         self,
         provider_payment_id: str,
     ) -> PaymentConfirmation:
-        async with httpx.AsyncClient(transport=self._transport) as client:
-            response = await client.get(
-                f"{self.BASE_URL}/v1/payments/{provider_payment_id}",
-                headers=self._headers(),
-            )
-            response.raise_for_status()
-            data = response.json()
+        try:
+            async with httpx.AsyncClient(transport=self._transport) as client:
+                response = await client.get(
+                    f"{self.BASE_URL}/v1/payments/{provider_payment_id}",
+                    headers=self._headers(),
+                )
+                response.raise_for_status()
+                data = response.json()
+        except httpx.HTTPError as error:
+            raise PaymentGatewayError(
+                "Falha ao consultar o pagamento no Mercado Pago."
+            ) from error
 
         return PaymentConfirmation(
             status=data.get("status", "unknown"),

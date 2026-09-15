@@ -34,6 +34,10 @@ class LicenseExpiredError(Exception):
     """Raised when a Device license (trial or annual) has expired."""
 
 
+class PaymentGatewayError(Exception):
+    """Raised when the payment provider cannot be reached or rejects it."""
+
+
 class ActiveSessionAlreadyExistsError(Exception):
     """Raised when a Device already has an active Session."""
 

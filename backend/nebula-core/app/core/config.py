@@ -171,6 +171,14 @@ class Settings(BaseSettings):
         ),
     )
 
+    mercadopago_back_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "MERCADOPAGO_BACK_URL",
+            "mercadopago_back_url",
+        ),
+    )
+
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
         env_file_encoding="utf-8",

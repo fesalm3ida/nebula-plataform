@@ -17,6 +17,7 @@ from app.api.schemas.payment import (
 from app.api.security.current_portal_device import (
     get_current_portal_device,
 )
+from app.application.exceptions import PaymentGatewayError
 from app.application.ports.payment_gateway import PaymentGateway
 from app.application.use_cases.confirm_payment import (
     ConfirmPaymentCommand,
@@ -86,15 +87,22 @@ async def purchase_license(
         gateway=gateway,
     )
 
-    result = await use_case.execute(
-        CreateLicensePurchaseCommand(
-            device=current_device,
-            product=LicenseProduct(payload.product),
-            notification_url=(
-                get_settings().mercadopago_notification_url
-            ),
+    try:
+        result = await use_case.execute(
+            CreateLicensePurchaseCommand(
+                device=current_device,
+                product=LicenseProduct(payload.product),
+                notification_url=(
+                    get_settings().mercadopago_notification_url
+                ),
+                back_url=get_settings().mercadopago_back_url,
+            )
         )
-    )
+    except PaymentGatewayError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
 
     return PurchaseResponse(
         payment_id=result.payment_id,
@@ -135,11 +143,17 @@ async def mercadopago_webhook(
         gateway=gateway,
     )
 
-    result = await use_case.execute(
-        ConfirmPaymentCommand(
-            provider_payment_id=provider_payment_id,
+    try:
+        result = await use_case.execute(
+            ConfirmPaymentCommand(
+                provider_payment_id=provider_payment_id,
+            )
         )
-    )
+    except PaymentGatewayError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
 
     return {"status": "ok", "approved": str(result.approved).lower()}
 

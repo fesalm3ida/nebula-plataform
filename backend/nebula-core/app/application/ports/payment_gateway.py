@@ -10,6 +10,7 @@ class CheckoutRequest:
     unit_price_cents: int
     external_reference: str
     notification_url: str | None = None
+    back_url: str | None = None
 
 
 @dataclass(frozen=True)
