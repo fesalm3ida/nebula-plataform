@@ -127,7 +127,7 @@ async def purchase_license(
     ),
 )
 async def mercadopago_webhook(
-    payload: WebhookPayload,
+    payload: WebhookPayload | None = None,
     topic: str | None = None,
     mp_id: str | None = Query(default=None, alias="id"),
     payment_repository: PaymentRepository = Depends(
@@ -140,8 +140,9 @@ async def mercadopago_webhook(
 ) -> dict[str, str]:
     # O Mercado Pago notifica de duas formas: corpo JSON (topic/resource ou
     # data.id) ou query string (?topic=...&id=...).
-    notification_topic = topic or payload.topic or payload.type
-    provider_payment_id = _extract_payment_id(payload) or mp_id
+    body = payload or WebhookPayload()
+    notification_topic = topic or body.topic or body.type
+    provider_payment_id = _extract_payment_id(body) or mp_id
 
     if provider_payment_id is None:
         raise HTTPException(
