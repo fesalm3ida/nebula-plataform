@@ -1,9 +1,12 @@
 from sqlalchemy import text
 
+from app.core.config import get_settings
 from app.infrastructure.persistence.database import engine
 
 
 def test_should_connect_to_postgresql() -> None:
+    settings = get_settings()
+
     with engine.connect() as connection:
         result = connection.execute(
             text(
@@ -15,5 +18,5 @@ def test_should_connect_to_postgresql() -> None:
             )
         ).mappings().one()
 
-    assert result["database_name"] == "nebula"
-    assert result["database_user"] == "nebula"
+    assert result["database_name"] == settings.postgres_db
+    assert result["database_user"] == settings.postgres_user

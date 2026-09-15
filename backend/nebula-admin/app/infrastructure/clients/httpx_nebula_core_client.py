@@ -3,6 +3,7 @@ from uuid import UUID
 import httpx
 
 from app.application.exceptions import (
+    CoreAuthenticationError,
     CoreCommunicationError,
     CoreConflictError,
     CoreResourceNotFoundError,
@@ -323,6 +324,11 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
     @staticmethod
     def _ensure_success(response: httpx.Response) -> None:
         """Traduz erros do Core em erros do Admin quando possível."""
+        if response.status_code == 401:
+            raise CoreAuthenticationError(
+                "Invalid credentials."
+            )
+
         if response.status_code == 404:
             raise CoreResourceNotFoundError(
                 "Resource not found in the Nebula Core."

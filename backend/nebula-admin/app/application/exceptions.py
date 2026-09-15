@@ -6,6 +6,10 @@ class CoreCommunicationError(Exception):
     """Raised when the Nebula Core cannot be reached or returns an error."""
 
 
+class CoreAuthenticationError(Exception):
+    """Raised when the Nebula Core rejects the credentials (401)."""
+
+
 class CoreResourceNotFoundError(Exception):
     """Raised when the Nebula Core reports a resource as not found."""
 

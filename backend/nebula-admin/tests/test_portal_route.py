@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app.application.exceptions import CoreAuthenticationError
 from tests.conftest import FakeNebulaCoreGateway
 
 
@@ -24,6 +25,28 @@ def test_should_login_user_with_mac_and_activation_code(
 
     assert body["access_token"]
     assert body["device_status"] == "pending"
+
+
+def test_should_map_invalid_credentials_to_401(
+    client: TestClient,
+    fake_core_gateway: FakeNebulaCoreGateway,
+    monkeypatch,
+) -> None:
+    async def fake_login(mac_address: str, activation_code: str):
+        raise CoreAuthenticationError("Invalid credentials.")
+
+    monkeypatch.setattr(
+        fake_core_gateway,
+        "authenticate_portal",
+        fake_login,
+    )
+
+    response = client.post(
+        "/portal/auth/login",
+        json={"mac_address": "02:1A:2B:3C:4D:5E", "activation_code": "000000"},
+    )
+
+    assert response.status_code == 401
 
 
 def test_should_require_device_token(client: TestClient) -> None:

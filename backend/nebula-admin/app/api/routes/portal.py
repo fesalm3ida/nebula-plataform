@@ -16,6 +16,7 @@ from app.api.schemas.portal import (
     PortalPurchaseResponse,
 )
 from app.application.exceptions import (
+    CoreAuthenticationError,
     CoreCommunicationError,
     CoreConflictError,
     CoreResourceNotFoundError,
@@ -37,6 +38,13 @@ router = APIRouter(
 
 
 def _raise_http_error(error: Exception) -> None:
+    if isinstance(error, CoreAuthenticationError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="MAC Address ou código de ativação inválidos.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from error
+
     if isinstance(error, CoreResourceNotFoundError):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -112,6 +120,7 @@ async def portal_login(
             activation_code=payload.activation_code,
         )
     except (
+        CoreAuthenticationError,
         CoreCommunicationError,
         CoreConflictError,
         CoreResourceNotFoundError,
@@ -142,6 +151,7 @@ async def portal_device(
         license = await gateway.get_device_license(token)
         playlist = await gateway.get_own_playlist(token)
     except (
+        CoreAuthenticationError,
         CoreCommunicationError,
         CoreConflictError,
         CoreResourceNotFoundError,
@@ -173,6 +183,7 @@ async def activate_device(
         license = await gateway.activate_device(token)
         playlist = await gateway.get_own_playlist(token)
     except (
+        CoreAuthenticationError,
         CoreCommunicationError,
         CoreConflictError,
         CoreResourceNotFoundError,
@@ -206,6 +217,7 @@ async def register_playlist(
             format=payload.format,
         )
     except (
+        CoreAuthenticationError,
         CoreCommunicationError,
         CoreConflictError,
         CoreResourceNotFoundError,
@@ -229,6 +241,7 @@ async def list_plans(
     try:
         plans: list[CorePlan] = await gateway.list_plans(token)
     except (
+        CoreAuthenticationError,
         CoreCommunicationError,
         CoreConflictError,
         CoreResourceNotFoundError,
@@ -267,6 +280,7 @@ async def purchase_license(
             product=payload.product,
         )
     except (
+        CoreAuthenticationError,
         CoreCommunicationError,
         CoreConflictError,
         CoreResourceNotFoundError,
