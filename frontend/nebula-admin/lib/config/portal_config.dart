@@ -14,13 +14,16 @@ class PortalConfig {
     defaultValue: 'http://localhost:8001',
   );
 
-  /// Detecta se a URL atual é a rota secreta do administrador.
-  static bool get isAdminUrl {
-    final target = '${Uri.base.fragment} ${Uri.base.path}';
+  /// Verifica se a URL informada aponta para a rota secreta do administrador.
+  ///
+  /// Passe a URL capturada no início do app (`Uri.base.toString()`), antes de
+  /// o roteador do Flutter normalizar o fragmento.
+  static bool isAdminLocation(String location) =>
+      location.contains(adminPath);
 
-    return target.contains(adminPath);
-  }
+  /// Atalho usando a URL corrente do navegador.
+  static bool get isAdminUrl => isAdminLocation(Uri.base.toString());
 
-  /// URL que o administrador deve usar (para exibir/logar).
+  /// URL que o administrador deve usar (para exibir/documentar).
   static String get adminUrl => '/#/$adminPath';
 }

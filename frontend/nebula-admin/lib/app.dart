@@ -11,11 +11,15 @@ import 'screens/user_login_screen.dart';
 /// - **Administrador**: acessa a URL secreta (`.../#/<ADMIN_PATH>`), que só a
 ///   equipe conhece.
 class NebulaAdminApp extends StatelessWidget {
-  const NebulaAdminApp({super.key});
+  const NebulaAdminApp({super.key, this.initialLocation});
+
+  /// URL do navegador capturada no `main()` (antes do roteamento do Flutter).
+  final String? initialLocation;
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = PortalConfig.isAdminUrl;
+    final location = initialLocation ?? Uri.base.toString();
+    final isAdmin = PortalConfig.isAdminLocation(location);
 
     return MaterialApp(
       title: isAdmin ? 'Nebula Admin' : 'Nebula Player',
