@@ -75,6 +75,61 @@ class MercadoPagoClient(PaymentGateway):
             checkout_url=data["init_point"],
         )
 
+    async def find_merchant_order(
+        self,
+        merchant_order_id: str,
+    ) -> PaymentConfirmation | None:
+        try:
+            async with httpx.AsyncClient(transport=self._transport) as client:
+                response = await client.get(
+                    f"{self.BASE_URL}/merchant_orders/{merchant_order_id}",
+                    headers=self._headers(),
+                )
+                response.raise_for_status()
+                data = response.json()
+        except httpx.HTTPError as error:
+            raise PaymentGatewayError(
+                "Falha ao consultar a ordem no Mercado Pago."
+            ) from error
+
+        payments = data.get("payments") or []
+
+        approved = next(
+            (
+                item
+                for item in payments
+                if item.get("status") == "approved"
+            ),
+            None,
+        )
+
+        if approved is not None:
+            return PaymentConfirmation(
+                status="approved",
+                provider_payment_id=str(approved.get("id", "")),
+                external_reference=data.get("external_reference"),
+            )
+
+        if data.get("order_status") == "paid":
+            return PaymentConfirmation(
+                status="approved",
+                provider_payment_id="",
+                external_reference=data.get("external_reference"),
+            )
+
+        if payments:
+            return PaymentConfirmation(
+                status=payments[0].get("status", "pending"),
+                provider_payment_id=str(payments[0].get("id", "")),
+                external_reference=data.get("external_reference"),
+            )
+
+        return PaymentConfirmation(
+            status="pending",
+            provider_payment_id="",
+            external_reference=data.get("external_reference"),
+        )
+
     async def find_payment(
         self,
         external_reference: str,

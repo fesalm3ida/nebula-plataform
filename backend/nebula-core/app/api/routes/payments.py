@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.dependencies.device_repository import (
     get_device_repository,
@@ -128,6 +128,8 @@ async def purchase_license(
 )
 async def mercadopago_webhook(
     payload: WebhookPayload,
+    topic: str | None = None,
+    mp_id: str | None = Query(default=None, alias="id"),
     payment_repository: PaymentRepository = Depends(
         get_payment_repository
     ),
@@ -136,7 +138,10 @@ async def mercadopago_webhook(
     ),
     gateway: PaymentGateway = Depends(get_payment_gateway),
 ) -> dict[str, str]:
-    provider_payment_id = _extract_payment_id(payload)
+    # O Mercado Pago notifica de duas formas: corpo JSON (topic/resource ou
+    # data.id) ou query string (?topic=...&id=...).
+    notification_topic = topic or payload.topic or payload.type
+    provider_payment_id = _extract_payment_id(payload) or mp_id
 
     if provider_payment_id is None:
         raise HTTPException(
@@ -154,6 +159,7 @@ async def mercadopago_webhook(
         result = await use_case.execute(
             ConfirmPaymentCommand(
                 provider_payment_id=provider_payment_id,
+                topic=notification_topic,
             )
         )
     except PaymentGatewayError as error:

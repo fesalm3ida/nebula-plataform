@@ -57,3 +57,10 @@ class PaymentGateway(ABC):
         external_reference: str,
     ) -> PaymentConfirmation | None:
         """Busca o pagamento pela referência externa (nosso Payment)."""
+
+    @abstractmethod
+    async def find_merchant_order(
+        self,
+        merchant_order_id: str,
+    ) -> PaymentConfirmation | None:
+        """Consulta uma ordem de compra (notificação `merchant_order`)."""

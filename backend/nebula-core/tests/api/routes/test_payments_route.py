@@ -141,6 +141,58 @@ def test_should_confirm_pending_payment_via_sync(
     assert payments[0].is_approved is True
 
 
+def test_should_confirm_merchant_order_notification(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    device = make_active_device()
+    device_repository.save(device)
+
+    client.post(
+        "/me/purchase",
+        headers=authorization_headers(device),
+        json={"product": "lifetime"},
+    )
+
+    # Formato real do Mercado Pago: ?topic=merchant_order&id=...
+    response = client.post(
+        "/webhooks/mercadopago?topic=merchant_order&id=4450151864",
+        json={
+            "resource": (
+                "https://api.mercadolibre.com/merchant_orders/4450151864"
+            ),
+            "topic": "merchant_order",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["approved"] == "true"
+
+    persisted = device_repository.find_by_id(device.device_id)
+
+    assert persisted is not None
+    assert persisted.license_type == LicenseType.LIFETIME
+
+
+def test_should_confirm_merchant_order_from_query_only(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    device = make_active_device()
+    device_repository.save(device)
+
+    client.post(
+        "/me/purchase",
+        headers=authorization_headers(device),
+        json={"product": "annual"},
+    )
+
+    response = client.post(
+        "/webhooks/mercadopago?topic=merchant_order&id=999",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["approved"] == "true"
+
+
 def test_should_reject_webhook_without_payment_id() -> None:
     response = client.post(
         "/webhooks/mercadopago",

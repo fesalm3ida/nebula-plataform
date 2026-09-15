@@ -14,6 +14,7 @@ from app.domain.repositories.payment_repository import PaymentRepository
 @dataclass(frozen=True)
 class ConfirmPaymentCommand:
     provider_payment_id: str
+    topic: str | None = None
 
 
 @dataclass(frozen=True)
@@ -39,9 +40,20 @@ class ConfirmPaymentUseCase:
         self,
         command: ConfirmPaymentCommand,
     ) -> ConfirmPaymentResult:
-        confirmation = await self._gateway.get_payment(
-            command.provider_payment_id
-        )
+        # O Mercado Pago notifica de duas formas:
+        #  - topic=payment          -> o id e o do pagamento
+        #  - topic=merchant_order   -> o id e o da ordem de compra
+        if command.topic == "merchant_order":
+            confirmation = await self._gateway.find_merchant_order(
+                command.provider_payment_id
+            )
+        else:
+            confirmation = await self._gateway.get_payment(
+                command.provider_payment_id
+            )
+
+        if confirmation is None:
+            return ConfirmPaymentResult(payment_id=None, approved=False)
 
         payment = self._resolve_payment(
             confirmation,

@@ -29,4 +29,6 @@ class PurchaseResponse(BaseModel):
 class WebhookPayload(BaseModel):
     id: str | None = None
     type: str | None = None
+    topic: str | None = None
+    resource: str | None = None
     data: dict | None = None
