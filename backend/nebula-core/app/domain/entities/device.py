@@ -76,6 +76,9 @@ class Device:
 
         reference = now or _utcnow()
 
+        if self.activated_at is None:
+            self.activated_at = reference
+
         if license_type == LicenseType.LIFETIME:
             self.license_expires_at = None
         else:
