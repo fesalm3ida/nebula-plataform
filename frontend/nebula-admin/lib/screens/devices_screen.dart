@@ -58,6 +58,34 @@ class _DevicesScreenState extends State<DevicesScreen> {
     }
   }
 
+  Future<void> _confirmReset(Device device) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Resetar licença'),
+        content: const Text(
+          'O aparelho voltará para "aguardando ativação" e perderá a '
+          'licença atual (trial ou paga). Ele precisará ser ativado '
+          'novamente.\n\nContinuar?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Resetar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _runAction(device, 'reset-license');
+    }
+  }
+
   Future<void> _assign(Device device) async {
     final playlistId = await showDialog<String>(
       context: context,
@@ -127,6 +155,11 @@ class _DevicesScreenState extends State<DevicesScreen> {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Chip(label: Text(device.status)),
+                    IconButton(
+                      tooltip: 'Resetar licença (volta a aguardar ativação)',
+                      icon: const Icon(Icons.restart_alt),
+                      onPressed: () => _confirmReset(device),
+                    ),
                     IconButton(
                       tooltip: 'Ativar',
                       icon: const Icon(Icons.check_circle_outline),

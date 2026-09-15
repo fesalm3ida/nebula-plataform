@@ -121,6 +121,17 @@ class Device:
 
         return max(remaining.days, 0)
 
+    def reset_license(self) -> None:
+        """Remove a licença e devolve o Device para 'aguardando ativação'.
+
+        Operação administrativa (suporte/testes): permite refazer o fluxo de
+        ativação e de compra do aparelho.
+        """
+        self.status = DeviceStatus.PENDING
+        self.license_type = None
+        self.license_expires_at = None
+        self.activated_at = None
+
     def block(self) -> None:
         self.status = DeviceStatus.BLOCKED
 

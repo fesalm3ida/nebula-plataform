@@ -132,3 +132,20 @@ async def revoke_device(
     gateway: NebulaCoreGateway = Depends(get_nebula_core_gateway),
 ) -> DeviceStatusResponse:
     return await _apply_lifecycle(device_id, "revoke", gateway)
+
+
+@router.post(
+    "/{device_id}/reset-license",
+    response_model=DeviceStatusResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Reset Device License (BFF)",
+    description=(
+        "Remove a licença do aparelho e o devolve para 'aguardando "
+        "ativação' (útil em suporte e testes)."
+    ),
+)
+async def reset_device_license(
+    device_id: UUID,
+    gateway: NebulaCoreGateway = Depends(get_nebula_core_gateway),
+) -> DeviceStatusResponse:
+    return await _apply_lifecycle(device_id, "reset-license", gateway)

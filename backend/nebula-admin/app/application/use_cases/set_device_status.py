@@ -16,7 +16,12 @@ class SetDeviceStatusCommand:
 class SetDeviceStatusUseCase:
     """Aplica uma ação de ciclo de vida ao Device (executada pelo Core)."""
 
-    ALLOWED_ACTIONS = ("activate", "block", "revoke")
+    ALLOWED_ACTIONS = (
+        "activate",
+        "block",
+        "revoke",
+        "reset-license",
+    )
 
     def __init__(self, gateway: NebulaCoreGateway) -> None:
         self._gateway = gateway

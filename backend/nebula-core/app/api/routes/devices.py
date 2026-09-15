@@ -31,6 +31,10 @@ from app.application.use_cases.block_device import (
     BlockDeviceCommand,
     BlockDeviceUseCase,
 )
+from app.application.use_cases.reset_device_license import (
+    ResetDeviceLicenseCommand,
+    ResetDeviceLicenseUseCase,
+)
 from app.application.use_cases.expire_device import (
     ExpireDeviceCommand,
     ExpireDeviceUseCase,
@@ -206,6 +210,36 @@ def revoke_device(
         ),
         not_found=DeviceNotFoundError,
         conflict=DeviceAlreadyRevokedError,
+    )
+
+    return DeviceActivationResponse(
+        device_id=result.device_id,
+        status=result.status,
+    )
+
+
+@router.post(
+    "/{device_id}/reset-license",
+    response_model=DeviceActivationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Reset Device License",
+    description=(
+        "Administrative operation. Removes the license and returns the "
+        "Device to 'pending' (useful for support and tests). "
+        "Protected by the administration guard (X-Admin-Token)."
+    ),
+    dependencies=[Depends(require_admin)],
+)
+def reset_device_license(
+    device_id: UUID,
+    repository: DeviceRepository = Depends(get_device_repository),
+) -> DeviceActivationResponse:
+    result = _lifecycle(
+        execute=lambda: ResetDeviceLicenseUseCase(repository).execute(
+            ResetDeviceLicenseCommand(device_id=device_id)
+        ),
+        not_found=DeviceNotFoundError,
+        conflict=DeviceNotFoundError,
     )
 
     return DeviceActivationResponse(
