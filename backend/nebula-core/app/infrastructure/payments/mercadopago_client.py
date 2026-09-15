@@ -44,14 +44,17 @@ class MercadoPagoClient(PaymentGateway):
         if request.notification_url:
             payload["notification_url"] = request.notification_url
 
-        # O Mercado Pago exige `back_urls` quando `auto_return` e enviado.
         if request.back_url:
             payload["back_urls"] = {
                 "success": request.back_url,
                 "pending": request.back_url,
                 "failure": request.back_url,
             }
-            payload["auto_return"] = "approved"
+
+            # O Mercado Pago so aceita `auto_return` com back_url HTTPS;
+            # com HTTP local enviamos apenas as back_urls.
+            if request.back_url.startswith("https://"):
+                payload["auto_return"] = "approved"
 
         try:
             async with httpx.AsyncClient(transport=self._transport) as client:

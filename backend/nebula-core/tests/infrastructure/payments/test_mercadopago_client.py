@@ -18,7 +18,7 @@ def _client(handler) -> MercadoPagoClient:
     )
 
 
-def test_should_send_back_urls_with_auto_return() -> None:
+def test_should_send_auto_return_with_https_back_url() -> None:
     captured: dict = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -35,7 +35,7 @@ def test_should_send_back_urls_with_auto_return() -> None:
                 title="Licença anual",
                 unit_price_cents=9900,
                 external_reference="pay-1",
-                back_url="http://portal:3000",
+                back_url="https://portal.ngrok-free.app",
             )
         )
     )
@@ -43,7 +43,38 @@ def test_should_send_back_urls_with_auto_return() -> None:
     assert result.checkout_url == "https://mp/checkout"
     assert captured["body"]["auto_return"] == "approved"
     assert (
-        captured["body"]["back_urls"]["success"] == "http://portal:3000"
+        captured["body"]["back_urls"]["success"]
+        == "https://portal.ngrok-free.app"
+    )
+
+
+def test_should_omit_auto_return_for_http_back_url() -> None:
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.content)
+
+        return httpx.Response(
+            201,
+            json={"id": "pref-1", "init_point": "https://mp/checkout"},
+        )
+
+    asyncio.run(
+        _client(handler).create_checkout(
+            CheckoutRequest(
+                title="Licença anual",
+                unit_price_cents=9900,
+                external_reference="pay-1",
+                back_url="http://172.18.88.46:3000",
+            )
+        )
+    )
+
+    # O Mercado Pago rejeita auto_return quando a back_url nao e HTTPS.
+    assert "auto_return" not in captured["body"]
+    assert (
+        captured["body"]["back_urls"]["success"]
+        == "http://172.18.88.46:3000"
     )
 
 
