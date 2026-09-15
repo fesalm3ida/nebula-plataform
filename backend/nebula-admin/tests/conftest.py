@@ -169,6 +169,11 @@ class FakeNebulaCoreGateway(NebulaCoreGateway):
 
         return playlist
 
+    async def sync_payments(self, token: str) -> CoreLicense:
+        self._license_type = self._license_type or "trial"
+
+        return await self.get_device_license(token)
+
     async def list_plans(self, token: str) -> list[CorePlan]:
         return [
             CorePlan(

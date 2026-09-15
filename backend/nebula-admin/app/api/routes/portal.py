@@ -227,6 +227,38 @@ async def register_playlist(
     return _to_playlist(playlist)
 
 
+@router.post(
+    "/payments/sync",
+    response_model=PortalDeviceResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Sync Payments",
+    description=(
+        "Confirma os pagamentos pendentes do aparelho consultando o "
+        "provedor e devolve o estado atualizado."
+    ),
+)
+async def sync_payments(
+    token: str = Depends(get_device_token),
+    gateway: NebulaCoreGateway = Depends(get_nebula_core_gateway),
+) -> PortalDeviceResponse:
+    try:
+        license = await gateway.sync_payments(token)
+        playlist = await gateway.get_own_playlist(token)
+    except (
+        CoreAuthenticationError,
+        CoreCommunicationError,
+        CoreConflictError,
+        CoreResourceNotFoundError,
+    ) as error:
+        _raise_http_error(error)
+
+    return PortalDeviceResponse(
+        device_id=license.device_id,
+        license=_to_license(license),
+        playlist=_to_playlist(playlist) if playlist is not None else None,
+    )
+
+
 @router.get(
     "/plans",
     response_model=PortalPlansResponse,

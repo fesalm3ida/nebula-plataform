@@ -104,6 +104,20 @@ class PortalApiClient {
     );
   }
 
+  /// Confirma pagamentos pendentes junto ao provedor e devolve o aparelho.
+  Future<PortalDevice> syncPayments(String token) async {
+    final response = await _client.post(
+      Uri.parse('$_base/portal/payments/sync'),
+      headers: _headers(token),
+    );
+
+    _ensureOk(response, 'verificar o pagamento');
+
+    return PortalDevice.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   Future<List<PortalPlan>> listPlans(String token) async {
     final response = await _client.get(
       Uri.parse('$_base/portal/plans'),

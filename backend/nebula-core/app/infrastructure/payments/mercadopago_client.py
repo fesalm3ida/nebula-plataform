@@ -75,6 +75,42 @@ class MercadoPagoClient(PaymentGateway):
             checkout_url=data["init_point"],
         )
 
+    async def find_payment(
+        self,
+        external_reference: str,
+    ) -> PaymentConfirmation | None:
+        try:
+            async with httpx.AsyncClient(transport=self._transport) as client:
+                response = await client.get(
+                    f"{self.BASE_URL}/v1/payments/search",
+                    headers=self._headers(),
+                    params={"external_reference": external_reference},
+                )
+                response.raise_for_status()
+                data = response.json()
+        except httpx.HTTPError as error:
+            raise PaymentGatewayError(
+                "Falha ao consultar o pagamento no Mercado Pago."
+            ) from error
+
+        results = data.get("results") or []
+
+        if not results:
+            return None
+
+        # O mais recente primeiro.
+        payment = sorted(
+            results,
+            key=lambda item: item.get("date_created", ""),
+            reverse=True,
+        )[0]
+
+        return PaymentConfirmation(
+            status=payment.get("status", "unknown"),
+            provider_payment_id=str(payment.get("id", "")),
+            external_reference=payment.get("external_reference"),
+        )
+
     async def get_payment(
         self,
         provider_payment_id: str,

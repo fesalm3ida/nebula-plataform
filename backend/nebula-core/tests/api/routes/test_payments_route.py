@@ -109,6 +109,38 @@ def test_should_approve_payment_and_grant_license(
     assert persisted.license_expires_at is None
 
 
+def test_should_confirm_pending_payment_via_sync(
+    device_repository: InMemoryDeviceRepository,
+    payment_repository: InMemoryPaymentRepository,
+) -> None:
+    device = make_active_device()
+    device_repository.save(device)
+
+    purchase = client.post(
+        "/me/purchase",
+        headers=authorization_headers(device),
+        json={"product": "annual"},
+    )
+
+    assert purchase.status_code == 201
+
+    response = client.post(
+        "/me/payments/sync",
+        headers=authorization_headers(device),
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["license_type"] == "annual"
+    assert body["status"] == "active"
+
+    payments = payment_repository.find_all_by_device_id(device.device_id)
+
+    assert payments[0].is_approved is True
+
+
 def test_should_reject_webhook_without_payment_id() -> None:
     response = client.post(
         "/webhooks/mercadopago",

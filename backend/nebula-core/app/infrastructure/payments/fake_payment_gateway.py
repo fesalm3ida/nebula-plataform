@@ -41,3 +41,16 @@ class FakePaymentGateway(PaymentGateway):
             provider_payment_id=provider_payment_id,
             external_reference=self._external_reference,
         )
+
+    async def find_payment(
+        self,
+        external_reference: str,
+    ) -> PaymentConfirmation | None:
+        if external_reference != self._external_reference:
+            return None
+
+        return PaymentConfirmation(
+            status="approved",
+            provider_payment_id=f"fake-payment-{external_reference}",
+            external_reference=external_reference,
+        )

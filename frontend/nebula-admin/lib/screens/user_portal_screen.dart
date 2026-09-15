@@ -37,7 +37,18 @@ class _UserPortalScreenState extends State<UserPortalScreen> {
     });
 
     try {
-      final device = await widget.api.device(widget.session.accessToken);
+      var device = await widget.api.device(widget.session.accessToken);
+
+      // Se ha licenca pendente/expirada, confirma pagamentos no provedor.
+      if (device.license.isPending || device.license.expired) {
+        try {
+          device = await widget.api.syncPayments(
+            widget.session.accessToken,
+          );
+        } catch (_) {
+          // Sem problema: apenas nao confirmou agora.
+        }
+      }
 
       if (!mounted) return;
 
@@ -100,6 +111,11 @@ class _UserPortalScreenState extends State<UserPortalScreen> {
       appBar: AppBar(
         title: const Text('Meu aparelho'),
         actions: [
+          IconButton(
+            tooltip: 'Verificar pagamento',
+            icon: const Icon(Icons.receipt_long),
+            onPressed: _load,
+          ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
         ],
       ),

@@ -50,3 +50,10 @@ class PaymentGateway(ABC):
         provider_payment_id: str,
     ) -> PaymentConfirmation:
         """Consulta o estado de um pagamento pelo id do provedor."""
+
+    @abstractmethod
+    async def find_payment(
+        self,
+        external_reference: str,
+    ) -> PaymentConfirmation | None:
+        """Busca o pagamento pela referência externa (nosso Payment)."""

@@ -272,6 +272,13 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
 
         return self._to_core_playlist(payload)
 
+    async def sync_payments(self, token: str) -> CoreLicense:
+        return await self._license_request(
+            "POST",
+            "/me/payments/sync",
+            token,
+        )
+
     async def list_plans(self, token: str) -> list[CorePlan]:
         try:
             async with httpx.AsyncClient(transport=self._transport) as client:

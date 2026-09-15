@@ -150,6 +150,10 @@ class NebulaCoreGateway(ABC):
         """Cadastra a lista do usuario e a associa ao Device dele."""
 
     @abstractmethod
+    async def sync_payments(self, token: str) -> CoreLicense:
+        """Confirma pagamentos pendentes e devolve a licenca atualizada."""
+
+    @abstractmethod
     async def list_plans(self, token: str) -> list[CorePlan]:
         """Lista os planos de licenca disponiveis."""
 

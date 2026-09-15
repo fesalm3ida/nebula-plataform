@@ -7,6 +7,7 @@ from app.api.dependencies.payment_gateway import get_payment_gateway
 from app.api.dependencies.payment_repository import (
     get_payment_repository,
 )
+from app.api.schemas.license import LicenseResponse
 from app.api.schemas.payment import (
     LicensePlanResponse,
     PlansResponse,
@@ -26,6 +27,12 @@ from app.application.use_cases.confirm_payment import (
 from app.application.use_cases.create_license_purchase import (
     CreateLicensePurchaseCommand,
     CreateLicensePurchaseUseCase,
+)
+from app.application.use_cases.get_device_license import (
+    GetDeviceLicenseUseCase,
+)
+from app.application.use_cases.sync_device_payments import (
+    SyncDevicePaymentsUseCase,
 )
 from app.core.config import get_settings
 from app.domain.entities.device import Device
@@ -156,6 +163,53 @@ async def mercadopago_webhook(
         ) from error
 
     return {"status": "ok", "approved": str(result.approved).lower()}
+
+
+@router.post(
+    "/me/payments/sync",
+    response_model=LicenseResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Sync Payments (confirm pending payment)",
+    description=(
+        "Confirma os pagamentos pendentes do Device consultando o provedor. "
+        "Usado pelo portal quando a notificação (webhook) não chega."
+    ),
+)
+async def sync_payments(
+    current_device: Device = Depends(get_current_portal_device),
+    payment_repository: PaymentRepository = Depends(
+        get_payment_repository
+    ),
+    device_repository: DeviceRepository = Depends(
+        get_device_repository
+    ),
+    gateway: PaymentGateway = Depends(get_payment_gateway),
+) -> LicenseResponse:
+    use_case = SyncDevicePaymentsUseCase(
+        payment_repository=payment_repository,
+        device_repository=device_repository,
+        gateway=gateway,
+    )
+
+    try:
+        result = await use_case.execute(current_device)
+    except PaymentGatewayError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
+
+    license_result = GetDeviceLicenseUseCase().execute(result.device)
+
+    return LicenseResponse(
+        device_id=license_result.device_id,
+        status=license_result.status,
+        license_type=license_result.license_type,
+        activated_at=license_result.activated_at,
+        expires_at=license_result.expires_at,
+        days_remaining=license_result.days_remaining,
+        expired=license_result.expired,
+    )
 
 
 def _extract_payment_id(payload: WebhookPayload) -> str | None:
