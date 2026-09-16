@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../api/nebula_core_client.dart';
 import '../config/api_config.dart';
+import '../models/content_source.dart';
 import '../theme/nebula_theme.dart';
 import 'home_menu_screen.dart';
 
@@ -67,15 +68,21 @@ class _ActivationScreenState extends State<ActivationScreen> {
 
       await _client.startSession(token);
 
-      String? sourceUrl;
+      var sources = <ContentSource>[];
 
       try {
         final provisioning = await _client.getProvisioning(token);
-        if (provisioning.contentEndpoints.isNotEmpty) {
-          sourceUrl = provisioning.contentEndpoints.first.sourceUrl;
-        }
+        sources = provisioning.contentEndpoints
+            .map(
+              (endpoint) => ContentSource(
+                playlistId: endpoint.playlistId,
+                name: endpoint.name,
+                url: endpoint.sourceUrl,
+              ),
+            )
+            .toList();
       } on NebulaCoreException {
-        sourceUrl = null;
+        sources = <ContentSource>[];
       }
 
       _timer?.cancel();
@@ -84,7 +91,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => HomeMenuScreen(channelsSourceUrl: sourceUrl),
+          builder: (_) => HomeMenuScreen(sources: sources),
         ),
       );
     } on NebulaCoreException catch (error) {

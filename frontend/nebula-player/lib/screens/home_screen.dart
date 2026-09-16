@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/nebula_core_client.dart';
+import '../models/content_source.dart';
 import '../models/device_identity.dart';
 import '../services/device_identity_service.dart';
 import '../theme/nebula_theme.dart';
@@ -126,23 +127,29 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       setState(() => _status = 'Sincronizando (provisionamento)...');
-      String? sourceUrl;
+      var sources = <ContentSource>[];
       try {
         final provisioning = await _client.getProvisioning(token);
-        if (provisioning.contentEndpoints.isNotEmpty) {
-          sourceUrl = provisioning.contentEndpoints.first.sourceUrl;
-        }
+        sources = provisioning.contentEndpoints
+            .map(
+              (endpoint) => ContentSource(
+                playlistId: endpoint.playlistId,
+                name: endpoint.name,
+                url: endpoint.sourceUrl,
+              ),
+            )
+            .toList();
       } on NebulaCoreException {
         // Sem lista provisionada: abre o menu; o usuario pode adicionar
         // uma lista local em "Mudar lista".
-        sourceUrl = null;
+        sources = <ContentSource>[];
       }
 
       if (!mounted) return;
 
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => HomeMenuScreen(channelsSourceUrl: sourceUrl),
+          builder: (_) => HomeMenuScreen(sources: sources),
         ),
       );
     } on NebulaCoreException catch (error) {

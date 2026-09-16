@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../models/content_source.dart';
+import '../services/playlist_selection_service.dart';
 import '../theme/nebula_theme.dart';
 import 'account_screen.dart';
 import 'change_playlist_screen.dart';
@@ -8,34 +10,93 @@ import 'live_screen.dart';
 import 'movies_screen.dart';
 import 'series_screen.dart';
 import 'settings_screen.dart';
+import 'sources_screen.dart';
 
 /// Menu inicial do Nebula Player.
-class HomeMenuScreen extends StatelessWidget {
-  const HomeMenuScreen({super.key, this.channelsSourceUrl});
+class HomeMenuScreen extends StatefulWidget {
+  const HomeMenuScreen({super.key, this.sources = const []});
 
-  final String? channelsSourceUrl;
+  /// Listas provisionadas pelo Core (pode haver mais de uma).
+  final List<ContentSource> sources;
 
-  void _reload(BuildContext context) {
+  @override
+  State<HomeMenuScreen> createState() => _HomeMenuScreenState();
+}
+
+class _HomeMenuScreenState extends State<HomeMenuScreen> {
+  final PlaylistSelectionService _selection = PlaylistSelectionService();
+
+  String? _selectedPlaylistId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSelection();
+  }
+
+  Future<void> _loadSelection() async {
+    final selected = await _selection.getSelectedPlaylistId();
+
+    if (!mounted) return;
+
+    setState(() => _selectedPlaylistId = selected);
+  }
+
+  /// Lista ativa: a escolhida pelo usuário (se ainda existir) ou a primeira.
+  ContentSource? get _activeSource {
+    if (widget.sources.isEmpty) {
+      return null;
+    }
+
+    for (final source in widget.sources) {
+      if (source.playlistId == _selectedPlaylistId) {
+        return source;
+      }
+    }
+
+    return widget.sources.first;
+  }
+
+  void _reload() {
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const HomeScreen()),
       (route) => false,
     );
   }
 
+  Future<void> _openSources() async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => SourcesScreen(
+          sources: widget.sources,
+          selectedPlaylistId: _activeSource?.playlistId,
+        ),
+      ),
+    );
+
+    if (changed == true) {
+      await _loadSelection();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final sourceUrl = _activeSource?.url;
+
     final items = <_MenuItem>[
       _MenuItem('Ao vivo', Icons.live_tv,
-          (sourceUrl) => LiveScreen(sourceUrl: sourceUrl)),
+          builder: (_) => LiveScreen(sourceUrl: sourceUrl)),
       _MenuItem('Filmes', Icons.movie,
-          (sourceUrl) => MoviesScreen(sourceUrl: sourceUrl)),
+          builder: (_) => MoviesScreen(sourceUrl: sourceUrl)),
       _MenuItem('Séries', Icons.video_library,
-          (sourceUrl) => SeriesScreen(sourceUrl: sourceUrl)),
-      _MenuItem('Conta', Icons.person, (_) => const AccountScreen()),
+          builder: (_) => SeriesScreen(sourceUrl: sourceUrl)),
+      _MenuItem('Minhas listas', Icons.playlist_play, action: _openSources),
+      _MenuItem('Conta', Icons.person,
+          builder: (_) => const AccountScreen()),
       _MenuItem('Mudar lista', Icons.playlist_add,
-          (_) => const ChangePlaylistScreen()),
+          builder: (_) => const ChangePlaylistScreen()),
       _MenuItem('Configurações', Icons.settings_suggest,
-          (_) => const SettingsScreen()),
+          builder: (_) => const SettingsScreen()),
     ];
 
     return NebulaTheme.background(
@@ -63,9 +124,18 @@ class HomeMenuScreen extends StatelessWidget {
                       tooltip: 'Recarregar',
                       icon: const Icon(Icons.refresh,
                           color: NebulaColors.textPrimary),
-                      onPressed: () => _reload(context),
+                      onPressed: _reload,
                     ),
                   ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _activeSource == null
+                      ? 'Nenhuma lista provisionada'
+                      : 'Lista: ${_activeSource!.displayName}',
+                  style: const TextStyle(
+                    color: NebulaColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Expanded(
@@ -83,11 +153,20 @@ class HomeMenuScreen extends StatelessWidget {
 
                       return _MenuTile(
                         item: item,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => item.builder(channelsSourceUrl),
-                          ),
-                        ),
+                        onTap: () {
+                          final action = item.action;
+
+                          if (action != null) {
+                            action();
+                            return;
+                          }
+
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => item.builder!(sourceUrl),
+                            ),
+                          );
+                        },
                       );
                     },
                   ),
@@ -102,11 +181,17 @@ class HomeMenuScreen extends StatelessWidget {
 }
 
 class _MenuItem {
-  const _MenuItem(this.label, this.icon, this.builder);
+  const _MenuItem(
+    this.label,
+    this.icon, {
+    this.builder,
+    this.action,
+  });
 
   final String label;
   final IconData icon;
-  final Widget Function(String? sourceUrl) builder;
+  final Widget Function(String? sourceUrl)? builder;
+  final Future<void> Function()? action;
 }
 
 class _MenuTile extends StatelessWidget {
