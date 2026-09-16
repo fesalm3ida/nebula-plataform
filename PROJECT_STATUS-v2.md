@@ -2,11 +2,11 @@
 tipo: Status do Projeto
 id: PROJECT_STATUS-v2
 projeto: Nebula Platform
-versao: 0.6.0
+versao: 0.7.0
 status: 🚧 Em desenvolvimento ativo
-atualizacao: '2026-09-14'
-milestone: M8 — Nebula Player
-codename: Client Ecosystem
+atualizacao: '2026-09-15'
+milestone: M9 — Licenciamento e Pagamentos
+codename: Monetization
 relacionados:
 - '[[CHANGELOG]]'
 - '[[CONTRIBUTING]]'
@@ -26,11 +26,11 @@ aliases:
 
 ## Status do Projeto
 
-- **Versão atual:** **0.6.0** (Nebula Player funcional — reprodução real)
-- **Codename:** **Client Ecosystem**
-- **Milestone atual:** **M8 — Nebula Player** (M4–M7 concluídas)
+- **Versão atual:** **0.7.0** (Licenciamento e Pagamentos)
+- **Codename:** **Monetization**
+- **Milestone atual:** **M9 — Licenciamento e Pagamentos** (M4–M8 concluídas)
 - **Status geral:** 🚧 Em desenvolvimento ativo
-- **Última atualização:** **14/09/2026**
+- **Última atualização:** **15/09/2026**
 
 ---
 

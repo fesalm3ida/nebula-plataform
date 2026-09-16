@@ -33,7 +33,8 @@ da Nebula Platform.
 | 0.4.0 | Persistência PostgreSQL | ✅ Concluída |
 | 0.5.0 | Nebula Admin | ✅ Concluída (Admin BFF + UI Web) |
 | 0.6.0 | Nebula Player Android | ✅ Concluída (reprodução real) |
-| 0.7.0 | Telemetria e Monitoramento | 🟢 Em curso (subdomínio; Monitor pendente) |
+| 0.7.0 | Licenciamento e Pagamentos | ✅ Concluída |
+| 0.8.0 | Telemetria e Monitoramento (Nebula Monitor) | 🟢 Em curso (subdomínio pronto; Monitor pendente) |
 | 1.0.0 | Primeira versão pública | ⏳ Planejada |
 
 ---

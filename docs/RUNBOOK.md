@@ -226,6 +226,61 @@ Pressione **`R`** (hot restart) no terminal do `flutter run` → o app vai ao **
 
 ---
 
+## 8) Licenciamento e Pagamentos (Mercado Pago)
+
+### 8.1 Fluxo
+1. **App** instalado → tela com **MAC Address + código de 6 dígitos**;
+2. **Usuário** acessa o portal (`http://<IP>:3000`) → **Ativar** (trial de 7 dias) → cadastra a lista;
+3. Após o trial: **Comprar licença** (anual **R$ 99** / vitalícia **R$ 299**) → checkout do Mercado Pago;
+4. Pagamento aprovado → **webhook** confirma no Core → **licença concedida** automaticamente.
+
+### 8.2 Credenciais
+```text
+/home/fealmeida/projects/nebula-plataform/backend/nebula-core/.secrets/mercadopago_access_token
+```
+- Uma linha, **sem aspas** (pode ser token de produção `APP_USR-…` ou de teste).
+- **Sem token**, o Core usa o **provedor fake** (desenvolvimento/testes, sem cobrança).
+
+### 8.3 Webhook (precisa de URL pública)
+```bash
+ngrok http 8000        # copie a URL exata da linha "Forwarding"
+```
+No `.env` do Core (`backend/nebula-core/.env`):
+```bash
+MERCADOPAGO_NOTIFICATION_URL=https://<sua-url>.ngrok-free.dev/webhooks/mercadopago
+MERCADOPAGO_BACK_URL=https://<sua-url>.ngrok-free.dev
+```
+> ⚠️ Use a URL **exata** do ngrok (termina em `.dev` **ou** `.app` — não invente/ajuste).
+> ⚠️ **Reinicie o Core** depois de alterar o `.env` (a config é lida no start).
+
+Verificar o túnel:
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://<sua-url>/health   # esperado: 200
+```
+
+### 8.4 Testar um pagamento (sandbox)
+- Crie uma **conta de teste comprador** (painel do MP → *Contas de teste*) e entre com ela numa **janela anônima**;
+- Cartão de teste: **Mastercard `5031 4332 1540 6351`**, CVV `123`, validade `11/30`, titular **`APRO`**;
+- Acompanhe a notificação no **inspector do ngrok**: `http://127.0.0.1:4040` → `POST /webhooks/mercadopago` deve retornar **200**.
+
+### 8.5 Confirmação sem webhook (rede de segurança)
+No portal, botão **🧾 Verificar pagamento** (ou `POST /me/payments/sync`): o Core
+consulta o Mercado Pago e concede a licença. Útil quando a notificação não chega.
+O portal também sincroniza sozinho ao abrir, se a licença estiver pendente.
+
+### 8.6 Resetar a licença (suporte/testes)
+**Admin → Devices → ↺ Resetar licença** (URL secreta do admin) ou via API:
+```bash
+curl -X POST -H "X-Admin-Token: dev-admin-key" http://localhost:8000/devices/<device_id>/reset-license
+```
+O aparelho volta para `pending` — permite refazer ativação/compra.
+
+### 8.7 Acompanhar o webhook
+- **ngrok inspector:** `http://127.0.0.1:4040` (cada requisição, corpo, resposta);
+- **Logs do Core:** `POST /webhooks/mercadopago HTTP/1.1" 200 OK`.
+
+---
+
 ## Verificação rápida (health checks)
 
 ```bash
@@ -261,11 +316,30 @@ docker stop nebula-postgres      # opcional; o container reinicia com o Docker
 | App: `Falha na autenticação (401)` | banco recriado (device não existe) | o app **re-registra** sozinho; depois **ative** o device |
 | App: `Falha no provisionamento (404)` | sem playlist associada | associe uma playlist (passo 7.3) |
 | App não vê o device | USB não anexado ao WSL | refazer `usbipd attach` (não persiste) ou usar Wi‑Fi |
+| Webhook do MP dá **404** ao testar | URL do ngrok errada (ex.: `.app` em vez de `.dev`) | copie a URL **exata** da linha `Forwarding` do ngrok |
+| Webhook retorna **422 "Missing payment id"** | Core sem suporte a `merchant_order` | atualize/reinicie o Core (o Checkout Pro notifica `topic=merchant_order`) |
+| Compra retorna **502** | `auto_return` sem `back_urls` HTTPS (MP responde 400) | use `MERCADOPAGO_BACK_URL` **https** ou deixe vazio (sem auto_return) |
+| Pagamento aprovado e licença não liberada | webhook não chegou | reinicie o Core com `MERCADOPAGO_NOTIFICATION_URL`; ou use **🧾 Verificar pagamento** (sync) |
+| Dados de dev "sumiram" | suíte de testes apontando para o banco de dev | rode os testes com `nebula_test` (ver Observações) |
+| URL do admin mostra o portal do usuário | fragmento normalizado pelo Flutter | recarregue a **URL completa** `…/#/<ADMIN_PATH>` (a detecção roda no `main()`) |
 
 ---
 
 ## Observações
 
 - **Persistência do Postgres:** volume nomeado `nebula_postgres_data` (não use `down -v`).
+- **Banco de testes:** a suíte de integração roda em **`nebula_test`** (ver
+  `tests/conftest.py`). Ela **apaga as tabelas**, por isso nunca deve apontar
+  para o banco de desenvolvimento. Para rodar manualmente:
+  ```bash
+  POSTGRES_DB=nebula_test ./.venv/bin/python -m alembic upgrade head
+  ./.venv/bin/python -m pytest -q
+  ```
 - **`develop/`** contém o SDK do Flutter e está no `.gitignore`.
-- **Regra de arquitetura (ADR-021):** playlists "oficiais" são gerenciadas no Nebula Admin; o **Player** consome o provisionamento do Core. A lista em **Mudar lista** é **local/pessoal** no dispositivo.
+- **Regra de arquitetura:** playlists "oficiais" podem ser cadastradas pelo
+  **administrador** (Nebula Admin) **ou pelo próprio usuário** no portal
+  (ADR-028, que revisa a ADR-021). O Player consome o provisionamento do Core; a
+  lista em **Mudar lista** é **local/pessoal** no dispositivo.
+- **Licenciamento:** ADR-027 (trial de 7 dias, anual, vitalícia) ·
+  **Pagamentos:** ADR-029 (Mercado Pago, webhook + sync) ·
+  **Portal do usuário:** ADR-028 (MAC + código de 6 dígitos).
