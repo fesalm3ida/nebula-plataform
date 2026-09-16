@@ -3,11 +3,22 @@ class PortalSession {
     required this.accessToken,
     required this.deviceId,
     required this.deviceStatus,
+    this.macAddress = '',
   });
 
   final String accessToken;
   final String deviceId;
   final String deviceStatus;
+
+  /// MAC Address informado no login (exibido no cabeçalho do portal).
+  final String macAddress;
+
+  PortalSession copyWith({String? macAddress}) => PortalSession(
+        accessToken: accessToken,
+        deviceId: deviceId,
+        deviceStatus: deviceStatus,
+        macAddress: macAddress ?? this.macAddress,
+      );
 
   factory PortalSession.fromJson(Map<String, dynamic> json) => PortalSession(
         accessToken: json['access_token'] as String,

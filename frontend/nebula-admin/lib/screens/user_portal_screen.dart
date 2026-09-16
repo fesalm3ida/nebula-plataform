@@ -4,7 +4,10 @@ import 'package:url_launcher/url_launcher.dart';
 import '../api/portal_api_client.dart';
 import '../models/portal.dart';
 
-/// Portal do **usuário**: status/licença do aparelho e cadastro da lista.
+enum _PortalSection { playlist, activate }
+
+/// Portal do **usuário** (layout inspirado no painel do Ibo Player):
+/// cabeçalho com os dados do aparelho, menu lateral e área de listas.
 class UserPortalScreen extends StatefulWidget {
   const UserPortalScreen({
     super.key,
@@ -23,6 +26,7 @@ class _UserPortalScreenState extends State<UserPortalScreen> {
   PortalDevice? _device;
   bool _loading = true;
   String? _error;
+  _PortalSection _section = _PortalSection.playlist;
 
   @override
   void initState() {
@@ -46,7 +50,7 @@ class _UserPortalScreenState extends State<UserPortalScreen> {
             widget.session.accessToken,
           );
         } catch (_) {
-          // Sem problema: apenas nao confirmou agora.
+          // Apenas nao confirmou agora.
         }
       }
 
@@ -109,7 +113,7 @@ class _UserPortalScreenState extends State<UserPortalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Meu aparelho'),
+        title: const Text('Nebula Player'),
         actions: [
           IconButton(
             tooltip: 'Verificar pagamento',
@@ -119,34 +123,42 @@ class _UserPortalScreenState extends State<UserPortalScreen> {
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
         ],
       ),
-      floatingActionButton: _device == null
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: _registerPlaylist,
-              icon: const Icon(Icons.playlist_add),
-              label: Text(
-                _device!.playlist == null ? 'Cadastrar lista' : 'Trocar lista',
-              ),
-            ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text('Erro: $_error'))
-              : ListView(
-                  padding: const EdgeInsets.all(16),
+              : Column(
                   children: [
-                    _DeviceCard(device: _device!),
-                    const SizedBox(height: 12),
-                    _LicenseCard(
+                    _DeviceHeader(
                       license: _device!.license,
-                      onActivate: _device!.license.isPending ? _activate : null,
+                      macAddress: widget.session.macAddress,
                     ),
-                    const SizedBox(height: 12),
-                    _PlaylistCard(playlist: _device!.playlist),
-                    const SizedBox(height: 12),
-                    _PurchaseCard(
-                      api: widget.api,
-                      token: widget.session.accessToken,
+                    const Divider(height: 1),
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _Sidebar(
+                            section: _section,
+                            onSelect: (section) =>
+                                setState(() => _section = section),
+                            onLogout: () => Navigator.of(context).pop(),
+                          ),
+                          Expanded(
+                            child: _section == _PortalSection.playlist
+                                ? _PlaylistPanel(
+                                    playlist: _device!.playlist,
+                                    onAdd: _registerPlaylist,
+                                  )
+                                : _ActivatePanel(
+                                    api: widget.api,
+                                    token: widget.session.accessToken,
+                                    license: _device!.license,
+                                    onActivate: _activate,
+                                  ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -154,72 +166,102 @@ class _UserPortalScreenState extends State<UserPortalScreen> {
   }
 }
 
-class _DeviceCard extends StatelessWidget {
-  const _DeviceCard({required this.device});
+/// Cabeçalho com a identificação do aparelho (MAC, status e expiração).
+class _DeviceHeader extends StatelessWidget {
+  const _DeviceHeader({required this.license, required this.macAddress});
 
-  final PortalDevice device;
+  final PortalLicense license;
+  final String macAddress;
+
+  static String formatDate(String? iso) {
+    if (iso == null || iso.isEmpty) {
+      return '—';
+    }
+
+    final parsed = DateTime.tryParse(iso);
+
+    if (parsed == null) {
+      return iso;
+    }
+
+    final local = parsed.toLocal();
+    final day = local.day.toString().padLeft(2, '0');
+    final month = local.month.toString().padLeft(2, '0');
+
+    return '$day/$month/${local.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.tv),
-        title: const Text('Identificação do aparelho'),
-        subtitle: Text(device.deviceId),
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      color: theme.colorScheme.surfaceContainerLow,
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sua lista de reprodução',
+                  style: theme.textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Gerencie o aparelho e o conteúdo dele.',
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _InfoLine(
+                label: 'Mac Address',
+                value: macAddress.isEmpty ? '—' : macAddress,
+              ),
+              _InfoLine(
+                label: 'Status',
+                value: license.label.split('—').first.trim(),
+              ),
+              _InfoLine(
+                label: 'Expiração',
+                value: license.isLifetime
+                    ? 'Sem expiração'
+                    : formatDate(license.expiresAt),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-class _LicenseCard extends StatelessWidget {
-  const _LicenseCard({required this.license, this.onActivate});
+class _InfoLine extends StatelessWidget {
+  const _InfoLine({required this.label, required this.value});
 
-  final PortalLicense license;
-  final VoidCallback? onActivate;
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: RichText(
+        text: TextSpan(
+          style: Theme.of(context).textTheme.bodyMedium,
           children: [
-            const Text(
-              'Licença',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(
-                  license.expired
-                      ? Icons.error_outline
-                      : Icons.verified_outlined,
-                  color: license.expired
-                      ? Theme.of(context).colorScheme.error
-                      : Colors.green,
-                ),
-                const SizedBox(width: 8),
-                Expanded(child: Text(license.label)),
-              ],
-            ),
-            if (license.expiresAt != null) ...[
-              const SizedBox(height: 4),
-              Text('Vence em: ${license.expiresAt}'),
-            ],
-            if (onActivate != null) ...[
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: onActivate,
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('Ativar (teste grátis de 7 dias)'),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'A primeira ativação é gratuita e libera 7 dias de uso.',
-              ),
-            ],
+            TextSpan(text: value),
           ],
         ),
       ),
@@ -227,60 +269,218 @@ class _LicenseCard extends StatelessWidget {
   }
 }
 
-class _PlaylistCard extends StatelessWidget {
-  const _PlaylistCard({required this.playlist});
+/// Menu lateral: Playlist · Ativar · Sair.
+class _Sidebar extends StatelessWidget {
+  const _Sidebar({
+    required this.section,
+    required this.onSelect,
+    required this.onLogout,
+  });
+
+  final _PortalSection section;
+  final ValueChanged<_PortalSection> onSelect;
+  final VoidCallback onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 200,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SidebarButton(
+            label: 'Playlist',
+            icon: Icons.playlist_play,
+            selected: section == _PortalSection.playlist,
+            onPressed: () => onSelect(_PortalSection.playlist),
+          ),
+          const SizedBox(height: 8),
+          _SidebarButton(
+            label: 'Ativar',
+            icon: Icons.verified_user_outlined,
+            selected: section == _PortalSection.activate,
+            onPressed: () => onSelect(_PortalSection.activate),
+          ),
+          const SizedBox(height: 8),
+          _SidebarButton(
+            label: 'Sair',
+            icon: Icons.logout,
+            onPressed: onLogout,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SidebarButton extends StatelessWidget {
+  const _SidebarButton({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.selected = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: selected ? scheme.primary : scheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: selected ? scheme.onPrimary : scheme.onSurface,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: selected ? scheme.onPrimary : scheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Painel de listas: botão de adicionar + tabela (Nome | URL).
+class _PlaylistPanel extends StatelessWidget {
+  const _PlaylistPanel({required this.playlist, required this.onAdd});
 
   final PortalPlaylist? playlist;
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
     final current = playlist;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Lista de reprodução',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            if (current == null)
-              const Text('Nenhuma lista cadastrada.')
-            else ...[
-              Text(current.name),
-              const SizedBox(height: 4),
-              Text(
-                current.sourceUrl,
-                style: Theme.of(context).textTheme.bodySmall,
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              FilledButton.icon(
+                onPressed: onAdd,
+                icon: const Icon(Icons.add),
+                label: Text(
+                  current == null ? 'Add Playlist' : 'Trocar Playlist',
+                ),
               ),
             ],
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                Container(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: const Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Text(
+                          'Nome',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 5,
+                        child: Text(
+                          'URL',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (current == null)
+                  const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text('Nenhuma lista cadastrada.'),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: Text(current.name),
+                        ),
+                        Expanded(
+                          flex: 5,
+                          child: Text(
+                            current.sourceUrl,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _PurchaseCard extends StatefulWidget {
-  const _PurchaseCard({required this.api, required this.token});
+/// Painel de ativação/licença: status, trial e planos de compra.
+class _ActivatePanel extends StatefulWidget {
+  const _ActivatePanel({
+    required this.api,
+    required this.token,
+    required this.license,
+    required this.onActivate,
+  });
 
   final PortalApiClient api;
   final String token;
+  final PortalLicense license;
+  final Future<void> Function() onActivate;
 
   @override
-  State<_PurchaseCard> createState() => _PurchaseCardState();
+  State<_ActivatePanel> createState() => _ActivatePanelState();
 }
 
-class _PurchaseCardState extends State<_PurchaseCard> {
-  late Future<List<PortalPlan>> _future;
+class _ActivatePanelState extends State<_ActivatePanel> {
+  late Future<List<PortalPlan>> _plans;
 
   @override
   void initState() {
     super.initState();
-    _future = widget.api.listPlans(widget.token);
+    _plans = widget.api.listPlans(widget.token);
   }
 
   Future<void> _buy(PortalPlan plan) async {
@@ -309,36 +509,79 @@ class _PurchaseCardState extends State<_PurchaseCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Comprar licença',
-              style: TextStyle(fontWeight: FontWeight.bold),
+    final license = widget.license;
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: ListView(
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Licença',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        license.expired
+                            ? Icons.error_outline
+                            : Icons.verified_outlined,
+                        color: license.expired
+                            ? Theme.of(context).colorScheme.error
+                            : Colors.green,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(license.label)),
+                    ],
+                  ),
+                  if (license.isPending) ...[
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: widget.onActivate,
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('Ativar (teste grátis de 7 dias)'),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'A primeira ativação é gratuita e libera 7 dias de uso.',
+                    ),
+                  ],
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            FutureBuilder<List<PortalPlan>>(
-              future: _future,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Comprar licença',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          FutureBuilder<List<PortalPlan>>(
+            future: _plans,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-                if (snapshot.hasError) {
-                  return Text(
-                    'Não foi possível carregar os planos: ${snapshot.error}',
-                  );
-                }
+              if (snapshot.hasError) {
+                return Text(
+                  'Não foi possível carregar os planos: ${snapshot.error}',
+                );
+              }
 
-                final plans = snapshot.data ?? [];
+              final plans = snapshot.data ?? [];
 
-                return Column(
-                  children: [
-                    for (final plan in plans)
-                      ListTile(
+              return Column(
+                children: [
+                  for (final plan in plans)
+                    Card(
+                      child: ListTile(
                         title: Text(plan.title),
                         subtitle: Text(plan.description),
                         trailing: FilledButton(
@@ -346,12 +589,12 @@ class _PurchaseCardState extends State<_PurchaseCard> {
                           child: Text(plan.priceLabel),
                         ),
                       ),
-                  ],
-                );
-              },
-            ),
-          ],
-        ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -417,7 +660,7 @@ class _PlaylistFormState extends State<_PlaylistForm> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(
-        widget.current == null ? 'Cadastrar lista' : 'Trocar lista',
+        widget.current == null ? 'Add Playlist' : 'Trocar Playlist',
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,

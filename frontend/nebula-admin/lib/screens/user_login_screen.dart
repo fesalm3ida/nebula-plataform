@@ -43,7 +43,12 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
 
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => UserPortalScreen(api: _api, session: session),
+          builder: (_) => UserPortalScreen(
+            api: _api,
+            session: session.copyWith(
+              macAddress: _macAddress.text.trim(),
+            ),
+          ),
         ),
       );
 
