@@ -26,6 +26,7 @@ class PortalLicenseOut(BaseModel):
 
 
 class PortalPlaylistOut(BaseModel):
+    assignment_id: UUID
     playlist_id: UUID
     name: str
     format: str
@@ -42,7 +43,7 @@ class PortalPlaylistRequest(BaseModel):
 class PortalDeviceResponse(BaseModel):
     device_id: UUID
     license: PortalLicenseOut
-    playlist: PortalPlaylistOut | None = None
+    playlists: list[PortalPlaylistOut] = []
 
 
 class PortalPlanOut(BaseModel):

@@ -71,7 +71,7 @@ def test_should_return_device_overview(
 
     assert body["device_id"]
     assert body["license"]["license_type"] is None
-    assert body["playlist"] is None
+    assert body["playlists"] == []
 
 
 def test_should_activate_device_from_portal(
@@ -111,7 +111,7 @@ def test_should_register_user_playlist(
 
     overview = client.get("/portal/device", headers=device_headers())
 
-    assert overview.json()["playlist"]["name"] == "Minha Lista"
+    assert overview.json()["playlists"][0]["name"] == "Minha Lista"
 
 
 def test_should_list_license_plans(client: TestClient) -> None:

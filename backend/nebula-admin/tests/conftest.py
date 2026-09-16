@@ -148,8 +148,15 @@ class FakeNebulaCoreGateway(NebulaCoreGateway):
 
         return await self.get_device_license(token)
 
-    async def get_own_playlist(self, token: str) -> CorePlaylist | None:
-        return self._own_playlist
+    async def get_own_playlists(self, token: str) -> list[CorePlaylist]:
+        return [self._own_playlist] if self._own_playlist else []
+
+    async def remove_own_playlist(
+        self,
+        token: str,
+        assignment_id: str,
+    ) -> None:
+        self._own_playlist = None
 
     async def register_own_playlist(
         self,

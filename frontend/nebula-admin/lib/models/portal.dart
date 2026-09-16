@@ -68,12 +68,16 @@ class PortalLicense {
 
 class PortalPlaylist {
   PortalPlaylist({
+    required this.assignmentId,
     required this.id,
     required this.name,
     required this.format,
     required this.sourceUrl,
     required this.status,
   });
+
+  /// Identificador da ASSOCIAÇÃO (usado para remover).
+  final String assignmentId;
 
   final String id;
   final String name;
@@ -82,6 +86,7 @@ class PortalPlaylist {
   final String status;
 
   factory PortalPlaylist.fromJson(Map<String, dynamic> json) => PortalPlaylist(
+        assignmentId: (json['assignment_id'] ?? json['playlist_id']) as String,
         id: json['playlist_id'] as String,
         name: json['name'] as String,
         format: json['format'] as String,
@@ -118,22 +123,22 @@ class PortalDevice {
   PortalDevice({
     required this.deviceId,
     required this.license,
-    required this.playlist,
+    required this.playlists,
   });
 
   final String deviceId;
   final PortalLicense license;
-  final PortalPlaylist? playlist;
+
+  /// Um aparelho pode ter uma ou várias listas.
+  final List<PortalPlaylist> playlists;
 
   factory PortalDevice.fromJson(Map<String, dynamic> json) => PortalDevice(
         deviceId: json['device_id'] as String,
         license: PortalLicense.fromJson(
           json['license'] as Map<String, dynamic>,
         ),
-        playlist: json['playlist'] == null
-            ? null
-            : PortalPlaylist.fromJson(
-                json['playlist'] as Map<String, dynamic>,
-              ),
+        playlists: ((json['playlists'] as List<dynamic>?) ?? [])
+            .map((item) => PortalPlaylist.fromJson(item as Map<String, dynamic>))
+            .toList(),
       );
 }

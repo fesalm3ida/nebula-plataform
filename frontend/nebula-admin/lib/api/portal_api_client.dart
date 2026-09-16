@@ -104,6 +104,20 @@ class PortalApiClient {
     );
   }
 
+  /// Remove uma lista do aparelho.
+  Future<void> removePlaylist(String token, String assignmentId) async {
+    final response = await _client.delete(
+      Uri.parse('$_base/portal/playlists/$assignmentId'),
+      headers: _headers(token),
+    );
+
+    if (response.statusCode != 204) {
+      throw PortalApiException(
+        'Falha ao remover a lista (${response.statusCode}).',
+      );
+    }
+  }
+
   /// Confirma pagamentos pendentes junto ao provedor e devolve o aparelho.
   Future<PortalDevice> syncPayments(String token) async {
     final response = await _client.post(

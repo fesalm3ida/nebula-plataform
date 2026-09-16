@@ -98,7 +98,6 @@ class _UserPortalScreenState extends State<UserPortalScreen> {
       builder: (_) => _PlaylistForm(
         api: widget.api,
         token: widget.session.accessToken,
-        current: _device?.playlist,
       ),
     );
 
@@ -107,6 +106,42 @@ class _UserPortalScreenState extends State<UserPortalScreen> {
     await _load();
     if (!mounted) return;
     _showMessage('Lista cadastrada com sucesso.');
+  }
+
+  Future<void> _removePlaylist(PortalPlaylist playlist) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remover lista'),
+        content: Text('Remover "${playlist.name}" deste aparelho?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remover'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await widget.api.removePlaylist(
+        widget.session.accessToken,
+        playlist.assignmentId,
+      );
+
+      await _load();
+      if (!mounted) return;
+      _showMessage('Lista removida.');
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage('$error', isError: true);
+    }
   }
 
   @override
@@ -147,8 +182,9 @@ class _UserPortalScreenState extends State<UserPortalScreen> {
                           Expanded(
                             child: _section == _PortalSection.playlist
                                 ? _PlaylistPanel(
-                                    playlist: _device!.playlist,
+                                    playlists: _device!.playlists,
                                     onAdd: _registerPlaylist,
+                                    onRemove: _removePlaylist,
                                   )
                                 : _ActivatePanel(
                                     api: widget.api,
@@ -363,17 +399,20 @@ class _SidebarButton extends StatelessWidget {
   }
 }
 
-/// Painel de listas: botão de adicionar + tabela (Nome | URL).
+/// Painel de listas: botão de adicionar + tabela (Nome | URL | ações).
 class _PlaylistPanel extends StatelessWidget {
-  const _PlaylistPanel({required this.playlist, required this.onAdd});
+  const _PlaylistPanel({
+    required this.playlists,
+    required this.onAdd,
+    required this.onRemove,
+  });
 
-  final PortalPlaylist? playlist;
+  final List<PortalPlaylist> playlists;
   final VoidCallback onAdd;
+  final ValueChanged<PortalPlaylist> onRemove;
 
   @override
   Widget build(BuildContext context) {
-    final current = playlist;
-
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -384,9 +423,7 @@ class _PlaylistPanel extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onAdd,
                 icon: const Icon(Icons.add),
-                label: Text(
-                  current == null ? 'Add Playlist' : 'Trocar Playlist',
-                ),
+                label: const Text('Add Playlist'),
               ),
             ],
           ),
@@ -417,36 +454,43 @@ class _PlaylistPanel extends StatelessWidget {
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
+                      SizedBox(width: 48),
                     ],
                   ),
                 ),
-                if (current == null)
+                if (playlists.isEmpty)
                   const Padding(
                     padding: EdgeInsets.all(24),
                     child: Text('Nenhuma lista cadastrada.'),
                   )
                 else
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: Text(current.name),
-                        ),
-                        Expanded(
-                          flex: 5,
-                          child: Text(
-                            current.sourceUrl,
-                            style: Theme.of(context).textTheme.bodySmall,
+                  for (final playlist in playlists)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(flex: 2, child: Text(playlist.name)),
+                          Expanded(
+                            flex: 5,
+                            child: Text(
+                              playlist.sourceUrl,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ),
-                        ),
-                      ],
+                          SizedBox(
+                            width: 48,
+                            child: IconButton(
+                              tooltip: 'Remover lista',
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () => onRemove(playlist),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
               ],
             ),
           ),
@@ -604,24 +648,18 @@ class _PlaylistForm extends StatefulWidget {
   const _PlaylistForm({
     required this.api,
     required this.token,
-    this.current,
   });
 
   final PortalApiClient api;
   final String token;
-  final PortalPlaylist? current;
 
   @override
   State<_PlaylistForm> createState() => _PlaylistFormState();
 }
 
 class _PlaylistFormState extends State<_PlaylistForm> {
-  late final TextEditingController _name = TextEditingController(
-    text: widget.current?.name ?? '',
-  );
-  late final TextEditingController _sourceUrl = TextEditingController(
-    text: widget.current?.sourceUrl ?? '',
-  );
+  final TextEditingController _name = TextEditingController();
+  final TextEditingController _sourceUrl = TextEditingController();
 
   bool _loading = false;
   String? _error;
@@ -659,9 +697,7 @@ class _PlaylistFormState extends State<_PlaylistForm> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(
-        widget.current == null ? 'Add Playlist' : 'Trocar Playlist',
-      ),
+      title: const Text('Add Playlist'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

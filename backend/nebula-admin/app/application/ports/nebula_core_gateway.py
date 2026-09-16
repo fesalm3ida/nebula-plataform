@@ -12,6 +12,7 @@ class CorePlaylist:
     format: str
     source_url: str
     status: str
+    assignment_id: UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -136,8 +137,16 @@ class NebulaCoreGateway(ABC):
         """Primeira ativacao (gratuita, concede o trial de 7 dias)."""
 
     @abstractmethod
-    async def get_own_playlist(self, token: str) -> CorePlaylist | None:
-        """Lista atualmente associada ao Device."""
+    async def get_own_playlists(self, token: str) -> list[CorePlaylist]:
+        """Listas associadas ao Device (pode ter varias)."""
+
+    @abstractmethod
+    async def remove_own_playlist(
+        self,
+        token: str,
+        assignment_id: str,
+    ) -> None:
+        """Remove uma das listas do Device."""
 
     @abstractmethod
     async def register_own_playlist(

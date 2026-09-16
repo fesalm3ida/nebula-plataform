@@ -224,11 +224,11 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
             expired=payload["expired"],
         )
 
-    async def get_own_playlist(self, token: str) -> CorePlaylist | None:
+    async def get_own_playlists(self, token: str) -> list[CorePlaylist]:
         try:
             async with httpx.AsyncClient(transport=self._transport) as client:
                 response = await client.get(
-                    f"{self._base_url}/me/playlist",
+                    f"{self._base_url}/me/playlists",
                     headers=self._bearer(token),
                 )
                 self._ensure_success(response)
@@ -238,12 +238,27 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
                 "Failed to reach the Nebula Core."
             ) from error
 
-        playlist = payload.get("playlist")
+        return [
+            self._to_core_playlist(item)
+            for item in payload.get("playlists", [])
+        ]
 
-        if not playlist:
-            return None
-
-        return self._to_core_playlist(playlist)
+    async def remove_own_playlist(
+        self,
+        token: str,
+        assignment_id: str,
+    ) -> None:
+        try:
+            async with httpx.AsyncClient(transport=self._transport) as client:
+                response = await client.delete(
+                    f"{self._base_url}/me/playlists/{assignment_id}",
+                    headers=self._bearer(token),
+                )
+                self._ensure_success(response)
+        except httpx.HTTPError as error:
+            raise CoreCommunicationError(
+                "Failed to reach the Nebula Core."
+            ) from error
 
     async def register_own_playlist(
         self,
@@ -351,12 +366,17 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
 
     @staticmethod
     def _to_core_playlist(payload: dict) -> CorePlaylist:
+        assignment_id = payload.get("assignment_id")
+
         return CorePlaylist(
             playlist_id=UUID(payload["playlist_id"]),
             name=payload["name"],
             format=payload["format"],
             source_url=payload["source_url"],
             status=payload["status"],
+            assignment_id=(
+                UUID(assignment_id) if assignment_id else None
+            ),
         )
 
     @staticmethod

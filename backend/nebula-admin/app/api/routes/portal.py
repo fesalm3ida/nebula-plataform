@@ -1,4 +1,13 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from uuid import UUID
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    Header,
+    HTTPException,
+    Response,
+    status,
+)
 
 from app.api.dependencies.nebula_core_gateway import (
     get_nebula_core_gateway,
@@ -92,6 +101,7 @@ def _to_license(license: CoreLicense) -> PortalLicenseOut:
 
 def _to_playlist(playlist: CorePlaylist) -> PortalPlaylistOut:
     return PortalPlaylistOut(
+        assignment_id=playlist.assignment_id or playlist.playlist_id,
         playlist_id=playlist.playlist_id,
         name=playlist.name,
         format=playlist.format,
@@ -149,7 +159,7 @@ async def portal_device(
 ) -> PortalDeviceResponse:
     try:
         license = await gateway.get_device_license(token)
-        playlist = await gateway.get_own_playlist(token)
+        playlists = await gateway.get_own_playlists(token)
     except (
         CoreAuthenticationError,
         CoreCommunicationError,
@@ -161,7 +171,7 @@ async def portal_device(
     return PortalDeviceResponse(
         device_id=license.device_id,
         license=_to_license(license),
-        playlist=_to_playlist(playlist) if playlist is not None else None,
+        playlists=[_to_playlist(item) for item in playlists],
     )
 
 
@@ -181,7 +191,7 @@ async def activate_device(
 ) -> PortalDeviceResponse:
     try:
         license = await gateway.activate_device(token)
-        playlist = await gateway.get_own_playlist(token)
+        playlists = await gateway.get_own_playlists(token)
     except (
         CoreAuthenticationError,
         CoreCommunicationError,
@@ -193,7 +203,7 @@ async def activate_device(
     return PortalDeviceResponse(
         device_id=license.device_id,
         license=_to_license(license),
-        playlist=_to_playlist(playlist) if playlist is not None else None,
+        playlists=[_to_playlist(item) for item in playlists],
     )
 
 
@@ -243,7 +253,7 @@ async def sync_payments(
 ) -> PortalDeviceResponse:
     try:
         license = await gateway.sync_payments(token)
-        playlist = await gateway.get_own_playlist(token)
+        playlists = await gateway.get_own_playlists(token)
     except (
         CoreAuthenticationError,
         CoreCommunicationError,
@@ -255,8 +265,32 @@ async def sync_payments(
     return PortalDeviceResponse(
         device_id=license.device_id,
         license=_to_license(license),
-        playlist=_to_playlist(playlist) if playlist is not None else None,
+        playlists=[_to_playlist(item) for item in playlists],
     )
+
+
+@router.delete(
+    "/playlists/{assignment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove Playlist",
+    description="Remove uma das listas de reprodução do aparelho.",
+)
+async def remove_playlist(
+    assignment_id: UUID,
+    token: str = Depends(get_device_token),
+    gateway: NebulaCoreGateway = Depends(get_nebula_core_gateway),
+) -> Response:
+    try:
+        await gateway.remove_own_playlist(token, str(assignment_id))
+    except (
+        CoreAuthenticationError,
+        CoreCommunicationError,
+        CoreConflictError,
+        CoreResourceNotFoundError,
+    ) as error:
+        _raise_http_error(error)
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(
