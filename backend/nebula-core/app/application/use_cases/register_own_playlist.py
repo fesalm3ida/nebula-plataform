@@ -56,14 +56,7 @@ class RegisterOwnPlaylistUseCase:
 
         self._playlists.save(playlist)
 
-        current = self._assignments.find_active_by_device_id(
-            command.device.device_id
-        )
-
-        if current is not None:
-            current.revoke()
-            self._assignments.save(current)
-
+        # O Device pode ter VÁRIAS listas: aqui apenas ADICIONAMOS.
         assignment = PlaylistAssignment(
             device_id=command.device.device_id,
             playlist_id=playlist.playlist_id,

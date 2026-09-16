@@ -10,6 +10,7 @@ class PortalPlaylistRequest(BaseModel):
 
 
 class PortalPlaylistResponse(BaseModel):
+    assignment_id: UUID
     playlist_id: UUID
     name: str
     format: str
@@ -19,3 +20,7 @@ class PortalPlaylistResponse(BaseModel):
 
 class PortalPlaylistEnvelope(BaseModel):
     playlist: PortalPlaylistResponse | None = None
+
+
+class PortalPlaylistsResponse(BaseModel):
+    playlists: list[PortalPlaylistResponse]

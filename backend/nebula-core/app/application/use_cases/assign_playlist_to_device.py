@@ -68,17 +68,20 @@ class AssignPlaylistToDeviceUseCase:
                 "A disabled Playlist cannot be assigned to a Device."
             )
 
-        existing = self._assignment_repository.find_active_by_device_id(
-            command.device_id
+        # Um Device pode ter VÁRIAS playlists; só não pode repetir a mesma.
+        existing_assignments = (
+            self._assignment_repository.find_all_active_by_device_id(
+                command.device_id
+            )
         )
 
-        if existing is not None:
-            if existing.playlist_id == command.playlist_id:
-                raise PlaylistAssignmentAlreadyExistsError(
-                    "Device already has this Playlist assigned."
-                )
-            existing.revoke()
-            self._assignment_repository.save(existing)
+        if any(
+            assignment.playlist_id == command.playlist_id
+            for assignment in existing_assignments
+        ):
+            raise PlaylistAssignmentAlreadyExistsError(
+                "Device already has this Playlist assigned."
+            )
 
         assignment = PlaylistAssignment(
             device_id=command.device_id,

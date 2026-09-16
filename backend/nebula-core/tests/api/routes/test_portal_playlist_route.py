@@ -79,15 +79,15 @@ def test_should_return_registered_playlist(
     )
 
     response = client.get(
-        "/me/playlist",
+        "/me/playlists",
         headers=authorization_headers(device),
     )
 
     assert response.status_code == 200
-    assert response.json()["playlist"]["name"] == "Lista A"
+    assert response.json()["playlists"][0]["name"] == "Lista A"
 
 
-def test_should_replace_previous_playlist(
+def test_should_allow_multiple_playlists(
     device_repository: InMemoryDeviceRepository,
     playlist_assignment_repository: InMemoryPlaylistAssignmentRepository,
 ) -> None:
@@ -99,36 +99,69 @@ def test_should_replace_previous_playlist(
     client.post(
         "/me/playlist",
         headers=headers,
-        json={"name": "Antiga", "source_url": "http://host/old.m3u"},
+        json={"name": "Lista A", "source_url": "http://host/a.m3u"},
     )
 
     client.post(
         "/me/playlist",
         headers=headers,
-        json={"name": "Nova", "source_url": "http://host/new.m3u"},
+        json={"name": "Lista B", "source_url": "http://host/b.m3u"},
     )
 
-    response = client.get("/me/playlist", headers=headers)
+    response = client.get("/me/playlists", headers=headers)
 
-    assert response.json()["playlist"]["name"] == "Nova"
+    names = [item["name"] for item in response.json()["playlists"]]
+
+    assert names == ["Lista A", "Lista B"]
 
     active = playlist_assignment_repository.find_all_active_by_device_id(
         device.device_id
     )
 
-    assert len(active) == 1
+    assert len(active) == 2
 
 
-def test_should_return_null_when_no_playlist(
+def test_should_remove_playlist(
+    device_repository: InMemoryDeviceRepository,
+    playlist_assignment_repository: InMemoryPlaylistAssignmentRepository,
+) -> None:
+    device = make_device()
+    device_repository.save(device)
+
+    headers = authorization_headers(device)
+
+    client.post(
+        "/me/playlist",
+        headers=headers,
+        json={"name": "Lista A", "source_url": "http://host/a.m3u"},
+    )
+
+    assignment = playlist_assignment_repository.find_all_active_by_device_id(
+        device.device_id
+    )[0]
+
+    response = client.delete(
+        f"/me/playlists/{assignment.assignment_id}",
+        headers=headers,
+    )
+
+    assert response.status_code == 204
+
+    remaining = client.get("/me/playlists", headers=headers)
+
+    assert remaining.json()["playlists"] == []
+
+
+def test_should_return_empty_list_when_no_playlist(
     device_repository: InMemoryDeviceRepository,
 ) -> None:
     device = make_device()
     device_repository.save(device)
 
     response = client.get(
-        "/me/playlist",
+        "/me/playlists",
         headers=authorization_headers(device),
     )
 
     assert response.status_code == 200
-    assert response.json()["playlist"] is None
+    assert response.json()["playlists"] == []
