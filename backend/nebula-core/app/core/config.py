@@ -1,9 +1,9 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy import URL
+from sqlalchemy import URL, make_url
 
 
 NEBULA_CORE_ROOT = Path(__file__).resolve().parents[2]
@@ -48,6 +48,7 @@ class Settings(BaseSettings):
         default="localhost",
         validation_alias=AliasChoices(
             "POSTGRES_HOST",
+            "PGHOST",
             "postgres_host",
         ),
     )
@@ -56,6 +57,7 @@ class Settings(BaseSettings):
         default=5434,
         validation_alias=AliasChoices(
             "POSTGRES_PORT",
+            "PGPORT",
             "postgres_port",
         ),
     )
@@ -64,6 +66,7 @@ class Settings(BaseSettings):
         default="nebula",
         validation_alias=AliasChoices(
             "POSTGRES_DB",
+            "PGDATABASE",
             "postgres_db",
         ),
     )
@@ -72,14 +75,26 @@ class Settings(BaseSettings):
         default="nebula",
         validation_alias=AliasChoices(
             "POSTGRES_USER",
+            "PGUSER",
             "postgres_user",
         ),
     )
 
     postgres_password: str = Field(
+        default="",
         validation_alias=AliasChoices(
             "POSTGRES_PASSWORD",
+            "PGPASSWORD",
             "postgres_password",
+        ),
+    )
+
+    # Provedores gerenciados (Railway/Render/Heroku) entregam uma URL unica.
+    database_url_value: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "DATABASE_URL",
+            "database_url_value",
         ),
     )
 
@@ -188,8 +203,33 @@ class Settings(BaseSettings):
         populate_by_name=True,
     )
 
+    @model_validator(mode="after")
+    def _validate_database(self) -> "Settings":
+        """Garante que exista uma forma de conectar ao banco."""
+        if not self.database_url_value and not self.postgres_password:
+            raise ValueError(
+                "Provide DATABASE_URL or POSTGRES_PASSWORD "
+                "(the password may also come from "
+                ".secrets/postgres_password)."
+            )
+
+        return self
+
     @property
     def database_url(self) -> URL:
+        """URL do banco: usa DATABASE_URL quando presente."""
+        if self.database_url_value:
+            raw = self.database_url_value
+
+            # Railway/Heroku usam postgres:// ou postgresql://; aqui o driver
+            # e o psycopg 3 (postgresql+psycopg://).
+            for prefix in ("postgres://", "postgresql://"):
+                if raw.startswith(prefix):
+                    raw = "postgresql+psycopg://" + raw[len(prefix):]
+                    break
+
+            return make_url(raw)
+
         return URL.create(
             drivername="postgresql+psycopg",
             username=self.postgres_user,
