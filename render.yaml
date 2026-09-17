@@ -1,0 +1,79 @@
+# Blueprint do Render — Nebula Platform
+#
+# Uso: Render → New → Blueprint → conecte o repositório.
+# O Render lê este arquivo e cria: o PostgreSQL + os serviços (Core e BFF).
+#
+# Observações:
+#  - As migrations rodam sozinhas: o CMD do Dockerfile executa
+#    "alembic upgrade head" antes de subir a API.
+#  - A porta é definida pelo Render (PORT); os Dockerfiles já respeitam $PORT.
+#  - Os valores marcados com "sync: false" são preenchidos no painel.
+
+databases:
+  - name: nebula-postgres
+    databaseName: nebula
+    user: nebula
+    # "free" expira em 30 dias — para produção use "starter" (ou um banco
+    # gerenciado externo, ex.: Neon/Supabase, e ajuste DATABASE_URL).
+    plan: free
+    region: oregon
+
+services:
+  # ---------------------------------------------------------------- Core ----
+  - type: web
+    name: nebula-core
+    runtime: docker
+    plan: free
+    region: oregon
+    rootDir: backend/nebula-core
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nebula-postgres
+          property: connectionString
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ADMIN_API_KEY
+        generateValue: true
+      # Mercado Pago (preencher no painel)
+      - key: MERCADOPAGO_ACCESS_TOKEN
+        sync: false
+      - key: MERCADOPAGO_NOTIFICATION_URL
+        sync: false
+      - key: MERCADOPAGO_BACK_URL
+        sync: false
+
+  # ----------------------------------------------------------------- BFF ----
+  - type: web
+    name: nebula-admin
+    runtime: docker
+    plan: free
+    region: oregon
+    rootDir: backend/nebula-admin
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Preencher com a URL pública do Core, ex.:
+      # https://nebula-core.onrender.com
+      - key: NEBULA_CORE_BASE_URL
+        sync: false
+      # Precisa ser IGUAL ao ADMIN_API_KEY do Core.
+      - key: NEBULA_CORE_SERVICE_TOKEN
+        fromService:
+          type: web
+          name: nebula-core
+          envVarKey: ADMIN_API_KEY
+      - key: ADMIN_JWT_SECRET_KEY
+        generateValue: true
+      - key: ADMIN_SEED_EMAIL
+        value: admin@nebula.local
+      - key: ADMIN_SEED_PASSWORD
+        sync: false
+      - key: ADMIN_SEED_ROLE
+        value: super_admin
