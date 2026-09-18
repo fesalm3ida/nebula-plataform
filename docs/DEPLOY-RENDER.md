@@ -171,6 +171,68 @@ flutter build apk --release \
 
 ---
 
+## 4.1 Publicar o Portal Web no Render (passo a passo)
+
+O portal é um app **estático** (Flutter Web). O Render **não** tem o Flutter no
+ambiente de build, então fazemos o build **localmente** e publicamos o
+resultado como **Static Site** (gratuito, com CDN e sem *cold start*).
+
+### a) Build local apontando para as APIs do Render
+```bash
+cd /home/fealmeida/projects/nebula-plataform/frontend/nebula-admin
+chmod +x build_web.sh
+
+./build_web.sh https://nebula-admin-ciri.onrender.com painel-nbl-7f2c9a
+```
+> Troque os dois argumentos pelos **seus**: a URL do **BFF** e a **rota secreta
+> do administrador** (evite a de exemplo em produção).
+> O script gera `build/web` e copia para **`deploy/web`**.
+
+### b) Versionar o resultado e enviar
+```bash
+cd /home/fealmeida/projects/nebula-plataform
+git add frontend/nebula-admin/deploy
+git commit -m "build(portal): web build apontando para o Render"
+git push origin main
+```
+
+### c) Criar o Static Site no Render
+Render → **New → Static Site** → conecte `nebula-plataform` e preencha:
+
+| Campo | Valor |
+|---|---|
+| **Name** | `nebula-portal` (define o subdomínio) |
+| **Branch** | `main` |
+| **Build Command** | `echo "build ja versionado em deploy/web"` |
+| **Publish Directory** | `frontend/nebula-admin/deploy/web` |
+
+Clique em **Create Static Site** → o deploy leva ~1 min.
+
+### d) Acessos
+```text
+Usuário:        https://<portal>.onrender.com
+Administrador:  https://<portal>.onrender.com/#/painel-nbl-7f2c9a
+```
+
+### e) Fechar o ciclo
+1. **nebula-core → Environment:**
+   `MERCADOPAGO_BACK_URL = https://<portal>.onrender.com`
+   (https ⇒ o Mercado Pago devolve o usuário ao portal após o pagamento);
+2. **App Android** recompilado com a URL do portal:
+   ```bash
+   cd frontend/nebula-player
+   flutter run -d <SERIAL> \
+     --dart-define=NEBULA_CORE_API=https://nebula-core-6hq4.onrender.com \
+     --dart-define=NEBULA_PORTAL_URL=https://<portal>.onrender.com
+   ```
+
+> **Automatizar o build no Render (alternativa):** em vez do build local, é
+> possível usar um **Web Service (Docker)** com um estágio Flutter
+> (`ghcr.io/cirruslabs/flutter:stable`) e servir com nginx — fica automático a
+> cada push, mas perde o CDN/estático do Static Site e o Free dorme.
+
+---
+
 ## 5. Problemas comuns
 
 | Sintoma | Causa | Solução |
