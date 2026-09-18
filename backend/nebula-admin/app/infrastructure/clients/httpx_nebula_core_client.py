@@ -21,6 +21,11 @@ from app.application.ports.nebula_core_gateway import (
 )
 
 
+
+# O Core pode estar "dormindo" (plano free): o cold start leva ~30s, entao o
+# timeout precisa ser generoso para nao falhar a primeira chamada.
+_TIMEOUT = httpx.Timeout(60.0, connect=10.0)
+
 class HTTPXNebulaCoreClient(NebulaCoreGateway):
     """Cliente HTTP para o Nebula Core.
 
@@ -44,7 +49,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
 
     async def list_playlists(self) -> list[CorePlaylist]:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.get(
                     f"{self._base_url}/playlists",
                     headers=self._headers(),
@@ -68,7 +73,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
         source_url: str,
     ) -> CorePlaylist:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.post(
                     f"{self._base_url}/playlists",
                     headers=self._headers(),
@@ -89,7 +94,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
 
     async def list_devices(self) -> list[CoreDevice]:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.get(
                     f"{self._base_url}/devices",
                     headers=self._headers(),
@@ -112,7 +117,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
         action: str,
     ) -> CoreDeviceStatus:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.post(
                     f"{self._base_url}/devices/{device_id}/{action}",
                     headers=self._headers(),
@@ -135,7 +140,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
         playlist_id: UUID,
     ) -> CorePlaylistAssignment:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.post(
                     f"{self._base_url}/playlists/assignments",
                     headers=self._headers(),
@@ -165,7 +170,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
         activation_code: str,
     ) -> CorePortalSession:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.post(
                     f"{self._base_url}/auth/portal",
                     json={
@@ -201,7 +206,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
         token: str,
     ) -> CoreLicense:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.request(
                     method,
                     f"{self._base_url}{path}",
@@ -226,7 +231,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
 
     async def get_own_playlists(self, token: str) -> list[CorePlaylist]:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.get(
                     f"{self._base_url}/me/playlists",
                     headers=self._bearer(token),
@@ -249,7 +254,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
         assignment_id: str,
     ) -> None:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.delete(
                     f"{self._base_url}/me/playlists/{assignment_id}",
                     headers=self._bearer(token),
@@ -268,7 +273,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
         format: str,
     ) -> CorePlaylist:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.post(
                     f"{self._base_url}/me/playlist",
                     headers=self._bearer(token),
@@ -296,7 +301,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
 
     async def list_plans(self, token: str) -> list[CorePlan]:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.get(
                     f"{self._base_url}/me/plans",
                     headers=self._bearer(token),
@@ -325,7 +330,7 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
         product: str,
     ) -> CorePurchase:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.post(
                     f"{self._base_url}/me/purchase",
                     headers=self._bearer(token),

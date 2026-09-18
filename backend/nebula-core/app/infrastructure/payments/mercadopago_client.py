@@ -9,6 +9,10 @@ from app.application.ports.payment_gateway import (
 )
 
 
+
+# A API do Mercado Pago pode demorar; 20s evita falhas intermitentes.
+_TIMEOUT = httpx.Timeout(20.0, connect=10.0)
+
 class MercadoPagoClient(PaymentGateway):
     """Cliente do Mercado Pago (Checkout Pro)."""
 
@@ -57,7 +61,7 @@ class MercadoPagoClient(PaymentGateway):
                 payload["auto_return"] = "approved"
 
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.post(
                     f"{self.BASE_URL}/checkout/preferences",
                     headers=self._headers(),
@@ -80,7 +84,7 @@ class MercadoPagoClient(PaymentGateway):
         merchant_order_id: str,
     ) -> PaymentConfirmation | None:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.get(
                     f"{self.BASE_URL}/merchant_orders/{merchant_order_id}",
                     headers=self._headers(),
@@ -135,7 +139,7 @@ class MercadoPagoClient(PaymentGateway):
         external_reference: str,
     ) -> PaymentConfirmation | None:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.get(
                     f"{self.BASE_URL}/v1/payments/search",
                     headers=self._headers(),
@@ -171,7 +175,7 @@ class MercadoPagoClient(PaymentGateway):
         provider_payment_id: str,
     ) -> PaymentConfirmation:
         try:
-            async with httpx.AsyncClient(transport=self._transport) as client:
+            async with httpx.AsyncClient(transport=self._transport, timeout=_TIMEOUT) as client:
                 response = await client.get(
                     f"{self.BASE_URL}/v1/payments/{provider_payment_id}",
                     headers=self._headers(),
