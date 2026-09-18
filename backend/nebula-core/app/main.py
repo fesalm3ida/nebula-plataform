@@ -8,7 +8,13 @@ from app.api.routes.observability import router as observability_router
 from app.api.routes.license import router as license_router
 from app.api.routes.portal import router as portal_router
 from app.api.routes.payments import router as payments_router
+from app.core.config import get_settings
 
+
+# Valida a configuração já na subida: variável de ambiente faltando (ex.:
+# DATABASE_URL) derruba o deploy com mensagem clara, em vez de responder 500
+# em cada requisição.
+get_settings()
 
 app = FastAPI(
     title="Nebula Core",
