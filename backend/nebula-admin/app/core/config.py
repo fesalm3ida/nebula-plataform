@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     # Admin JWT: identidade administrativa (separada da identidade de Device).
     admin_jwt_secret_key: str = Field(
+        min_length=8,
         validation_alias=AliasChoices(
             "ADMIN_JWT_SECRET_KEY",
             "admin_jwt_secret_key",
@@ -92,6 +93,9 @@ class Settings(BaseSettings):
     )
 
     admin_seed_password: str = Field(
+        # Nao pode ser vazia: a senha do administrador e semeada no start e
+        # usada no login (uma senha vazia quebraria todas as rotas admin).
+        min_length=1,
         validation_alias=AliasChoices(
             "ADMIN_SEED_PASSWORD",
             "admin_seed_password",
