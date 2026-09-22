@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../api/portal_api_client.dart';
+import '../widgets/mac_address_input_formatter.dart';
 import 'user_portal_screen.dart';
 
 /// Login do **usuário** com o MAC Address e o código de ativação exibidos
@@ -93,18 +95,26 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
                     const SizedBox(height: 24),
                     TextField(
                       controller: _macAddress,
+                      inputFormatters: const [MacAddressInputFormatter()],
+                      keyboardType: TextInputType.visiblePassword,
                       decoration: const InputDecoration(
                         labelText: 'MAC Address',
-                        hintText: '02:1A:2B:3C:4D:5E',
+                        hintText: '02:C4:E0:F9:65:30',
+                        helperText: '6 duplas separadas por ":"',
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _activationCode,
                       keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(6),
+                      ],
                       decoration: const InputDecoration(
                         labelText: 'Código de ativação',
                         hintText: '000000',
+                        helperText: '6 dígitos exibidos no aparelho',
                       ),
                     ),
                     if (_error != null) ...[
