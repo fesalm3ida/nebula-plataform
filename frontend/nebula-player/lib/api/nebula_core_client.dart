@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -11,13 +13,48 @@ class NebulaCoreClient {
 
   final http.Client _client;
 
+  /// Tempo maximo de cada tentativa. O Core no plano free do Render "dorme" e
+  /// a primeira chamada dispara o cold start (~25 s).
+  static const Duration _timeout = Duration(seconds: 45);
+
+  static const int _attempts = 3;
+
+  /// Envia a requisicao com timeout e reenvio em falhas de rede.
+  ///
+  /// Sem isso, um cold start (conexao abortada) ou uma oscilacao de rede
+  /// derrubava o boot do app com o erro cru do socket.
+  Future<http.Response> _send(
+    Future<http.Response> Function() request,
+  ) async {
+    for (var attempt = 1; attempt <= _attempts; attempt++) {
+      try {
+        return await request().timeout(_timeout);
+      } on TimeoutException {
+        // Tenta de novo (cold start do servidor).
+      } on SocketException {
+        // Rede instavel ou conexao abortada: tenta de novo.
+      } on http.ClientException {
+        // Idem.
+      }
+
+      if (attempt < _attempts) {
+        await Future<void>.delayed(Duration(seconds: 2 * attempt));
+      }
+    }
+
+    throw NebulaCoreException(
+      'Nao foi possivel falar com o servidor. '
+      'Verifique a conexao e tente novamente.',
+    );
+  }
+
   Future<DeviceIdentity> registerDevice({
     required String fingerprint,
     required String macAddress,
     required String platform,
     required String appVersion,
   }) async {
-    final response = await _client.post(
+    final response = await _send(() => _client.post(
       Uri.parse('${ApiConfig.baseUrl}/devices/register'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
@@ -26,7 +63,7 @@ class NebulaCoreClient {
         'platform': platform,
         'app_version': appVersion,
       }),
-    );
+    ));
 
     if (response.statusCode != 201) {
       throw NebulaCoreException(
@@ -50,7 +87,7 @@ class NebulaCoreClient {
     required String deviceKey,
     required String fingerprint,
   }) async {
-    final response = await _client.post(
+    final response = await _send(() => _client.post(
       Uri.parse('${ApiConfig.baseUrl}/auth/device'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
@@ -58,7 +95,7 @@ class NebulaCoreClient {
         'device_key': deviceKey,
         'fingerprint': fingerprint,
       }),
-    );
+    ));
 
     if (response.statusCode != 200) {
       throw NebulaCoreException(
@@ -73,10 +110,10 @@ class NebulaCoreClient {
   }
 
   Future<String> startSession(String token) async {
-    final response = await _client.post(
+    final response = await _send(() => _client.post(
       Uri.parse('${ApiConfig.baseUrl}/sessions'),
       headers: {'Authorization': 'Bearer $token'},
-    );
+    ));
 
     if (response.statusCode != 201) {
       throw NebulaCoreException(
@@ -90,10 +127,10 @@ class NebulaCoreClient {
   }
 
   Future<Provisioning> getProvisioning(String token) async {
-    final response = await _client.get(
+    final response = await _send(() => _client.get(
       Uri.parse('${ApiConfig.baseUrl}/me/provisioning'),
       headers: {'Authorization': 'Bearer $token'},
-    );
+    ));
 
     if (response.statusCode != 200) {
       throw NebulaCoreException(
@@ -107,10 +144,10 @@ class NebulaCoreClient {
   }
 
   Future<void> heartbeat(String token, String sessionId) async {
-    final response = await _client.post(
+    final response = await _send(() => _client.post(
       Uri.parse('${ApiConfig.baseUrl}/sessions/$sessionId/heartbeat'),
       headers: {'Authorization': 'Bearer $token'},
-    );
+    ));
 
     if (response.statusCode != 200) {
       throw NebulaCoreException(
@@ -125,7 +162,7 @@ class NebulaCoreClient {
     String eventType,
     Map<String, dynamic> payload,
   ) async {
-    final response = await _client.post(
+    final response = await _send(() => _client.post(
       Uri.parse('${ApiConfig.baseUrl}/me/telemetry'),
       headers: {
         'Content-Type': 'application/json',
@@ -136,7 +173,7 @@ class NebulaCoreClient {
         'event_type': eventType,
         'payload': payload,
       }),
-    );
+    ));
 
     if (response.statusCode != 201) {
       throw NebulaCoreException(

@@ -24,6 +24,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _status = 'Inicializando...';
 
+  /// true quando o boot falhou (mostra erro + botao de tentar novamente).
+  bool _failed = false;
+
   @override
   void initState() {
     super.initState();
@@ -110,7 +113,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _start() async {
-    setState(() => _status = 'Registrando dispositivo...');
+    setState(() {
+      _failed = false;
+      _status = 'Registrando dispositivo...';
+    });
 
     try {
       final fingerprint = await _identity.getOrCreateFingerprint();
@@ -161,10 +167,16 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      setState(() => _status = 'Erro: $error');
+      setState(() {
+        _failed = true;
+        _status = '$error';
+      });
     } catch (error) {
       if (!mounted) return;
-      setState(() => _status = 'Erro: $error');
+      setState(() {
+        _failed = true;
+        _status = '$error';
+      });
     }
   }
 
@@ -174,16 +186,43 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(color: NebulaColors.textPrimary),
-              const SizedBox(height: 16),
-              Text(
-                _status,
-                style: const TextStyle(color: NebulaColors.textPrimary),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_failed)
+                  const Icon(
+                    Icons.cloud_off,
+                    size: 56,
+                    color: NebulaColors.textPrimary,
+                  )
+                else
+                  const CircularProgressIndicator(
+                    color: NebulaColors.textPrimary,
+                  ),
+                const SizedBox(height: 16),
+                Text(
+                  _status,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: NebulaColors.textPrimary),
+                ),
+                if (_failed) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Toque para tentar novamente.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: NebulaColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: _start,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Tentar novamente'),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
