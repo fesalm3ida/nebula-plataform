@@ -1,8 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- O Player consome o Nebula Core (API) e as listas M3U pela internet.
+         Sem esta permissao o APK de RELEASE nao tem rede (o template do Flutter
+         so a declara nos manifests de debug/profile). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Mantem a tela ativa durante a reproducao (wakelock). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+
     <application
-        android:label="nebula_player"
+        android:label="Nebula Player"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
