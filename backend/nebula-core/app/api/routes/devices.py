@@ -125,6 +125,12 @@ def list_devices(
                 status=device.status,
                 app_version=device.app_version,
                 created_at=device.created_at,
+                mac_address=str(device.mac_address),
+                activation_code=(
+                    str(device.activation_code)
+                    if device.activation_code is not None
+                    else None
+                ),
             )
             for device in result.devices
         ]

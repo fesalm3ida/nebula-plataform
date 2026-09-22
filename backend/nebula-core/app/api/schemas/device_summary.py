@@ -12,6 +12,9 @@ class DeviceSummaryResponse(BaseModel):
     status: DeviceStatus
     app_version: str
     created_at: datetime
+    # Identificacao publica exibida no Player (usada pelo usuario no portal).
+    mac_address: str
+    activation_code: str | None = None
 
 
 class DeviceListResponse(BaseModel):

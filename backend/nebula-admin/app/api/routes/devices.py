@@ -56,6 +56,8 @@ async def list_devices(
                 status=device.status,
                 app_version=device.app_version,
                 created_at=device.created_at,
+                mac_address=device.mac_address,
+                activation_code=device.activation_code,
             )
             for device in result.devices
         ]

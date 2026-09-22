@@ -148,7 +148,23 @@ class _DevicesScreenState extends State<DevicesScreen> {
               return ListTile(
                 leading: const Icon(Icons.tv),
                 title: Text(device.platform),
-                subtitle: Text('${device.id}\n${device.createdAt}'),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (device.macAddress.isNotEmpty)
+                      Text('MAC: ${device.macAddress}'),
+                    if (device.activationCode.isNotEmpty)
+                      Text('Código de ativação: ${device.activationCode}'),
+                    Text(
+                      'ID: ${device.id}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    Text(
+                      device.createdAt,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
                 isThreeLine: true,
                 trailing: Wrap(
                   spacing: 4,

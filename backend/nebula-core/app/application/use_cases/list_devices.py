@@ -13,6 +13,9 @@ class DeviceSummary:
     status: DeviceStatus
     app_version: str
     created_at: datetime
+    # Identificacao publica exibida no Player (o usuario usa no portal).
+    mac_address: str = ""
+    activation_code: str | None = None
 
 
 @dataclass(frozen=True)
@@ -35,6 +38,12 @@ class ListDevicesUseCase:
                     status=device.status,
                     app_version=device.app_version.value,
                     created_at=device.created_at,
+                    mac_address=str(device.mac_address),
+                    activation_code=(
+                        str(device.activation_code)
+                        if device.activation_code is not None
+                        else None
+                    ),
                 )
                 for device in devices
             ]

@@ -5,6 +5,8 @@ class Device {
     required this.status,
     required this.appVersion,
     required this.createdAt,
+    this.macAddress = '',
+    this.activationCode = '',
   });
 
   final String id;
@@ -12,6 +14,10 @@ class Device {
   final String status;
   final String appVersion;
   final String createdAt;
+
+  /// Identificação exibida no Player (o usuário informa no portal).
+  final String macAddress;
+  final String activationCode;
 
   bool get isActive => status == 'active';
   bool get isPending => status == 'pending';
@@ -22,5 +28,7 @@ class Device {
         status: json['status'] as String,
         appVersion: json['app_version'] as String,
         createdAt: json['created_at'] as String,
+        macAddress: (json['mac_address'] as String?) ?? '',
+        activationCode: (json['activation_code'] as String?) ?? '',
       );
 }

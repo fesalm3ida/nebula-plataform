@@ -24,6 +24,8 @@ class CoreDevice:
     status: str
     app_version: str
     created_at: str
+    mac_address: str = ""
+    activation_code: str | None = None
 
 
 @dataclass(frozen=True)

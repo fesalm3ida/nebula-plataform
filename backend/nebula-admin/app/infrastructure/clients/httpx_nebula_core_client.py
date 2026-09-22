@@ -389,6 +389,8 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
         return CoreDevice(
             device_id=UUID(payload["device_id"]),
             platform=payload["platform"],
+            mac_address=payload.get("mac_address", ""),
+            activation_code=payload.get("activation_code"),
             status=payload["status"],
             app_version=payload["app_version"],
             created_at=payload["created_at"],

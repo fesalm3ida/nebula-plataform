@@ -9,6 +9,8 @@ class DeviceOut(BaseModel):
     status: str
     app_version: str
     created_at: str
+    mac_address: str = ""
+    activation_code: str | None = None
 
 
 class DeviceListResponse(BaseModel):
