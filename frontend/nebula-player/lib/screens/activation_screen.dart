@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../api/nebula_core_client.dart';
-import '../config/api_config.dart';
 import '../models/content_source.dart';
 import '../theme/nebula_theme.dart';
 import 'home_menu_screen.dart';
@@ -147,19 +146,6 @@ class _ActivationScreenState extends State<ActivationScreen> {
                     label: 'Código de ativação',
                     value: widget.activationCode,
                     highlight: true,
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Acesse o portal e informe os dados acima:',
-                    style: TextStyle(color: NebulaColors.textSecondary),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    ApiConfig.portalUrl,
-                    style: TextStyle(
-                      color: NebulaColors.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
                   ),
                   const SizedBox(height: 24),
                   Row(
