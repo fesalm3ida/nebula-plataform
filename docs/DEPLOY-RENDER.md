@@ -235,8 +235,15 @@ Administrador:  https://<portal>.onrender.com/#/painel-nbl-7f2c9a
 
 ## 5. Problemas comuns
 
+> Os quatro primeiros itens são **casos reais** do primeiro deploy (todos já
+> corrigidos no código ou documentados aqui).
+
 | Sintoma | Causa | Solução |
 |---|---|---|
+| **Todas** as rotas dão **500**, mas `/health` responde 200 | faltava variável de ambiente (ex.: `NEBULA_CORE_BASE_URL`): o `get_settings()` estourava dentro da dependência de cada rota | definir a variável. **Já corrigido**: os serviços validam a configuração na subida e o deploy falha com erro claro |
+| `502 Failed to reach the Nebula Core` **na primeira** chamada | cold start do Core free (~25 s) vs. timeout padrão do httpx (5 s) | **já corrigido**: 60 s (BFF→Core) e 20 s (Core→MP); complementar com *keep-warm* |
+| APK **release** com `Failed host lookup: ...onrender.com` (em debug funciona) | o template do Flutter declara `INTERNET` **apenas** nos manifests de `debug/` e `profile/` | **já corrigido**: `INTERNET` no `android/app/src/main/AndroidManifest.xml` |
+| Blueprint: *"Blueprint file render.yaml not found on main branch"* mesmo após o push | o Render usa um snapshot antigo do repositório | recarregar (**F5**) e refazer **New → Blueprint** (ou reconectar o GitHub App) |
 | Deploy falha com *"health check failed"* | app não subiu ou `/health` inacessível | veja os Logs; confirme que o serviço usa a porta `$PORT` |
 | `ValueError: Provide DATABASE_URL or POSTGRES_PASSWORD` | faltou a variável do banco | configure `DATABASE_URL` no Core |
 | BFF responde **502** | `NEBULA_CORE_BASE_URL` errado ou Core dormindo | confira a URL e o `/health` do Core |
