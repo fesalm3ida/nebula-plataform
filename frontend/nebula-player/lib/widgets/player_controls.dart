@@ -8,7 +8,15 @@ import '../theme/nebula_theme.dart';
 /// Linha de cima: **play/pause** (esquerda) e **volume** (direita).
 /// Linha de baixo: **barra de progresso** (omitida em transmissões ao vivo).
 class PlayerControls extends StatelessWidget {
-  const PlayerControls({super.key, required this.controller});
+  const PlayerControls({
+    super.key,
+    required this.controller,
+    this.showProgress = true,
+  });
+
+  /// A barra de progresso so faz sentido em conteudo sob demanda (filmes e
+  /// series). Em canal ao vivo ela e omitida.
+  final bool showProgress;
 
   final PlaybackController controller;
 
@@ -45,7 +53,8 @@ class PlayerControls extends StatelessWidget {
               Expanded(child: _VolumeSlider(controller: controller)),
             ],
           ),
-          _ProgressBar(controller: controller),
+          // Canal ao vivo nao tem progresso/seek: a barra e omitida.
+          if (showProgress) _ProgressBar(controller: controller),
         ],
       ),
     );

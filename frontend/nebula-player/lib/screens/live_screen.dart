@@ -136,7 +136,11 @@ class _LiveScreenState extends State<LiveScreen> {
 
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PlayerScreen(url: url, title: channel.displayName),
+        builder: (_) => PlayerScreen(
+          url: url,
+          title: channel.displayName,
+          isLive: true,
+        ),
       ),
     );
   }

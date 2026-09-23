@@ -12,9 +12,16 @@ import 'player_controls.dart';
 /// - Respeitam a área segura (`SafeArea`), ficando acima dos botões nativos
 ///   do Android (barra de navegação/gestos).
 class PlayerView extends StatefulWidget {
-  const PlayerView({super.key, required this.controller});
+  const PlayerView({
+    super.key,
+    required this.controller,
+    this.showProgress = true,
+  });
 
   final PlaybackController controller;
+
+  /// Mostra a barra de progresso (apenas filmes e series).
+  final bool showProgress;
 
   @override
   State<PlayerView> createState() => _PlayerViewState();

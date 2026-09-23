@@ -5,6 +5,8 @@ import '../models/media_kind.dart';
 import '../services/catalog_service.dart';
 import '../theme/nebula_theme.dart';
 import 'player_screen.dart';
+import '../widgets/title_search_field.dart';
+import '../utils/search.dart';
 
 /// Tela "Filmes" (VOD): grade de capas com filtro por categoria.
 class MoviesScreen extends StatefulWidget {
@@ -20,6 +22,7 @@ class _MoviesScreenState extends State<MoviesScreen> {
   List<M3uChannel> _movies = [];
   List<String> _categories = [];
   String? _category;
+  String _query = '';
   bool _loading = true;
   bool _empty = false;
   int? _loadMs;
@@ -66,8 +69,17 @@ class _MoviesScreenState extends State<MoviesScreen> {
   }
 
   List<M3uChannel> get _filtered {
-    if (_category == null) return _movies;
-    return _movies.where((item) => item.group == _category).toList();
+    final byCategory = _category == null
+        ? _movies
+        : _movies.where((item) => item.group == _category).toList();
+
+    if (_query.trim().isEmpty) {
+      return byCategory;
+    }
+
+    return byCategory
+        .where((item) => matchesSearch(item.displayName, _query))
+        .toList();
   }
 
   void _open(M3uChannel item) {
@@ -105,6 +117,10 @@ class _MoviesScreenState extends State<MoviesScreen> {
                       )
                     : Column(
                         children: [
+                          TitleSearchField(
+                            onChanged: (value) =>
+                                setState(() => _query = value),
+                          ),
                           if (_categories.isNotEmpty)
                             _CategoryChips(
                               categories: _categories,
@@ -112,6 +128,13 @@ class _MoviesScreenState extends State<MoviesScreen> {
                               onSelect: (value) =>
                                   setState(() => _category = value),
                             ),
+                          if (_filtered.isEmpty)
+                            const Expanded(
+                              child: _Message(
+                                text: 'Nenhum título encontrado.',
+                              ),
+                            )
+                          else
                           Expanded(
                             child: GridView.builder(
                               padding: const EdgeInsets.all(12),
