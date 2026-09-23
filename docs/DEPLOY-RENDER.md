@@ -233,6 +233,43 @@ Administrador:  https://<portal>.onrender.com/#/painel-nbl-7f2c9a
 
 ---
 
+## 4.2 Keep-warm (evitar o cold start)
+
+No plano **Free** o Render dorme após ~15 min sem tráfego e a primeira
+requisição paga **~25 s** de cold start. Isso atrapalha o **webhook do Mercado
+Pago** (que precisa de resposta rápida) e a experiência no portal.
+
+Há duas formas de manter os serviços acordados:
+
+### a) UptimeRobot (externo, sem mexer no repositório)
+1. Crie uma conta em <https://uptimerobot.com>;
+2. **Add New Monitor**:
+   | Campo | Valor |
+   |---|---|
+   | Monitor Type | **HTTP(s)** |
+   | Friendly Name | `Nebula Core` |
+   | URL | `https://nebula-core-6hq4.onrender.com/health` |
+   | Monitoring Interval | **10 minutes** |
+   | Alert Contacts | seu e-mail (opcional) |
+3. (Opcional) Em *Advanced*, valide a palavra **`healthy`** no conteúdo;
+4. Repita para o **BFF** (`https://nebula-admin-ciri.onrender.com/health`).
+
+> O plano gratuito permite vários monitores e intervalo de 5 minutos.
+
+### b) GitHub Actions (versionado no repositório)
+O workflow [`.github/workflows/keep-warm.yml`](../.github/workflows/keep-warm.yml)
+faz o ping a cada 10 minutos (Core e BFF) e pode ser disparado manualmente
+(*Actions → Keep-warm → Run workflow*).
+
+> Limitações: o cron mínimo do GitHub é 5 min, pode atrasar alguns minutos e
+> workflows agendados são desativados após ~60 dias sem commits no repositório.
+
+### c) Alternativa definitiva
+Plano **Starter** no Core (US$ 7/mês): a instância não dorme e o webhook
+responde sempre de imediato.
+
+---
+
 ## 5. Problemas comuns
 
 > Os quatro primeiros itens são **casos reais** do primeiro deploy (todos já

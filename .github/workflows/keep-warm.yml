@@ -1,0 +1,40 @@
+name: Keep-warm
+
+# Mantém os serviços do Render acordados.
+#
+# No plano Free o Render "dorme" após ~15 minutos sem tráfego; a primeira
+# requisição seguinte paga o cold start (~25 s). Isso atrapalha o webhook do
+# Mercado Pago, que precisa de resposta rápida.
+#
+# Este workflow faz um ping leve no /health a cada 10 minutos.
+#
+# Observações:
+#  - O cron do GitHub é o mínimo de 5 minutos e pode atrasar alguns minutos.
+#  - Workflows agendados são desativados após ~60 dias sem atividade no
+#    repositório (basta um commit para reativar).
+#  - Em repositório privado, cada execução consome minutos do Actions.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping /health
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Nebula Core
+        run: |
+          code=$(curl -sS --max-time 90 -o /dev/null -w '%{http_code}' \
+            https://nebula-core-6hq4.onrender.com/health)
+          echo "core: HTTP $code"
+          test "$code" = "200"
+
+      - name: Nebula Admin (BFF)
+        run: |
+          code=$(curl -sS --max-time 90 -o /dev/null -w '%{http_code}' \
+            https://nebula-admin-ciri.onrender.com/health)
+          echo "bff: HTTP $code"
+          test "$code" = "200"
