@@ -51,11 +51,15 @@
     <section id="screen-catalog" class="screen">
       <header class="topbar">
         <h2 id="catalog-title">Catálogo</h2>
-        <span id="catalog-count" class="muted"></span>
+        <div class="search-bar">
+          <input id="catalog-search" class="search-input focusable" type="text"
+                 placeholder="Buscar título" autocomplete="off">
+          <span id="catalog-count" class="muted"></span>
+        </div>
       </header>
       <div class="catalog-body">
-        <aside id="catalog-categories" class="categories focus-column"></aside>
-        <div id="catalog-items" class="items focus-column"></div>
+        <aside id="catalog-categories" class="categories"></aside>
+        <div id="catalog-items" class="items posters"></div>
       </div>
     </section>
 
@@ -73,6 +77,7 @@
 
   <script src="js/api.js"></script>
   <script src="js/m3u.js"></script>
+  <script src="js/search.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

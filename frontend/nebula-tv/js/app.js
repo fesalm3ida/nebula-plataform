@@ -27,6 +27,7 @@
     categories: [],
     category: null,
     section: 'live',
+    query: '',
     catalog: [],
     focus: { column: 0, index: 0 },
     playerVisible: false,
@@ -198,13 +199,20 @@
     state.section = kind;
     state.catalog = state.channels.filter(function (channel) { return channel.kind === kind; });
     state.category = null;
+    state.query = '';
 
-    $('catalog-title').textContent = kind === 'live' ? 'Ao vivo' : (kind === 'movie' ? 'Filmes' : 'Séries');
+    var search = $('catalog-search');
+
+    if (search) {
+      search.value = '';
+    }
+
+    $('catalog-title').textContent =
+      kind === 'live' ? 'Ao vivo' : (kind === 'movie' ? 'Filmes' : 'Séries');
 
     renderCategories();
     renderItems();
     show('screen-catalog');
-    state.focus = { column: 0, index: 0 };
     focusFirst();
   }
 
@@ -214,42 +222,105 @@
 
     container.innerHTML = '';
 
-    [{ name: null, label: 'Todas' }].concat(groups.map(function (group) {
-      return { name: group, label: group };
-    })).forEach(function (entry, index) {
+    var entries = [{ name: null, label: 'Todas (' + state.catalog.length + ')' }];
+
+    groups.forEach(function (group) {
+      var total = state.catalog.filter(function (item) { return item.group === group; }).length;
+
+      entries.push({ name: group, label: group + ' (' + total + ')' });
+    });
+
+    entries.forEach(function (entry) {
       var node = document.createElement('div');
 
       node.className = 'category focusable';
+      node.classList.toggle('focused', entry.name === state.category);
       node.textContent = entry.label;
-      node.dataset.index = index;
       node.dataset.group = entry.name || '';
       container.appendChild(node);
     });
   }
 
-  function renderItems() {
-    var container = $('catalog-items');
-
-    container.innerHTML = '';
-
+  /** Itens do catalogo apos o filtro de categoria e o termo de busca. */
+  function filteredItems() {
     var items = state.category
       ? state.catalog.filter(function (channel) { return channel.group === state.category; })
       : state.catalog;
 
-    $('catalog-count').textContent = items.length + ' itens';
+    if (state.query) {
+      items = items.filter(function (channel) {
+        return window.NebulaSearch.matches(channel.name, state.query);
+      });
+    }
 
-    items.slice(0, 400).forEach(function (channel, index) {
+    return items;
+  }
+
+  var MAX_RENDER = 240;
+
+  function renderItems() {
+    var container = $('catalog-items');
+    var items = filteredItems();
+    var limit = Math.min(items.length, MAX_RENDER);
+
+    container.innerHTML = '';
+    $('catalog-count').textContent = state.query
+      ? items.length + ' resultado(s)'
+      : items.length + ' itens';
+
+    for (var i = 0; i < limit; i++) {
+      var channel = items[i];
       var node = document.createElement('div');
-      var logo = channel.logo
-        ? '<img class="item-logo" src="' + channel.logo + '" alt="">'
-        : '';
 
-      node.className = 'item focusable';
-      node.innerHTML = '<div class="item-row">' + logo + '<span>' + channel.name + '</span></div>';
-      node.dataset.index = index;
-      node.dataset.url = channel.url;
+      node.className = 'poster focusable';
+      node.dataset.url = channel.url || '';
+      node.dataset.title = channel.name;
+
+      var media = channel.logo
+        ? '<div class="poster-media"><img src="' + channel.logo + '" alt="" ' +
+          'onerror="this.parentNode.innerHTML=\'<span class=poster-fallback>' +
+          'sem imagem</span>\'"></div>'
+        : '<div class="poster-media"><span class="poster-fallback">' +
+          (channel.group || 'Nebula') + '</span></div>';
+
+      var badge = state.section === 'live' ? '' :
+        '<div class="poster-badge">' + (channel.group || '') + '</div>';
+
+      node.innerHTML = media +
+        '<div class="poster-title">' + channel.name + '</div>' + badge;
+
       container.appendChild(node);
-    });
+    }
+
+    if (items.length > limit) {
+      var hint = document.createElement('div');
+
+      hint.className = 'limit-hint';
+      hint.textContent = 'Mostrando ' + limit + ' de ' + items.length +
+        ' — use a busca para refinar.';
+      container.appendChild(hint);
+    }
+
+    if (!items.length) {
+      var empty = document.createElement('div');
+
+      empty.className = 'limit-hint';
+      empty.textContent = 'Nenhum título encontrado.';
+      container.appendChild(empty);
+    }
+
+    state.focus = { column: 0, index: 0 };
+  }
+
+  function applyQuery(value) {
+    state.query = value.trim();
+    renderItems();
+
+    var first = document.querySelector('#catalog-items .poster');
+
+    if (first) {
+      setFocus(first);
+    }
   }
 
   /* -------------------------------------------------------------- player --- */
@@ -298,41 +369,83 @@
 
     if (!screen) return [];
 
-    return Array.prototype.slice.call(screen.querySelectorAll('.focusable'));
+    return Array.prototype.slice.call(screen.querySelectorAll('.focusable'))
+      .filter(function (node) { return node.offsetParent !== null; });
+  }
+
+  function setFocus(node) {
+    focusableNodes().forEach(function (item) {
+      item.classList.toggle('focused', item === node);
+    });
+
+    if (node && node.scrollIntoView) {
+      node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
   }
 
   function focusFirst() {
     var nodes = focusableNodes();
 
-    nodes.forEach(function (node, index) {
-      node.classList.toggle('focused', index === 0);
-    });
-
-    var first = nodes[0];
-
-    if (first && first.scrollIntoView) {
-      first.scrollIntoView({ block: 'nearest' });
+    if (nodes.length) {
+      setFocus(nodes[0]);
     }
   }
 
-  function moveFocus(step) {
+  /** Navegacao espacial: escolhe o vizinho mais proximo na direcao pedida. */
+  function moveFocusDirection(direction) {
     var nodes = focusableNodes();
+    var current = document.querySelector('.focusable.focused');
 
     if (!nodes.length) return;
 
-    var current = 0;
+    if (!current) {
+      focusFirst();
+      return;
+    }
 
-    nodes.forEach(function (node, index) {
-      if (node.classList.contains('focused')) current = index;
+    var origin = current.getBoundingClientRect();
+    var originX = origin.left + origin.width / 2;
+    var originY = origin.top + origin.height / 2;
+
+    var best = null;
+    var bestScore = Infinity;
+
+    nodes.forEach(function (node) {
+      if (node === current) return;
+
+      var rect = node.getBoundingClientRect();
+      var dx = (rect.left + rect.width / 2) - originX;
+      var dy = (rect.top + rect.height / 2) - originY;
+
+      var primary = 0;
+      var secondary = 0;
+
+      if (direction === 'left') {
+        if (dx > -4) return;
+        primary = -dx; secondary = Math.abs(dy);
+      } else if (direction === 'right') {
+        if (dx < 4) return;
+        primary = dx; secondary = Math.abs(dy);
+      } else if (direction === 'up') {
+        if (dy > -4) return;
+        primary = -dy; secondary = Math.abs(dx);
+      } else {
+        if (dy < 4) return;
+        primary = dy; secondary = Math.abs(dx);
+      }
+
+      // Prioriza a direcao principal e penaliza o desvio lateral.
+      var score = primary + secondary * 4;
+
+      if (score < bestScore) {
+        bestScore = score;
+        best = node;
+      }
     });
 
-    var next = Math.min(Math.max(current + step, 0), nodes.length - 1);
-
-    nodes.forEach(function (node, index) {
-      node.classList.toggle('focused', index === next);
-    });
-
-    nodes[next].scrollIntoView({ block: 'nearest' });
+    if (best) {
+      setFocus(best);
+    }
   }
 
   function activateFocused() {
@@ -363,8 +476,10 @@
       return;
     }
 
-    if (node.classList.contains('item')) {
-      play(node.dataset.url, node.textContent.trim());
+    if (node.classList.contains('poster')) {
+      if (node.dataset.url) {
+        play(node.dataset.url, node.dataset.title || '');
+      }
     }
   }
 
@@ -413,15 +528,24 @@
       return;
     }
 
-    if (code === KEYS.UP || code === KEYS.LEFT) {
-      event.preventDefault();
-      moveFocus(-1);
+    // Digitando na busca: as setas movem o cursor do texto, nao o foco.
+    if (document.activeElement === $('catalog-search')) {
+      if (code === KEYS.ENTER) {
+        event.preventDefault();
+        document.activeElement.blur();
+        moveFocusDirection('down');
+      }
+
       return;
     }
 
-    if (code === KEYS.DOWN || code === KEYS.RIGHT) {
+    var directions = {
+      37: 'left', 38: 'up', 39: 'right', 40: 'down'
+    };
+
+    if (directions[code]) {
       event.preventDefault();
-      moveFocus(1);
+      moveFocusDirection(directions[code]);
       return;
     }
 
@@ -434,6 +558,16 @@
   window.addEventListener('load', function () {
     el.activationCheck = $('activation-check');
     el.activationCheck.addEventListener('click', function () { boot(); });
+
+    // Busca: filtra enquanto digita (com debounce) e re-renderiza a grade.
+    var search = $('catalog-search');
+    var debounce = null;
+
+    search.addEventListener('input', function () {
+      clearTimeout(debounce);
+      debounce = setTimeout(function () { applyQuery(search.value); }, 250);
+    });
+
     boot();
   });
 })();

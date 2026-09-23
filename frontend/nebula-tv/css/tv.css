@@ -117,3 +117,75 @@ html, body {
 .player-overlay.hidden { opacity: 0; }
 .player-info { display: flex; flex-direction: column; gap: 6px; }
 #player-title { font-size: 34px; }
+
+/* ------------------------------------------------- busca e grade (catálogo) */
+
+.search-bar { display: flex; align-items: center; gap: 20px; }
+
+.search-input {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 22px;
+  padding: 12px 18px;
+  width: 460px;
+}
+.search-input.focused, .search-input:focus {
+  border-color: var(--primary-soft);
+  background: rgba(139, 63, 253, .25);
+  outline: none;
+}
+
+.posters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 18px;
+  align-content: start;
+}
+
+.poster {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: transform .12s ease, border-color .12s ease;
+}
+
+.poster.focused {
+  border-color: var(--primary-soft);
+  background: rgba(139, 63, 253, .3);
+  transform: scale(1.05);
+}
+
+.poster-media {
+  height: 250px;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.poster-media img { width: 100%; height: 100%; object-fit: cover; }
+.poster-fallback {
+  font-size: 22px;
+  color: var(--muted);
+  text-align: center;
+  padding: 12px;
+}
+
+.poster-title {
+  padding: 10px 12px;
+  font-size: 20px;
+  line-height: 1.25;
+  max-height: 62px;
+  overflow: hidden;
+}
+
+.poster-badge {
+  font-size: 16px;
+  color: var(--muted);
+  padding: 0 12px 10px;
+}
+
+.limit-hint { grid-column: 1 / -1; color: var(--muted); padding: 14px 0; font-size: 20px; }

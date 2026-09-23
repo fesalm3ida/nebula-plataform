@@ -59,6 +59,25 @@ sobrescrito definindo `window.NEBULA_CORE_API` antes do script:
 <script>window.NEBULA_CORE_API = 'http://192.168.15.10:8000';</script>
 ```
 
+## Catálogo (busca + grade de pôsteres)
+
+- **Grade de pôsteres** para Filmes e Séries (usa o `tvg-logo` da lista) e grade
+  de canais para o Ao vivo, com agrupamento por categoria na coluna da esquerda;
+- **Busca por título**: selecione o campo de busca e aperte **OK** — o webOS abre
+  o **teclado virtual da TV**; o filtro aplica enquanto você digita (debounce de
+  250 ms) e ignora acentos e maiúsculas, aceitando vários termos em qualquer
+  ordem (mesmas regras do app Android);
+- **Navegação espacial**: as setas do controle escolhem o vizinho mais próximo
+  na direção (funciona em grade, lista e colunas);
+- Listas gigantes (dezenas de milhares de itens) renderizam no máximo **240**
+  cards por vez, com aviso para refinar pela busca.
+
+## Testes
+
+```bash
+npm test    # parser M3U + busca + consistência da estrutura (Node)
+```
+
 ## Fluxo do app
 
 1. **Registro**: gera uma identidade local (pseudo-MAC, como no Android — o
