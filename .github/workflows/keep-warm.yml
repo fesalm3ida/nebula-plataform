@@ -8,15 +8,24 @@ name: Keep-warm
 #
 # Este workflow faz um ping leve no /health a cada 10 minutos.
 #
-# Observações:
-#  - O cron do GitHub é o mínimo de 5 minutos e pode atrasar alguns minutos.
-#  - Workflows agendados são desativados após ~60 dias sem atividade no
-#    repositório (basta um commit para reativar).
-#  - Em repositório privado, cada execução consome minutos do Actions.
+# IMPORTANTE — por que este workflow NAO tem agendamento:
+#
+#   Em repositorio PRIVADO, cada execucao consome minutos faturaveis do
+#   Actions (arredondado para cima = 1 min por execucao). Um cron de 10 em
+#   10 minutos daria ~144 execucoes/dia (~4.320 min/mes), acima da cota
+#   gratuita de 2.000 min/mes — sairia mais caro que o plano Starter do
+#   Render.
+#
+#   Para o keep-warm periodico use o UptimeRobot (gratuito e externo). Este
+#   workflow fica para execucao MANUAL: util para acordar os servicos antes
+#   de um teste ou de uma demonstracao.
+#
+#   Se o repositorio for publico, o Actions e gratuito e o agendamento pode
+#   ser reativado descomentando o bloco "schedule" abaixo.
 
 on:
-  schedule:
-    - cron: '*/10 * * * *'
+  # schedule:
+  #   - cron: '*/10 * * * *'
   workflow_dispatch:
 
 jobs:

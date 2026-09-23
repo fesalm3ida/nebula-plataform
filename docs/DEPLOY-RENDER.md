@@ -256,13 +256,17 @@ Há duas formas de manter os serviços acordados:
 
 > O plano gratuito permite vários monitores e intervalo de 5 minutos.
 
-### b) GitHub Actions (versionado no repositório)
+### b) GitHub Actions (ponta a ponta manual)
 O workflow [`.github/workflows/keep-warm.yml`](../.github/workflows/keep-warm.yml)
-faz o ping a cada 10 minutos (Core e BFF) e pode ser disparado manualmente
-(*Actions → Keep-warm → Run workflow*).
+faz o ping no Core e no BFF e é disparado **manualmente**
+(*Actions → Keep-warm → Run workflow*). Útil para acordar os serviços antes de
+um teste ou demonstração.
 
-> Limitações: o cron mínimo do GitHub é 5 min, pode atrasar alguns minutos e
-> workflows agendados são desativados após ~60 dias sem commits no repositório.
+> ⚠️ **Não use o agendamento (`schedule`) em repositório privado:** cada
+> execução consome minutos faturáveis do Actions (1 min por execução, no
+> mínimo). Um cron de 10 min daria ~4.320 min/mês, acima da cota gratuita de
+> 2.000 min/mês. Em repositório **público** o Actions é gratuito e o bloco
+> `schedule` (comentado no arquivo) pode ser reativado.
 
 ### c) Alternativa definitiva
 Plano **Starter** no Core (US$ 7/mês): a instância não dorme e o webhook
