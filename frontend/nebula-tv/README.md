@@ -83,6 +83,10 @@ Siga a documentação oficial
    npm run launch
    ```
 
+> 💡 Os comandos usam o device marcado como **(default)** em
+> `ares-setup-device --list`. Para escolher outro, acrescente
+> `--device <nome>` (ex.: `ares-install ... --device lg-sala`).
+
 **Renovar a sessão:** no app Developer Mode, clique em **EXTEND** (a TV precisa
 estar online). O campo *Remain Session* mostra o tempo restante.
 
