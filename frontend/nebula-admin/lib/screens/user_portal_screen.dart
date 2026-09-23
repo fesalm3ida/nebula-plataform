@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../api/portal_api_client.dart';
 import '../models/portal.dart';
+import '../services/session_store.dart';
 
 enum _PortalSection { playlist, activate }
 
@@ -43,15 +44,15 @@ class _UserPortalScreenState extends State<UserPortalScreen> {
     try {
       var device = await widget.api.device(widget.session.accessToken);
 
-      // Se ha licenca pendente/expirada, confirma pagamentos no provedor.
-      if (device.license.isPending || device.license.expired) {
-        try {
-          device = await widget.api.syncPayments(
-            widget.session.accessToken,
-          );
-        } catch (_) {
-          // Apenas nao confirmou agora.
-        }
+      // Sempre tenta confirmar pagamentos pendentes no provedor: cobre o
+      // retorno do Mercado Pago (que recarrega esta pagina) sem exigir que o
+      // usuario clique em "Verificar pagamento".
+      try {
+        device = await widget.api.syncPayments(
+          widget.session.accessToken,
+        );
+      } catch (_) {
+        // Sem pagamento pendente ou provedor indisponivel: segue com os dados.
       }
 
       if (!mounted) return;
@@ -106,6 +107,14 @@ class _UserPortalScreenState extends State<UserPortalScreen> {
     await _load();
     if (!mounted) return;
     _showMessage('Lista cadastrada com sucesso.');
+  }
+
+  Future<void> _logout() async {
+    await SessionStore().clear();
+
+    if (!mounted) return;
+
+    Navigator.of(context).pop();
   }
 
   Future<void> _removePlaylist(PortalPlaylist playlist) async {
@@ -177,7 +186,7 @@ class _UserPortalScreenState extends State<UserPortalScreen> {
                             section: _section,
                             onSelect: (section) =>
                                 setState(() => _section = section),
-                            onLogout: () => Navigator.of(context).pop(),
+                            onLogout: _logout,
                           ),
                           Expanded(
                             child: _section == _PortalSection.playlist

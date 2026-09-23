@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../api/portal_api_client.dart';
+import '../services/session_store.dart';
 import '../widgets/mac_address_input_formatter.dart';
 import 'user_portal_screen.dart';
 
@@ -36,21 +37,22 @@ class _UserLoginScreenState extends State<UserLoginScreen> {
     });
 
     try {
-      final session = await _api.login(
-        _macAddress.text.trim(),
+      final macAddress = _macAddress.text.trim();
+
+      final session = (await _api.login(
+        macAddress,
         _activationCode.text.trim(),
-      );
+      ))
+          .copyWith(macAddress: macAddress);
+
+      // Guarda a sessao: o retorno do Mercado Pago recarrega a pagina.
+      await SessionStore().save(session);
 
       if (!mounted) return;
 
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => UserPortalScreen(
-            api: _api,
-            session: session.copyWith(
-              macAddress: _macAddress.text.trim(),
-            ),
-          ),
+          builder: (_) => UserPortalScreen(api: _api, session: session),
         ),
       );
 
