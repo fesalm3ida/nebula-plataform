@@ -1,0 +1,20 @@
+{
+  "id": "com.nebula.tv",
+  "version": "0.1.0",
+  "vendor": "Nebula",
+  "type": "web",
+  "main": "index.html",
+  "title": "Nebula TV",
+  "icon": "icons/icon-256.png",
+  "largeIcon": "icons/icon-512.png",
+  "bgImage": "icons/bg-1920.png",
+  "resolution": "1920x1080",
+  "iconColor": "#4B0082",
+  "splashBackground": "icons/bg-1920.png",
+  "disableBackHistoryAPI": true,
+  "handlesRelaunch": true,
+  "requiredPermissions": [
+    "internet"
+  ],
+  "supportGIP": true
+}

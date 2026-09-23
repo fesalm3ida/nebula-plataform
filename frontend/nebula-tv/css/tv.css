@@ -1,0 +1,119 @@
+/* Nebula TV — tema roxo/preto com foco para controle remoto (10-foot UI). */
+:root {
+  --bg-dark: #0b0618;
+  --bg-mid: #1b0b3a;
+  --primary: #8b3ffd;
+  --primary-soft: #b07bff;
+  --text: #ffffff;
+  --muted: #b9a9d6;
+  --surface: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.16);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(circle at 30% 0%, var(--bg-mid) 0%, var(--bg-dark) 55%, #05030d 100%);
+  color: var(--text);
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 24px;
+}
+
+.screen { display: none; height: 100vh; padding: 48px 64px; }
+.screen.active { display: block; }
+
+.center {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+}
+
+.brand { font-size: 64px; letter-spacing: 2px; margin: 0; }
+.muted { color: var(--muted); }
+
+.data-cards { display: flex; gap: 32px; margin: 24px 0; }
+.data-card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  padding: 28px 48px;
+  min-width: 420px;
+}
+.data-card.highlight { border-color: var(--primary); }
+.data-label { display: block; color: var(--muted); font-size: 22px; margin-bottom: 8px; }
+.data-value { font-size: 48px; letter-spacing: 3px; }
+
+.btn {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 18px 42px;
+  font-size: 26px;
+  cursor: pointer;
+}
+.btn:focus, .btn.focused { outline: 4px solid #fff; outline-offset: 4px; }
+
+/* foco genérico */
+.focusable { transition: transform .12s ease, background .12s ease; }
+.focusable.focused {
+  background: rgba(139, 63, 253, .35);
+  border-color: var(--primary-soft);
+  transform: scale(1.03);
+  outline: none;
+}
+
+.topbar { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 28px; }
+
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.tile {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 18px;
+  padding: 34px 20px;
+  text-align: center;
+  font-size: 28px;
+}
+
+.catalog-body { display: grid; grid-template-columns: 420px 1fr; gap: 28px; height: calc(100vh - 200px); }
+.categories, .items { overflow-y: auto; padding-right: 8px; }
+.categories::-webkit-scrollbar, .items::-webkit-scrollbar { width: 8px; }
+.categories::-webkit-scrollbar-thumb, .items::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
+
+.category, .item {
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  background: var(--surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.category.focused, .item.focused {
+  background: rgba(139, 63, 253, .35);
+  border-color: var(--primary-soft);
+}
+.item-logo { width: 46px; height: 46px; object-fit: contain; margin-right: 14px; vertical-align: middle; background: #000; border-radius: 8px; }
+.item-row { display: flex; align-items: center; }
+
+/* player */
+.player { padding: 0; background: #000; position: relative; }
+#video { width: 100%; height: 100%; background: #000; }
+.player-overlay {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 32px 48px 48px;
+  background: linear-gradient(to top, rgba(0,0,0,.85), transparent);
+  transition: opacity .3s ease;
+}
+.player-overlay.hidden { opacity: 0; }
+.player-info { display: flex; flex-direction: column; gap: 6px; }
+#player-title { font-size: 34px; }

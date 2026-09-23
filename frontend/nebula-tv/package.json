@@ -1,0 +1,20 @@
+{
+  "name": "nebula-tv",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nebula TV — app para LG Smart TV (webOS)",
+  "scripts": {
+    "test": "node test/m3u.test.js",
+    "package": "ares-package . -o dist",
+    "install:tv": "ares-install dist/com.nebula.tv_0.1.0_all.ipk",
+    "launch": "ares-launch com.nebula.tv",
+    "inspect": "ares-inspect com.nebula.tv",
+    "close": "ares-launch --close com.nebula.tv",
+    "device:add": "ares-setup-device",
+    "device:list": "ares-setup-device --list",
+    "logs": "ares-log -n 200"
+  },
+  "devDependencies": {
+    "@webosose/ares-cli": "^2.0.0"
+  }
+}

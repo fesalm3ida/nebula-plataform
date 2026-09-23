@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nebula TV</title>
+  <link rel="stylesheet" href="css/tv.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Boot -->
+    <section id="screen-boot" class="screen active">
+      <div class="center">
+        <h1 class="brand">Nebula TV</h1>
+        <p id="boot-status" class="muted">Inicializando…</p>
+      </div>
+    </section>
+
+    <!-- Ativação (MAC + código) -->
+    <section id="screen-activation" class="screen">
+      <div class="center">
+        <h1 class="brand">Nebula TV</h1>
+        <p class="muted">Ative este aparelho no portal Nebula:</p>
+
+        <div class="data-cards">
+          <div class="data-card">
+            <span class="data-label">MAC Address</span>
+            <strong id="activation-mac" class="data-value">—</strong>
+          </div>
+          <div class="data-card highlight">
+            <span class="data-label">Código de ativação</span>
+            <strong id="activation-code" class="data-value">—</strong>
+          </div>
+        </div>
+
+        <p id="activation-status" class="muted"></p>
+        <button id="activation-check" class="btn focusable">Verificar agora</button>
+      </div>
+    </section>
+
+    <!-- Menu -->
+    <section id="screen-menu" class="screen">
+      <header class="topbar">
+        <h1 class="brand">Nebula TV</h1>
+        <span id="menu-list-name" class="muted"></span>
+      </header>
+      <div id="menu-grid" class="grid"></div>
+    </section>
+
+    <!-- Catálogo (Ao vivo / Filmes / Séries) -->
+    <section id="screen-catalog" class="screen">
+      <header class="topbar">
+        <h2 id="catalog-title">Catálogo</h2>
+        <span id="catalog-count" class="muted"></span>
+      </header>
+      <div class="catalog-body">
+        <aside id="catalog-categories" class="categories focus-column"></aside>
+        <div id="catalog-items" class="items focus-column"></div>
+      </div>
+    </section>
+
+    <!-- Player -->
+    <section id="screen-player" class="screen player">
+      <video id="video" playsinline></video>
+      <div id="player-overlay" class="player-overlay">
+        <div class="player-info">
+          <strong id="player-title">—</strong>
+          <span id="player-hint" class="muted">OK: pausar · Voltar: sair</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/m3u.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
