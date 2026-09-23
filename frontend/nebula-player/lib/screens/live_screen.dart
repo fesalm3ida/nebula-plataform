@@ -381,7 +381,10 @@ class _Preview extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Expanded(child: PlayerView(controller: controller)),
+        // Preview de canal ao vivo: sem barra de progresso.
+        Expanded(
+          child: PlayerView(controller: controller, showProgress: false),
+        ),
         if (channel != null)
           Container(
             width: double.infinity,

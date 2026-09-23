@@ -94,7 +94,10 @@ class _PlayerViewState extends State<PlayerView> {
                   onPointerDown: (_) => _timer?.cancel(),
                   onPointerUp: (_) => _restartHideTimer(),
                   onPointerCancel: (_) => _restartHideTimer(),
-                  child: PlayerControls(controller: widget.controller),
+                  child: PlayerControls(
+                    controller: widget.controller,
+                    showProgress: widget.showProgress,
+                  ),
                 ),
               ),
             ),
