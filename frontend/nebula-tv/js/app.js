@@ -59,6 +59,14 @@
   }
 
   function show(screenId) {
+    // Ao trocar de tela, nenhum input deve manter o foco (as setas precisam
+    // navegar) — no webOS o runtime costuma focar o primeiro campo sozinho.
+    state.searchActive = false;
+
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+      document.activeElement.blur();
+    }
+
     ['screen-boot', 'screen-activation', 'screen-menu', 'screen-live',
      'screen-catalog', 'screen-series', 'screen-episodes', 'screen-player']
       .forEach(function (id) { $(id).classList.toggle('active', id === screenId); });
@@ -987,9 +995,14 @@
     });
 
     if (best) {
+      console.log('[nebula] foco ->', best.className,
+        (best.dataset.title || best.textContent || '').slice(0, 30));
       setFocus(best);
       return;
     }
+
+    console.log('[nebula] sem vizinho para', direction,
+      '| focaveis=' + nodes.length, '| atual=' + current.className);
 
     // Sem vizinho naquela direcao (ex.: fim da grade): nao trava o usuario —
     // cai para o vizinho na ordem do documento.
@@ -1090,6 +1103,19 @@
 
   document.addEventListener('keydown', function (event) {
     var code = event.keyCode || event.which || keyCodeFromName(event.key);
+
+    // Auto-correcao: se o estado de busca ficou "preso" (sem nenhum input
+    // realmente focado), as setas voltam a navegar.
+    if (state.searchActive) {
+      var active = document.activeElement;
+
+      if (!active || active.tagName !== 'INPUT') {
+        state.searchActive = false;
+      }
+    }
+
+    console.log('[nebula] key=' + code, 'busca=' + state.searchActive,
+      'tela=' + (document.querySelector('.screen.active') || {}).id);
 
     if (state.playerVisible) {
       if (code === KEYS.BACK || code === KEYS.ESC) {
