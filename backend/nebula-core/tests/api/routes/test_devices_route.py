@@ -327,3 +327,35 @@ def test_should_require_admin_token_to_delete(
     response = client.delete(f"/devices/{body['device_id']}")
 
     assert response.status_code == 401
+
+
+def test_should_register_webos_tv_device(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    """O app da LG Smart TV registra com a plataforma webos_tv."""
+    payload = valid_payload()
+    payload["platform"] = "webos_tv"
+    payload["fingerprint"] = "c" * 64
+    payload["mac_address"] = "02:99:88:77:66:55"
+
+    response = client.post("/devices/register", json=payload)
+
+    assert response.status_code == 201
+
+    body = response.json()
+
+    assert body["activation_code"]
+    assert body["mac_address"] == "02:99:88:77:66:55"
+
+
+def test_should_register_ios_device(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    payload = valid_payload()
+    payload["platform"] = "ios"
+    payload["fingerprint"] = "d" * 64
+    payload["mac_address"] = "02:11:22:33:44:55"
+
+    response = client.post("/devices/register", json=payload)
+
+    assert response.status_code == 201
