@@ -8,6 +8,17 @@ import '../config/api_config.dart';
 import '../models/device_identity.dart';
 import '../models/provisioning.dart';
 
+/// Sessão aberta no Core (a telemetria exige sessão ativa).
+class DeviceSession {
+  const DeviceSession({required this.sessionId, required this.expiresAt});
+
+  final String sessionId;
+  final DateTime? expiresAt;
+
+  bool get isExpired =>
+      expiresAt != null && DateTime.now().toUtc().isAfter(expiresAt!);
+}
+
 class NebulaCoreClient {
   NebulaCoreClient({http.Client? client}) : _client = client ?? http.Client();
 
@@ -109,7 +120,7 @@ class NebulaCoreClient {
     return data['access_token'] as String;
   }
 
-  Future<String> startSession(String token) async {
+  Future<DeviceSession> startSession(String token) async {
     final response = await _send(() => _client.post(
       Uri.parse('${ApiConfig.baseUrl}/sessions'),
       headers: {'Authorization': 'Bearer $token'},
@@ -122,8 +133,12 @@ class NebulaCoreClient {
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final expiresAt = data['expires_at'] as String?;
 
-    return data['session_id'] as String;
+    return DeviceSession(
+      sessionId: data['session_id'] as String,
+      expiresAt: expiresAt == null ? null : DateTime.parse(expiresAt).toUtc(),
+    );
   }
 
   Future<Provisioning> getProvisioning(String token) async {

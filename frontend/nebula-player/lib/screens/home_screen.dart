@@ -127,12 +127,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
       setState(() => _status = 'Iniciando sessão...');
       try {
-        final sessionId = await _client.startSession(token);
+        final session = await _client.startSession(token);
 
         // Habilita a telemetria (Nebula Monitor).
         TelemetryService.instance.configure(
           token: token,
-          sessionId: sessionId,
+          sessionId: session.sessionId,
+          expiresAt: session.expiresAt,
         );
       } on NebulaCoreException {
         // A sessao e necessaria apenas para heartbeat/telemetria; o menu

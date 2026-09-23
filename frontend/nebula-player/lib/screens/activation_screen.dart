@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../api/nebula_core_client.dart';
 import '../models/content_source.dart';
+import '../services/telemetry_service.dart';
 import '../theme/nebula_theme.dart';
 import 'home_menu_screen.dart';
 
@@ -65,7 +66,14 @@ class _ActivationScreenState extends State<ActivationScreen> {
         fingerprint: widget.fingerprint,
       );
 
-      await _client.startSession(token);
+      final session = await _client.startSession(token);
+
+      // Habilita a telemetria também neste caminho (ativação -> menu).
+      TelemetryService.instance.configure(
+        token: token,
+        sessionId: session.sessionId,
+        expiresAt: session.expiresAt,
+      );
 
       var sources = <ContentSource>[];
 
