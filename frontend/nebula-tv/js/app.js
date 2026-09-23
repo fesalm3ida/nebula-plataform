@@ -28,6 +28,7 @@
     category: null,
     section: 'live',
     query: '',
+    searchActive: false,
     catalog: [],
     focus: { column: 0, index: 0 },
     playerVisible: false,
@@ -37,6 +38,22 @@
   var el = {};
 
   function $(id) { return document.getElementById(id); }
+
+  /**
+   * Escala o palco de 1920x1080 para o viewport real da TV e centraliza.
+   * Muitas LG expoem 1280x720 no runtime web — sem isso o layout vaza da tela.
+   */
+  function fitStage() {
+    var stage = $('app');
+    var width = window.innerWidth || 1920;
+    var height = window.innerHeight || 1080;
+    var scale = Math.min(width / 1920, height / 1080);
+    var offsetX = Math.round((width - 1920 * scale) / 2);
+    var offsetY = Math.round((height - 1080 * scale) / 2);
+
+    stage.style.transform =
+      'translate(' + offsetX + 'px,' + offsetY + 'px) scale(' + scale + ')';
+  }
 
   function show(screenId) {
     ['screen-boot', 'screen-activation', 'screen-menu', 'screen-catalog', 'screen-player']
@@ -306,6 +323,59 @@
 
   var MAX_RENDER = 240;
 
+  /** Card da grade: capa (com fallback) + titulo + categoria. */
+  function buildCard(channel) {
+    var card = document.createElement('div');
+    var media = document.createElement('div');
+    var title = document.createElement('div');
+
+    card.className = 'poster focusable';
+    card.dataset.url = channel.url || '';
+    card.dataset.title = channel.name || '';
+
+    media.className = 'poster-media';
+
+    if (channel.logo) {
+      var image = document.createElement('img');
+
+      image.alt = '';
+      image.src = channel.logo;
+      image.addEventListener('error', function () {
+        // Capa indisponivel: mantem o card legivel com o nome do grupo.
+        media.innerHTML = '';
+        media.appendChild(fallbackLabel(channel));
+      });
+      media.appendChild(image);
+    } else {
+      media.appendChild(fallbackLabel(channel));
+    }
+
+    title.className = 'poster-title';
+    title.textContent = channel.name || 'Sem nome';
+
+    card.appendChild(media);
+    card.appendChild(title);
+
+    if (state.section !== 'live' && channel.group) {
+      var badge = document.createElement('div');
+
+      badge.className = 'poster-badge';
+      badge.textContent = channel.group;
+      card.appendChild(badge);
+    }
+
+    return card;
+  }
+
+  function fallbackLabel(channel) {
+    var label = document.createElement('span');
+
+    label.className = 'poster-fallback';
+    label.textContent = channel.name ? channel.name.charAt(0).toUpperCase() : 'N';
+
+    return label;
+  }
+
   function renderItems() {
     var container = $('catalog-items');
     var items = filteredItems();
@@ -317,27 +387,7 @@
       : items.length + ' itens';
 
     for (var i = 0; i < limit; i++) {
-      var channel = items[i];
-      var node = document.createElement('div');
-
-      node.className = 'poster focusable';
-      node.dataset.url = channel.url || '';
-      node.dataset.title = channel.name;
-
-      var media = channel.logo
-        ? '<div class="poster-media"><img src="' + channel.logo + '" alt="" ' +
-          'onerror="this.parentNode.innerHTML=\'<span class=poster-fallback>' +
-          'sem imagem</span>\'"></div>'
-        : '<div class="poster-media"><span class="poster-fallback">' +
-          (channel.group || 'Nebula') + '</span></div>';
-
-      var badge = state.section === 'live' ? '' :
-        '<div class="poster-badge">' + (channel.group || '') + '</div>';
-
-      node.innerHTML = media +
-        '<div class="poster-title">' + channel.name + '</div>' + badge;
-
-      container.appendChild(node);
+      container.appendChild(buildCard(items[i]));
     }
 
     if (items.length > limit) {
@@ -424,7 +474,17 @@
   function setFocus(node) {
     focusableNodes().forEach(function (item) {
       item.classList.toggle('focused', item === node);
+
+      // Sincroniza o foco real: evita divergencia entre o destaque visual e o
+      // elemento realmente focado (o que travava a navegacao no controle).
+      if (item.tagName === 'INPUT' && item !== node) {
+        item.blur();
+      }
     });
+
+    if (node && node.tagName === 'INPUT') {
+      node.focus();
+    }
 
     if (node && node.scrollIntoView) {
       node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -434,9 +494,15 @@
   function focusFirst() {
     var nodes = focusableNodes();
 
-    if (nodes.length) {
-      setFocus(nodes[0]);
-    }
+    if (!nodes.length) return;
+
+    // O campo de busca vem primeiro no HTML, mas o foco inicial deve ir para
+    // o conteudo (categorias/itens) — a busca e opcional.
+    var content = nodes.filter(function (node) {
+      return node.tagName !== 'INPUT';
+    });
+
+    setFocus(content.length ? content[0] : nodes[0]);
   }
 
   /** Navegacao espacial: escolhe o vizinho mais proximo na direcao pedida. */
@@ -493,6 +559,16 @@
 
     if (best) {
       setFocus(best);
+      return;
+    }
+
+    // Sem vizinho naquela direcao (ex.: fim da grade): nao trava o usuario —
+    // cai para o vizinho na ordem do documento.
+    var index = nodes.indexOf(current);
+    var fallback = { left: -1, up: -1, right: 1, down: 1 }[direction];
+
+    if (fallback && nodes[index + fallback]) {
+      setFocus(nodes[index + fallback]);
     }
   }
 
@@ -533,8 +609,20 @@
 
   /* ------------------------------------------------------------- eventos --- */
 
+  /** Converte event.key (norma moderna) em keyCode, como fallback. */
+  function keyCodeFromName(name) {
+    var map = {
+      ArrowLeft: KEYS.LEFT, ArrowUp: KEYS.UP,
+      ArrowRight: KEYS.RIGHT, ArrowDown: KEYS.DOWN,
+      Enter: KEYS.ENTER, Escape: KEYS.ESC, Backspace: KEYS.BACK,
+      GoBack: KEYS.BACK
+    };
+
+    return map[name] || 0;
+  }
+
   document.addEventListener('keydown', function (event) {
-    var code = event.keyCode;
+    var code = event.keyCode || event.which || keyCodeFromName(event.key);
 
     if (state.playerVisible) {
       if (code === KEYS.BACK || code === KEYS.ESC) {
@@ -577,11 +665,19 @@
     }
 
     // Digitando na busca: as setas movem o cursor do texto, nao o foco.
-    if (document.activeElement === $('catalog-search')) {
+    // Digitando na busca: as setas movem o cursor do texto, nao o foco.
+    if (state.searchActive) {
       if (code === KEYS.ENTER) {
         event.preventDefault();
-        document.activeElement.blur();
+        $('catalog-search').blur();
         moveFocusDirection('down');
+        return;
+      }
+
+      if (code === KEYS.BACK || code === KEYS.ESC) {
+        event.preventDefault();
+        $('catalog-search').blur();
+        return;
       }
 
       return;
@@ -615,6 +711,13 @@
       clearTimeout(debounce);
       debounce = setTimeout(function () { applyQuery(search.value); }, 250);
     });
+
+    // Marca quando o usuario esta digitando (para as setas nao roubarem o foco).
+    search.addEventListener('focus', function () { state.searchActive = true; });
+    search.addEventListener('blur', function () { state.searchActive = false; });
+
+    fitStage();
+    window.addEventListener('resize', fitStage);
 
     boot();
   });

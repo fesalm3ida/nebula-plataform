@@ -16,13 +16,26 @@ html, body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: radial-gradient(circle at 30% 0%, var(--bg-mid) 0%, var(--bg-dark) 55%, #05030d 100%);
+  background: #000;
   color: var(--text);
   font-family: "Helvetica Neue", Arial, sans-serif;
   font-size: 24px;
 }
 
-.screen { display: none; height: 100vh; padding: 48px 64px; }
+/* Palco fixo de 1920x1080 escalado para caber no viewport da TV.
+   Muitas LG expoem o viewport web em 1280x720 — sem o escalonamento o
+   layout "vaza" para fora da tela. O JS aplica translate + scale. */
+#app {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: 0 0;
+  background: radial-gradient(circle at 30% 0%, var(--bg-mid) 0%, var(--bg-dark) 55%, #05030d 100%);
+}
+
+.screen { display: none; height: 1080px; padding: 48px 64px; }
 .screen.active { display: block; }
 
 .center {
@@ -82,8 +95,8 @@ html, body {
   font-size: 28px;
 }
 
-.catalog-body { display: grid; grid-template-columns: 420px 1fr; gap: 28px; height: calc(100vh - 200px); }
-.categories, .items { overflow-y: auto; padding-right: 8px; }
+.catalog-body { display: grid; grid-template-columns: 420px 1fr; gap: 28px; height: 880px; }
+.categories, .items { overflow-y: auto; overflow-x: hidden; padding-right: 8px; }
 .categories::-webkit-scrollbar, .items::-webkit-scrollbar { width: 8px; }
 .categories::-webkit-scrollbar-thumb, .items::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 4px; }
 
