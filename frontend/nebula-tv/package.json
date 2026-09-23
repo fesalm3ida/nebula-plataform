@@ -10,10 +10,13 @@
     "device:key": "ares-novacom --getkey",
     "device:info": "ares-device --system-info",
     "package": "ares-package . -o dist",
-    "install:tv": "ares-install dist/com.nebula.tv_0.1.0_all.ipk",
+    "uninstall:tv": "ares-install -r com.nebula.tv || true",
+    "install:tv": "ares-install dist/com.nebula.tv_*_all.ipk",
     "launch": "ares-launch com.nebula.tv",
     "close": "ares-launch --close com.nebula.tv",
-    "inspect": "ares-inspect com.nebula.tv"
+    "inspect": "ares-inspect com.nebula.tv",
+    "deploy": "npm run package && npm run install:tv && npm run launch",
+    "deploy:clean": "npm run package && npm run uninstall:tv && npm run install:tv && npm run launch"
   },
   "webosCli": {
     "instalada": "@webos-tools/cli (global)",

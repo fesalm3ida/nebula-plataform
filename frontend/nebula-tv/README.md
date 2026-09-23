@@ -87,6 +87,22 @@ Siga a documentação oficial
 > `ares-setup-device --list`. Para escolher outro, acrescente
 > `--device <nome>` (ex.: `ares-install ... --device lg-sala`).
 
+### Atualizar o app na TV
+
+O webOS reaproveita o pacote instalado quando a **versão não muda** — por isso,
+a cada alteração **suba a versão em `appinfo.json`** e reinstale:
+
+```bash
+npm run deploy         # package -> install -> launch (preserva a ativação)
+npm run deploy:clean   # inclui uninstall (limpa os dados do app)
+```
+
+> ⚠️ `deploy:clean` apaga o `localStorage` do app — o aparelho gera um
+> **novo MAC + código** e precisa ser ativado novamente. Prefira `deploy`.
+
+> O app da TV **não** depende de `git push`: ele é instalado direto da pasta
+> local pela CLI. O push serve só para versionar o código no repositório.
+
 **Renovar a sessão:** no app Developer Mode, clique em **EXTEND** (a TV precisa
 estar online). O campo *Remain Session* mostra o tempo restante.
 
