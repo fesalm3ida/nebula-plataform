@@ -30,8 +30,10 @@ icons/           ícones e fundo exigidos pelo pacote
 ## Desenvolvimento
 
 ```bash
-npm install                 # instala a CLI ares (@webosose/ares-cli)
-npm test                    # testes do parser M3U
+# A CLI oficial do webOS (comandos ares):
+npm install -g @webos-tools/cli
+
+npm test                    # parser M3U + busca + consistência
 ```
 
 ### Instalar na TV (modo desenvolvedor)
@@ -40,9 +42,13 @@ npm test                    # testes do parser M3U
    **porta** e a **passphrase**;
 2. No PC (a CLI roda em Linux/WSL, macOS e Windows):
    ```bash
-   npm install
-   npx ares-setup-device    # adicione um device com o IP/porta/passphrase da TV
-   npx ares-device-info -d tv
+   npm install -g @webos-tools/cli
+
+   npm run device:add       # name: tv | host: <IP> | port: 9922 | passphrase: <da TV>
+   npm run device:list      # confere
+   npm run device:info      # a TV responde?
+
+   npm test                 # testes do app
    npm run package          # gera dist/com.nebula.tv_0.1.0_all.ipk
    npm run install:tv
    npm run launch
