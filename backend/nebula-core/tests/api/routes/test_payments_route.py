@@ -200,3 +200,65 @@ def test_should_reject_webhook_without_payment_id() -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_should_confirm_payment_via_type_and_data_id_query(
+    device_repository: InMemoryDeviceRepository,
+    payment_repository: InMemoryPaymentRepository,
+) -> None:
+    """Formato ATUAL do Mercado Pago: ?type=payment&data.id=... (sem corpo).
+
+    Era o que retornava 422 "Missing payment id" em produção.
+    """
+    device = make_active_device()
+    device_repository.save(device)
+
+    client.post(
+        "/me/purchase",
+        headers=authorization_headers(device),
+        json={"product": "lifetime"},
+    )
+
+    response = client.post(
+        "/webhooks/mercadopago?type=payment&data.id=123456",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["approved"] == "true"
+
+    persisted = device_repository.find_by_id(device.device_id)
+
+    assert persisted is not None
+    assert persisted.license_type == LicenseType.LIFETIME
+
+
+def test_should_confirm_payment_via_type_query_with_body(
+    device_repository: InMemoryDeviceRepository,
+    payment_repository: InMemoryPaymentRepository,
+) -> None:
+    """Formato atual com corpo JSON (como o Mercado Pago envia)."""
+    device = make_active_device()
+    device_repository.save(device)
+
+    client.post(
+        "/me/purchase",
+        headers=authorization_headers(device),
+        json={"product": "lifetime"},
+    )
+
+    response = client.post(
+        "/webhooks/mercadopago?type=payment&data.id=123456",
+        json={
+            "action": "payment.created",
+            "type": "payment",
+            "data": {"id": "123456"},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["approved"] == "true"
+
+    persisted = device_repository.find_by_id(device.device_id)
+
+    assert persisted is not None
+    assert persisted.license_type == LicenseType.LIFETIME
