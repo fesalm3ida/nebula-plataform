@@ -97,20 +97,13 @@
   /* --------------------------------------------------------------- boot --- */
 
   function boot() {
-    el.identity = state.identity = loadIdentity();
-    setStatus('Registrando aparelho…');
+    state.identity = loadIdentity();
+    setStatus('Conectando…');
 
-    api.registerDevice(state.identity)
-      .then(function (data) {
-        state.identity.deviceId = data.device_id;
-        state.identity.deviceKey = data.device_key;
-        state.identity.activationCode = data.activation_code;
-        state.identity.macAddress = data.mac_address || state.identity.macAddress;
-        saveIdentity();
-
-        return api.authenticate(state.identity);
-      })
+    resumeOrRegister()
       .then(function () {
+        setStatus('Carregando lista…');
+
         return api.provisioning();
       })
       .then(function (provisioning) {
@@ -129,6 +122,61 @@
 
         setStatus('Erro: ' + (error && error.message ? error.message : error));
       });
+  }
+
+  /**
+   * Retoma o aparelho ja registrado neste dispositivo.
+   *
+   * O Core recusa (409) um fingerprint repetido, entao so registramos quando
+   * ainda nao temos as credenciais locais. Se elas nao valerem mais (aparelho
+   * removido ou resetado no admin), geramos uma identidade nova.
+   */
+  function resumeOrRegister() {
+    var identity = state.identity;
+
+    if (identity.deviceId && identity.deviceKey) {
+      return api.authenticate(identity).catch(function (error) {
+        if (error && (error.status === 401 || error.status === 403)) {
+          resetIdentity();
+
+          return registerFresh(1);
+        }
+
+        throw error;
+      });
+    }
+
+    return registerFresh(1);
+  }
+
+  function registerFresh(attempt) {
+    return api.registerDevice(state.identity)
+      .then(function (data) {
+        state.identity.deviceId = data.device_id;
+        state.identity.deviceKey = data.device_key;
+        state.identity.activationCode = data.activation_code;
+        state.identity.macAddress = data.mac_address || state.identity.macAddress;
+        saveIdentity();
+
+        return api.authenticate(state.identity);
+      })
+      .catch(function (error) {
+        // 409: o fingerprint ja existe, mas perdemos as credenciais locais.
+        // Gera uma identidade nova (novo MAC + codigo) e registra de novo.
+        if (error && error.status === 409 && attempt < 3) {
+          resetIdentity();
+
+          return registerFresh(attempt + 1);
+        }
+
+        throw error;
+      });
+  }
+
+  function resetIdentity() {
+    localStorage.removeItem(IDENTITY_KEY);
+    localStorage.removeItem(PLAYLIST_KEY);
+    state.identity = loadIdentity();
   }
 
   function setStatus(text) {
