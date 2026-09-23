@@ -38,6 +38,32 @@
       </div>
     </section>
 
+    <!-- Ao vivo: categorias | lista de canais | preview (padrao IBO) -->
+    <section id="screen-live" class="screen">
+      <header class="topbar">
+        <h2>Ao vivo</h2>
+        <div class="search-bar">
+          <input id="live-search" class="search-input focusable" type="text"
+                 placeholder="Buscar canal" autocomplete="off">
+          <span id="live-count" class="muted"></span>
+        </div>
+      </header>
+      <div class="live-body">
+        <aside id="live-categories" class="categories"></aside>
+        <div id="live-channels" class="channels"></div>
+        <div class="preview">
+          <video id="preview-video" muted playsinline></video>
+          <div class="preview-info">
+            <strong id="preview-title">—</strong>
+            <span id="preview-group" class="muted"></span>
+            <p id="preview-hint" class="muted">
+              OK: assistir em tela cheia · Voltar: voltar ao menu
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Menu -->
     <section id="screen-menu" class="screen">
       <header class="topbar">

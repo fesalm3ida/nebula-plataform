@@ -32,6 +32,7 @@
     catalog: [],
     focus: { column: 0, index: 0 },
     playerVisible: false,
+    previewTimer: null,
     hideTimer: null
   };
 
@@ -56,7 +57,8 @@
   }
 
   function show(screenId) {
-    ['screen-boot', 'screen-activation', 'screen-menu', 'screen-catalog', 'screen-player']
+    ['screen-boot', 'screen-activation', 'screen-menu', 'screen-live',
+     'screen-catalog', 'screen-player']
       .forEach(function (id) { $(id).classList.toggle('active', id === screenId); });
   }
 
@@ -258,6 +260,177 @@
     focusFirst();
   }
 
+  /* ------------------------------------------------------------- ao vivo --- */
+
+  var PREVIEW_DELAY = 900;
+
+  function openLive() {
+    state.section = 'live';
+    state.catalog = state.channels.filter(function (item) {
+      return item.kind === 'live';
+    });
+    state.category = null;
+    state.query = '';
+
+    var search = $('live-search');
+
+    if (search) {
+      search.value = '';
+    }
+
+    renderLiveCategories();
+    renderLiveChannels();
+    show('screen-live');
+    focusFirst();
+
+    var first = liveItems()[0];
+
+    if (first) {
+      updatePreview(first, 300);
+    }
+  }
+
+  function liveItems() {
+    var items = state.category
+      ? state.catalog.filter(function (item) { return item.group === state.category; })
+      : state.catalog;
+
+    if (state.query) {
+      items = items.filter(function (item) {
+        return window.NebulaSearch.matches(item.name, state.query);
+      });
+    }
+
+    return items;
+  }
+
+  function renderLiveCategories() {
+    var container = $('live-categories');
+    var groups = window.NebulaM3u.categoriesOf(state.catalog);
+
+    container.innerHTML = '';
+
+    var entries = [{ name: null, label: 'Todos (' + state.catalog.length + ')' }];
+
+    groups.forEach(function (group) {
+      var total = state.catalog.filter(function (item) {
+        return item.group === group;
+      }).length;
+
+      entries.push({ name: group, label: group + ' (' + total + ')' });
+    });
+
+    entries.forEach(function (entry) {
+      var node = document.createElement('div');
+
+      node.className = 'category focusable';
+      node.classList.toggle('focused', entry.name === state.category);
+      node.textContent = entry.label;
+      node.dataset.group = entry.name || '';
+      container.appendChild(node);
+    });
+  }
+
+  function renderLiveChannels() {
+    var container = $('live-channels');
+    var items = liveItems();
+    var limit = Math.min(items.length, MAX_RENDER);
+
+    container.innerHTML = '';
+    $('live-count').textContent = items.length + ' canais';
+
+    for (var i = 0; i < limit; i++) {
+      container.appendChild(buildChannelRow(items[i], i + 1));
+    }
+
+    if (items.length > limit) {
+      var hint = document.createElement('div');
+
+      hint.className = 'limit-hint';
+      hint.textContent = 'Mostrando ' + limit + ' de ' + items.length +
+        ' — use a busca para refinar.';
+      container.appendChild(hint);
+    }
+
+    if (!items.length) {
+      var empty = document.createElement('div');
+
+      empty.className = 'limit-hint';
+      empty.textContent = 'Nenhum canal encontrado.';
+      container.appendChild(empty);
+    }
+
+    state.focus = { column: 0, index: 0 };
+  }
+
+  function buildChannelRow(channel, position) {
+    var row = document.createElement('div');
+    var number = document.createElement('span');
+    var name = document.createElement('span');
+
+    row.className = 'channel focusable';
+    row.dataset.url = channel.url || '';
+    row.dataset.title = channel.name || '';
+    row.dataset.group = channel.group || '';
+
+    number.className = 'channel-num';
+    number.textContent = String(position);
+
+    if (channel.logo) {
+      var image = document.createElement('img');
+
+      image.className = 'channel-logo';
+      image.alt = '';
+      image.src = channel.logo;
+      image.addEventListener('error', function () {
+        image.replaceWith(logoPlaceholder(channel));
+      });
+      row.appendChild(number);
+      row.appendChild(image);
+    } else {
+      row.appendChild(number);
+      row.appendChild(logoPlaceholder(channel));
+    }
+
+    name.className = 'channel-name';
+    name.textContent = channel.name || 'Sem nome';
+    row.appendChild(name);
+
+    return row;
+  }
+
+  function logoPlaceholder(channel) {
+    var box = document.createElement('div');
+
+    box.className = 'channel-logo-empty';
+    box.textContent = channel.name ? channel.name.charAt(0).toUpperCase() : 'N';
+
+    return box;
+  }
+
+  /** Atualiza o preview (video mudo) do canal em foco, com debounce. */
+  function updatePreview(channel, delay) {
+    var video = $('preview-video');
+
+    $('preview-title').textContent = channel.name || '';
+    $('preview-group').textContent = channel.group || '';
+
+    if (!channel.url) {
+      return;
+    }
+
+    if (video.dataset.url === channel.url) {
+      return;
+    }
+
+    clearTimeout(state.previewTimer);
+    state.previewTimer = setTimeout(function () {
+      video.dataset.url = channel.url;
+      video.src = channel.url;
+      video.play().catch(function () { /* o usuario decide no OK */ });
+    }, delay === undefined ? PREVIEW_DELAY : delay);
+  }
+
   /* ------------------------------------------------------------ catalogo --- */
 
   function openCatalog(kind) {
@@ -426,6 +599,8 @@
   function play(url, title) {
     var video = $('video');
 
+    pausePreview();
+
     $('player-title').textContent = title;
     video.src = url;
     video.play().catch(function () { /* o usuario aperta OK */ });
@@ -435,6 +610,19 @@
     api.telemetry('playback_started', { title: title, url: url, live: state.section === 'live' })
       .catch(function () { /* melhor esforço */ });
     scheduleOverlayHide();
+  }
+
+  /** Pausa o video de preview (ao sair do Ao vivo). */
+  function pausePreview() {
+    var video = $('preview-video');
+
+    if (!video) return;
+
+    clearTimeout(state.previewTimer);
+    video.pause();
+    video.removeAttribute('src');
+    video.dataset.url = '';
+    video.load();
   }
 
   function stopPlayer() {
@@ -488,6 +676,15 @@
 
     if (node && node.scrollIntoView) {
       node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+
+    // Canal em foco no Ao vivo: atualiza o preview.
+    if (node && node.classList.contains('channel')) {
+      updatePreview({
+        name: node.dataset.title,
+        group: node.dataset.group,
+        url: node.dataset.url
+      });
     }
   }
 
@@ -590,13 +787,29 @@
         return;
       }
 
+      if (item.id === 'live') {
+        openLive();
+        return;
+      }
+
       openCatalog(item.id);
       return;
     }
 
     if (node.classList.contains('category')) {
       state.category = node.dataset.group || null;
-      renderItems();
+
+      if (state.section === 'live' && document.querySelector('#screen-live.active')) {
+        renderLiveChannels();
+      } else {
+        renderItems();
+      }
+
+      return;
+    }
+
+    if (node.classList.contains('channel')) {
+      play(node.dataset.url, node.dataset.title || '');
       return;
     }
 
@@ -656,7 +869,8 @@
 
       var active = document.querySelector('.screen.active');
 
-      if (active && active.id === 'screen-catalog') {
+      if (active && (active.id === 'screen-catalog' || active.id === 'screen-live')) {
+        pausePreview();
         showMenu();
         focusFirst();
       }
@@ -669,14 +883,22 @@
     if (state.searchActive) {
       if (code === KEYS.ENTER) {
         event.preventDefault();
-        $('catalog-search').blur();
+
+        if (document.activeElement && document.activeElement.blur) {
+          document.activeElement.blur();
+        }
+
         moveFocusDirection('down');
         return;
       }
 
       if (code === KEYS.BACK || code === KEYS.ESC) {
         event.preventDefault();
-        $('catalog-search').blur();
+
+        if (document.activeElement && document.activeElement.blur) {
+          document.activeElement.blur();
+        }
+
         return;
       }
 
@@ -715,6 +937,26 @@
     // Marca quando o usuario esta digitando (para as setas nao roubarem o foco).
     search.addEventListener('focus', function () { state.searchActive = true; });
     search.addEventListener('blur', function () { state.searchActive = false; });
+
+    var liveSearch = $('live-search');
+    var liveDebounce = null;
+
+    liveSearch.addEventListener('input', function () {
+      clearTimeout(liveDebounce);
+      liveDebounce = setTimeout(function () {
+        state.query = liveSearch.value.trim();
+        renderLiveChannels();
+
+        var first = document.querySelector('#live-channels .channel');
+
+        if (first) {
+          setFocus(first);
+        }
+      }, 250);
+    });
+
+    liveSearch.addEventListener('focus', function () { state.searchActive = true; });
+    liveSearch.addEventListener('blur', function () { state.searchActive = false; });
 
     fitStage();
     window.addEventListener('resize', fitStage);
