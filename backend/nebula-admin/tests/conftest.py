@@ -7,7 +7,10 @@ from fastapi.testclient import TestClient
 from app.api.dependencies.admin_repository import get_admin_repository
 from app.api.dependencies.admin_token_service import get_admin_token_service
 from app.api.dependencies.nebula_core_gateway import get_nebula_core_gateway
-from app.application.exceptions import CoreResourceNotFoundError
+from app.application.exceptions import (
+    CoreConflictError,
+    CoreResourceNotFoundError,
+)
 from app.application.ports.nebula_core_gateway import (
     CoreDevice,
     CoreDeviceStatus,
@@ -43,6 +46,8 @@ class FakeNebulaCoreGateway(NebulaCoreGateway):
         self._assignments: list[CorePlaylistAssignment] = []
         self._license_type: str | None = None
         self._own_playlist: CorePlaylist | None = None
+        # Permite simular um aparelho com pagamentos (nao excluivel).
+        self._device_has_payments = False
 
     async def list_playlists(self) -> list[CorePlaylist]:
         return list(self._playlists)
@@ -78,6 +83,21 @@ class FakeNebulaCoreGateway(NebulaCoreGateway):
         self._devices.append(device)
 
         return device
+
+    async def delete_device(self, device_id: UUID) -> None:
+        if self._device_has_payments:
+            raise CoreConflictError(
+                "A device with registered payments cannot be deleted."
+            )
+
+        for index, device in enumerate(self._devices):
+            if device.device_id == device_id:
+                self._devices.pop(index)
+                return
+
+        raise CoreResourceNotFoundError(
+            f"Device {device_id} does not exist."
+        )
 
     async def set_device_status(
         self,

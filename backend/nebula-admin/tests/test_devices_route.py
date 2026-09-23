@@ -104,3 +104,53 @@ def test_should_reject_lifecycle_without_token(
     response = client.post(f"/admin/devices/{device.device_id}/activate")
 
     assert response.status_code == 401
+
+
+def test_should_delete_device(
+    client: TestClient,
+    admin_token_service: AdminTokenService,
+    fake_core_gateway: FakeNebulaCoreGateway,
+) -> None:
+    device = fake_core_gateway.add_device(status="pending")
+
+    response = client.delete(
+        f"/admin/devices/{device.device_id}",
+        headers=auth_headers(admin_token_service),
+    )
+
+    assert response.status_code == 204
+
+    listing = client.get(
+        "/admin/devices",
+        headers=auth_headers(admin_token_service),
+    )
+
+    assert listing.json()["devices"] == []
+
+
+def test_should_return_409_when_device_has_payments(
+    client: TestClient,
+    admin_token_service: AdminTokenService,
+    fake_core_gateway: FakeNebulaCoreGateway,
+) -> None:
+    device = fake_core_gateway.add_device(status="active")
+    fake_core_gateway._device_has_payments = True
+
+    response = client.delete(
+        f"/admin/devices/{device.device_id}",
+        headers=auth_headers(admin_token_service),
+    )
+
+    assert response.status_code == 409
+
+
+def test_should_return_404_when_deleting_unknown_device(
+    client: TestClient,
+    admin_token_service: AdminTokenService,
+) -> None:
+    response = client.delete(
+        f"/admin/devices/{uuid4()}",
+        headers=auth_headers(admin_token_service),
+    )
+
+    assert response.status_code == 404

@@ -110,6 +110,10 @@ class NebulaCoreGateway(ABC):
         """List devices from the Nebula Core (admin)."""
 
     @abstractmethod
+    async def delete_device(self, device_id: UUID) -> None:
+        """Remove o Device (o Core recusa quando ha pagamentos)."""
+
+    @abstractmethod
     async def set_device_status(
         self,
         device_id: UUID,

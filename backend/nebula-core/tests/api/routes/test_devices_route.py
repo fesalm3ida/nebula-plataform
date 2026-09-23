@@ -1,6 +1,18 @@
+from uuid import UUID, uuid4
+
 from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
+from app.domain.entities.device import Device
+from app.domain.entities.payment import Payment
+from app.domain.enums.device_platform import DevicePlatform
+from app.domain.enums.license_product import LicenseProduct
+from app.domain.value_objects.app_version import AppVersion
+from app.domain.value_objects.device_fingerprint import DeviceFingerprint
+from app.domain.value_objects.mac_address import MacAddress
+from app.infrastructure.repositories.in_memory_payment_repository import (
+    InMemoryPaymentRepository,
+)
 from app.infrastructure.repositories.in_memory_device_repository import (
     InMemoryDeviceRepository,
 )
@@ -14,6 +26,18 @@ def admin_headers() -> dict[str, str]:
     return {
         "X-Admin-Token": get_settings().admin_api_key,
     }
+
+
+def make_active_device() -> Device:
+    device = Device(
+        fingerprint=DeviceFingerprint("b" * 64),
+        mac_address=MacAddress("02:AA:BB:CC:DD:EE"),
+        platform=DevicePlatform.ANDROID_TV,
+        app_version=AppVersion("0.3.0"),
+    )
+    device.activate()
+
+    return device
 
 
 def valid_payload() -> dict[str, str]:
@@ -245,3 +269,61 @@ def test_should_reject_list_without_admin_token(
 
     assert response.status_code == 401
     assert response.headers["www-authenticate"] == "Bearer"
+
+
+def test_should_delete_device_without_payments(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    body = register_device()
+    device_id = body["device_id"]
+
+    response = client.delete(
+        f"/devices/{device_id}",
+        headers=admin_headers(),
+    )
+
+    assert response.status_code == 204
+    assert device_repository.find_by_id(UUID(device_id)) is None
+
+
+def test_should_reject_delete_of_device_with_payments(
+    device_repository: InMemoryDeviceRepository,
+    payment_repository: InMemoryPaymentRepository,
+) -> None:
+    device = make_active_device()
+    device_repository.save(device)
+
+    payment_repository.save(
+        Payment(
+            device_id=device.device_id,
+            product=LicenseProduct.LIFETIME,
+            amount_cents=29900,
+        )
+    )
+
+    response = client.delete(
+        f"/devices/{device.device_id}",
+        headers=admin_headers(),
+    )
+
+    assert response.status_code == 409
+    assert device_repository.find_by_id(device.device_id) is not None
+
+
+def test_should_return_404_when_deleting_unknown_device() -> None:
+    response = client.delete(
+        f"/devices/{uuid4()}",
+        headers=admin_headers(),
+    )
+
+    assert response.status_code == 404
+
+
+def test_should_require_admin_token_to_delete(
+    device_repository: InMemoryDeviceRepository,
+) -> None:
+    body = register_device()
+
+    response = client.delete(f"/devices/{body['device_id']}")
+
+    assert response.status_code == 401

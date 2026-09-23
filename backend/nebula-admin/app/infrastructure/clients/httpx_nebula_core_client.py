@@ -111,6 +111,22 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
             for payload in data.get("devices", [])
         ]
 
+    async def delete_device(self, device_id: UUID) -> None:
+        try:
+            async with httpx.AsyncClient(
+                transport=self._transport,
+                timeout=_TIMEOUT,
+            ) as client:
+                response = await client.delete(
+                    f"{self._base_url}/devices/{device_id}",
+                    headers=self._headers(),
+                )
+                self._ensure_success(response)
+        except httpx.HTTPError as error:
+            raise CoreCommunicationError(
+                "Failed to reach the Nebula Core."
+            ) from error
+
     async def set_device_status(
         self,
         device_id: UUID,

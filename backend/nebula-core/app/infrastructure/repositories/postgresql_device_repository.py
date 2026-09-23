@@ -29,6 +29,13 @@ class PostgreSQLDeviceRepository(DeviceRepository):
         self._database_session.merge(model)
         self._database_session.commit()
 
+    def delete(self, device_id: UUID) -> None:
+        model = self._database_session.get(DeviceModel, device_id)
+
+        if model is not None:
+            self._database_session.delete(model)
+            self._database_session.commit()
+
     def find_by_id(
         self,
         device_id: UUID,

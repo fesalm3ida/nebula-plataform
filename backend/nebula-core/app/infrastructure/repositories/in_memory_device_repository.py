@@ -17,6 +17,9 @@ class InMemoryDeviceRepository(DeviceRepository):
     def find_by_id(self, device_id: UUID) -> Device | None:
         return self._devices.get(device_id)
 
+    def delete(self, device_id: UUID) -> None:
+        self._devices.pop(device_id, None)
+
     def find_by_mac_address(
         self,
         mac_address: MacAddress,

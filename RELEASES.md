@@ -23,7 +23,8 @@ v0.7.0 — Licenciamento e Pagamentos
 - **Portal do usuário** (ADR-028): login por **MAC Address + código de ativação de 6 dígitos**, ativação, licença e **cadastro da própria lista**; **administrador** mantido em **URL secreta** (`/#/<ADMIN_PATH>`). Revisa a ADR-021.
 - **Pagamentos via Mercado Pago** (ADR-029): Checkout Pro, **webhook** (formatos `payment` e `merchant_order`) e **confirmação ativa** (`/me/payments/sync`) como rede de segurança.
 - **Player**: tela de ativação com MAC + código (sem QR), verificação automática a cada 10 s e pseudo-MAC estável por instalação.
-- **Admin**: ação **Resetar licença** (suporte/testes).
+- **Admin**: ações **Resetar licença** (suporte/testes) e **Remover aparelho**
+  (bloqueada quando há pagamentos registrados — usa-se bloquear/revogar).
 - Correções: `auto_return` exige `back_urls` **HTTPS**; notificações `merchant_order`; suíte de testes isolada em **`nebula_test`** (não apaga mais os dados de dev).
 - Testes: **338 (Core)** + **34 (BFF)**.
 

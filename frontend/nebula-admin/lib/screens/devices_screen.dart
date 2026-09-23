@@ -113,6 +113,43 @@ class _DevicesScreenState extends State<DevicesScreen> {
     }
   }
 
+  Future<void> _confirmDelete(Device device) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Remover aparelho'),
+        content: Text(
+          'Remover definitivamente o aparelho ${device.macAddress.isEmpty ? device.id : device.macAddress}?\n\n'
+          'Sessões e listas associadas também são removidas. '
+          'Aparelhos com pagamentos registrados não podem ser excluídos.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Remover'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _api.deleteDevice(widget.session.accessToken, device.id);
+
+      if (!mounted) return;
+      _showMessage('Aparelho removido.');
+      _refresh();
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage('$error', isError: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -194,6 +231,11 @@ class _DevicesScreenState extends State<DevicesScreen> {
                       tooltip: 'Associar playlist',
                       icon: const Icon(Icons.playlist_add),
                       onPressed: () => _assign(device),
+                    ),
+                    IconButton(
+                      tooltip: 'Remover aparelho',
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => _confirmDelete(device),
                     ),
                   ],
                 ),

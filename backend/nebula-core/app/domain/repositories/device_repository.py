@@ -40,3 +40,8 @@ class DeviceRepository(ABC):
     @abstractmethod
     def find_all(self) -> list[Device]:
         """Return all registered Devices (ordered by creation)."""
+
+    def delete(self, device_id: UUID) -> None:
+        """Remove o Device. Sessoes, associacoes e telemetria caem em
+        cascata pelas chaves estrangeiras."""
+        raise NotImplementedError

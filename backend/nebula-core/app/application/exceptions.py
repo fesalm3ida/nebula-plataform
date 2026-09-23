@@ -74,4 +74,9 @@ class PlaylistAssignmentAlreadyExistsError(Exception):
     """Raised when a Device already has an active PlaylistAssignment."""
 
 
+class DeviceHasPaymentsError(Exception):
+    """O Device possui pagamentos registrados e nao pode ser excluido.
 
+    Pagamentos sao registro financeiro: para encerrar o acesso use
+    revogar/bloquear em vez de apagar o aparelho.
+    """

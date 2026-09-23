@@ -1,6 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Response,
+    status,
+)
 
 from app.api.dependencies.nebula_core_gateway import get_nebula_core_gateway
 from app.api.schemas.devices import (
@@ -10,6 +16,7 @@ from app.api.schemas.devices import (
 )
 from app.api.security.current_admin import get_current_admin
 from app.application.exceptions import (
+    CoreAuthenticationError,
     CoreCommunicationError,
     CoreConflictError,
     CoreResourceNotFoundError,
@@ -151,3 +158,42 @@ async def reset_device_license(
     gateway: NebulaCoreGateway = Depends(get_nebula_core_gateway),
 ) -> DeviceStatusResponse:
     return await _apply_lifecycle(device_id, "reset-license", gateway)
+
+
+@router.delete(
+    "/{device_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete Device (BFF)",
+    description=(
+        "Remove o aparelho do cadastro. O Core recusa (409) quando existem "
+        "pagamentos registrados — nesse caso use revogar/bloquear."
+    ),
+)
+async def delete_device(
+    device_id: UUID,
+    gateway: NebulaCoreGateway = Depends(get_nebula_core_gateway),
+) -> Response:
+    try:
+        await gateway.delete_device(device_id)
+    except CoreResourceNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+    except CoreConflictError as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(error),
+        ) from error
+    except CoreAuthenticationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(error),
+        ) from error
+    except CoreCommunicationError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -130,6 +130,29 @@ class AdminApiClient {
     return data['status'] as String;
   }
 
+  /// Remove o aparelho do cadastro.
+  ///
+  /// O servidor recusa (409) quando existem pagamentos registrados.
+  Future<void> deleteDevice(String token, String deviceId) async {
+    final response = await _client.delete(
+      Uri.parse('${ApiConfig.baseUrl}/admin/devices/$deviceId'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 409) {
+      throw AdminApiException(
+        'Este aparelho possui pagamentos registrados e não pode ser '
+        'excluído. Use Bloquear ou Revogar.',
+      );
+    }
+
+    if (response.statusCode != 204) {
+      throw AdminApiException(
+        'Falha ao remover o aparelho (${response.statusCode}).',
+      );
+    }
+  }
+
   Future<void> assignPlaylist(
     String token,
     String deviceId,

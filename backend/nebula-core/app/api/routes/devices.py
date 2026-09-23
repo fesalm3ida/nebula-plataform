@@ -2,9 +2,16 @@ from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Response,
+    status,
+)
 
 from app.api.dependencies.device_repository import get_device_repository
+from app.api.dependencies.payment_repository import get_payment_repository
 from app.api.schemas.device_activation import DeviceActivationResponse
 from app.api.schemas.device_registration import (
     DeviceRegistrationRequest,
@@ -16,6 +23,7 @@ from app.api.schemas.device_summary import (
 )
 from app.api.security.admin import require_admin
 from app.application.exceptions import (
+    DeviceHasPaymentsError,
     DeviceAlreadyActiveError,
     DeviceAlreadyBlockedError,
     DeviceAlreadyExpiredError,
@@ -30,6 +38,10 @@ from app.application.use_cases.activate_device import (
 from app.application.use_cases.block_device import (
     BlockDeviceCommand,
     BlockDeviceUseCase,
+)
+from app.application.use_cases.delete_device import (
+    DeleteDeviceCommand,
+    DeleteDeviceUseCase,
 )
 from app.application.use_cases.reset_device_license import (
     ResetDeviceLicenseCommand,
@@ -49,6 +61,7 @@ from app.application.use_cases.revoke_device import (
     RevokeDeviceUseCase,
 )
 from app.domain.repositories.device_repository import DeviceRepository
+from app.domain.repositories.payment_repository import PaymentRepository
 
 
 router = APIRouter(
@@ -222,6 +235,37 @@ def revoke_device(
         device_id=result.device_id,
         status=result.status,
     )
+
+
+@router.delete(
+    "/{device_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete Device",
+    description=(
+        "Administrative operation. Removes a Device from the registry "
+        "(sessions, playlist assignments and telemetry cascade). A Device "
+        "with registered payments cannot be deleted - revoke or block it "
+        "instead. Protected by the administration guard (X-Admin-Token)."
+    ),
+    dependencies=[Depends(require_admin)],
+)
+def delete_device(
+    device_id: UUID,
+    device_repository: DeviceRepository = Depends(get_device_repository),
+    payment_repository: PaymentRepository = Depends(
+        get_payment_repository
+    ),
+) -> Response:
+    _lifecycle(
+        execute=lambda: DeleteDeviceUseCase(
+            device_repository=device_repository,
+            payment_repository=payment_repository,
+        ).execute(DeleteDeviceCommand(device_id=device_id)),
+        not_found=DeviceNotFoundError,
+        conflict=DeviceHasPaymentsError,
+    )
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(
