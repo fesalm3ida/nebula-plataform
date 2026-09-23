@@ -1,0 +1,83 @@
+name: iOS build
+
+# Compila o app iOS na nuvem (sem Mac local).
+#
+# O iOS NAO compila no Windows/Linux: exige macOS + Xcode. Este workflow usa
+# um runner macOS do GitHub Actions para validar o build (analyze, testes e
+# `flutter build ios --no-codesign`).
+#
+# Custos: em repositorio PRIVADO, runners macOS consomem minutos com
+# multiplicador 10x (2.000 min/mes de cota = ~200 min de macOS). Por isso o
+# workflow roda apenas manualmente ou quando o app do Player muda.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/nebula-player/**'
+      - '.github/workflows/ios-build.yml'
+
+jobs:
+  build-ios:
+    name: Build iOS (sem assinatura)
+    runs-on: macos-latest
+
+    defaults:
+      run:
+        working-directory: frontend/nebula-player
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Dependências
+        run: flutter pub get
+
+      - name: Análise estática
+        run: flutter analyze
+
+      - name: Testes
+        run: flutter test
+
+      - name: Pods (dependências nativas do iOS)
+        run: |
+          cd ios
+          pod install --repo-update
+        continue-on-error: false
+
+      - name: Build iOS (release, sem assinatura)
+        run: |
+          flutter build ios --release --no-codesign \
+            --dart-define=NEBULA_CORE_API=https://nebula-core-6hq4.onrender.com \
+            --dart-define=NEBULA_PORTAL_URL=https://nebula-plataform-portal.onrender.com
+
+      # Empacota um IPA SEM assinatura (Payload/Runner.app).
+      # E possivel instalar no iPhone sem Mac usando ferramentas que assinam
+      # com o seu Apple ID no Windows (Sideloadly/AltStore).
+      - name: Empacotar IPA sem assinatura
+        run: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -qry nebula-player-unsigned.ipa Payload
+
+      - name: Guardar o IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: nebula-player-ios-ipa
+          path: frontend/nebula-player/build/ios/iphoneos/nebula-player-unsigned.ipa
+          if-no-files-found: error
+
+      - name: Guardar o app (.app)
+        uses: actions/upload-artifact@v4
+        with:
+          name: nebula-player-ios-app
+          path: frontend/nebula-player/build/ios/iphoneos/Runner.app
+          if-no-files-found: warn
