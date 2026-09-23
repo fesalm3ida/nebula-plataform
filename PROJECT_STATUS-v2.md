@@ -2,11 +2,11 @@
 tipo: Status do Projeto
 id: PROJECT_STATUS-v2
 projeto: Nebula Platform
-versao: 0.7.0
+versao: 0.8.0
 status: 🚧 Em desenvolvimento ativo
-atualizacao: '2026-09-15'
-milestone: M9 — Licenciamento e Pagamentos
-codename: Monetization
+atualizacao: '2026-09-23'
+milestone: M10 — Nebula Monitor
+codename: Observability
 relacionados:
 - '[[CHANGELOG]]'
 - '[[CONTRIBUTING]]'
@@ -26,11 +26,11 @@ aliases:
 
 ## Status do Projeto
 
-- **Versão atual:** **0.7.0** (Licenciamento e Pagamentos)
-- **Codename:** **Monetization**
-- **Milestone atual:** **M9 — Licenciamento e Pagamentos** (M4–M8 concluídas)
+- **Versão atual:** **0.8.0** (Nebula Monitor — telemetria)
+- **Codename:** **Observability**
+- **Milestone atual:** **M10 — Nebula Monitor** (M4–M9 concluídas)
 - **Status geral:** 🚧 Em desenvolvimento ativo
-- **Última atualização:** **15/09/2026**
+- **Última atualização:** **23/09/2026**
 
 ---
 

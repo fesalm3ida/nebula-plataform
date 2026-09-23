@@ -38,3 +38,43 @@ class LogResponse(BaseModel):
     level: LogLevel
     occurred_at: datetime
     received_at: datetime
+
+
+class TelemetryEventSummary(BaseModel):
+    event_id: UUID
+    device_id: UUID
+    session_id: UUID
+    event_type: str
+    payload: dict
+    occurred_at: datetime
+
+
+class TelemetryEventListResponse(BaseModel):
+    events: list[TelemetryEventSummary]
+
+
+class LogSummary(BaseModel):
+    log_id: UUID
+    device_id: UUID
+    session_id: UUID
+    level: str
+    message: str
+    occurred_at: datetime
+
+
+class LogListResponse(BaseModel):
+    logs: list[LogSummary]
+
+
+class HourlyPoint(BaseModel):
+    hour: datetime
+    count: int
+
+
+class ObservabilitySummaryResponse(BaseModel):
+    since: datetime
+    total_events: int
+    events_by_type: dict[str, int]
+    events_per_hour: list[HourlyPoint]
+    total_logs: int
+    logs_by_level: dict[str, int]

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/nebula_core_client.dart';
 import '../models/content_source.dart';
+import '../services/telemetry_service.dart';
 import '../models/device_identity.dart';
 import '../services/device_identity_service.dart';
 import '../theme/nebula_theme.dart';
@@ -126,7 +127,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
       setState(() => _status = 'Iniciando sessão...');
       try {
-        await _client.startSession(token);
+        final sessionId = await _client.startSession(token);
+
+        // Habilita a telemetria (Nebula Monitor).
+        TelemetryService.instance.configure(
+          token: token,
+          sessionId: sessionId,
+        );
       } on NebulaCoreException {
         // A sessao e necessaria apenas para heartbeat/telemetria; o menu
         // pode ser aberto mesmo assim.

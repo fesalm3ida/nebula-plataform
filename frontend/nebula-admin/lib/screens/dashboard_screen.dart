@@ -4,6 +4,7 @@ import '../api/admin_api_client.dart';
 import '../models/auth_session.dart';
 import '../models/playlist.dart';
 import 'devices_screen.dart';
+import 'monitor_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key, required this.session});
@@ -54,6 +55,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => DevicesScreen(session: widget.session),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.monitor_heart_outlined),
+            tooltip: 'Nebula Monitor',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => MonitorScreen(session: widget.session),
               ),
             ),
           ),

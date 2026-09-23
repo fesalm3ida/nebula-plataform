@@ -4,6 +4,46 @@ from uuid import UUID
 
 
 @dataclass(frozen=True)
+class CoreHourlyPoint:
+    """Um ponto da serie temporal do monitor."""
+
+    hour: str
+    count: int
+
+
+@dataclass(frozen=True)
+class CoreObservabilitySummary:
+    """Resumo do Nebula Monitor (Core)."""
+
+    since: str
+    total_events: int
+    events_by_type: dict[str, int]
+    events_per_hour: list[CoreHourlyPoint]
+    total_logs: int
+    logs_by_level: dict[str, int]
+
+
+@dataclass(frozen=True)
+class CoreTelemetryEvent:
+    event_id: UUID
+    device_id: UUID
+    session_id: UUID
+    event_type: str
+    payload: dict
+    occurred_at: str
+
+
+@dataclass(frozen=True)
+class CoreLogEntry:
+    log_id: UUID
+    device_id: UUID
+    session_id: UUID
+    level: str
+    message: str
+    occurred_at: str
+
+
+@dataclass(frozen=True)
 class CorePlaylist:
     """Subconjunto do contrato de Playlist do Core consumido pelo Admin."""
 
@@ -108,6 +148,35 @@ class NebulaCoreGateway(ABC):
     @abstractmethod
     async def list_devices(self) -> list[CoreDevice]:
         """List devices from the Nebula Core (admin)."""
+
+    @abstractmethod
+    async def get_observability_summary(
+        self,
+        hours: int,
+    ) -> CoreObservabilitySummary:
+        """Resumo do monitor (telemetria + logs)."""
+
+    @abstractmethod
+    async def list_telemetry_events(
+        self,
+        *,
+        hours: int,
+        limit: int,
+        device_id: str | None = None,
+        event_type: str | None = None,
+    ) -> list[CoreTelemetryEvent]:
+        """Eventos de telemetria mais recentes."""
+
+    @abstractmethod
+    async def list_logs(
+        self,
+        *,
+        hours: int,
+        limit: int,
+        device_id: str | None = None,
+        level: str | None = None,
+    ) -> list[CoreLogEntry]:
+        """Logs tecnicos mais recentes."""
 
     @abstractmethod
     async def delete_device(self, device_id: UUID) -> None:

@@ -1,6 +1,7 @@
+from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session as SQLAlchemySession
 
 from app.domain.entities.log import Log
@@ -35,3 +36,50 @@ class PostgreSQLLogRepository(LogRepository):
             return None
 
         return LogMapper.to_domain(model)
+
+    def list_logs(
+        self,
+        *,
+        device_id: UUID | None = None,
+        level: str | None = None,
+        since: datetime | None = None,
+        limit: int = 100,
+    ) -> list[Log]:
+        statement = select(LogModel)
+
+        if device_id is not None:
+            statement = statement.where(LogModel.device_id == device_id)
+
+        if level is not None:
+            statement = statement.where(LogModel.level == level)
+
+        if since is not None:
+            statement = statement.where(LogModel.occurred_at >= since)
+
+        statement = statement.order_by(
+            LogModel.occurred_at.desc()
+        ).limit(limit)
+
+        models = self._database_session.execute(statement).scalars().all()
+
+        return [LogMapper.to_entity(model) for model in models]
+
+    def count_by_level(
+        self,
+        *,
+        since: datetime | None = None,
+        device_id: UUID | None = None,
+    ) -> dict[str, int]:
+        statement = select(LogModel.level, func.count(LogModel.log_id))
+
+        if since is not None:
+            statement = statement.where(LogModel.occurred_at >= since)
+
+        if device_id is not None:
+            statement = statement.where(LogModel.device_id == device_id)
+
+        statement = statement.group_by(LogModel.level)
+
+        rows = self._database_session.execute(statement).all()
+
+        return {row[0]: int(row[1]) for row in rows}

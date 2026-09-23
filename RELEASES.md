@@ -2,7 +2,7 @@
 tipo: Releases
 id: RELEASES
 projeto: Nebula Platform
-atualizacao: '2026-09-15'
+atualizacao: '2026-09-23'
 relacionados:
 - '[[CHANGELOG]]'
 - '[[CONTRIBUTING]]'
@@ -16,6 +16,19 @@ aliases:
 ---
 
 # Nebula Platform — Releases
+
+v0.8.0 — Nebula Monitor (telemetria e observabilidade)
+
+- **Core**: metade de **leitura** do subdomínio de observabilidade — `GET /observability/summary`
+  (totais, distribuição por tipo/nível e série temporal por hora), `GET /observability/telemetry`
+  e `GET /observability/logs`, com filtros (aparelho, tipo, nível, período) e guarda administrativa.
+- **BFF**: rotas `/admin/monitor/*` para o portal.
+- **Portal**: tela **Nebula Monitor** — KPIs (eventos, erros de reprodução, travamentos de
+  buffer, logs de erro), gráfico por hora, listas de eventos e logs com filtros e período
+  24 h / 7 dias / 30 dias.
+- **Player**: passa a **enviar telemetria** (`playback_started`, `playback_ended`,
+  `playback_error`) em modo *fire-and-forget*, sem impacto na reprodução.
+- Testes: **350 (Core)** · **41 (BFF)** · **9 (portal)** · **16 (player)**.
 
 v0.7.0 — Licenciamento e Pagamentos
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../player/media_kit_playback_controller.dart';
+import '../services/telemetry_service.dart';
 import '../theme/nebula_theme.dart';
 import '../widgets/player_view.dart';
 
@@ -29,11 +30,35 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.play(widget.url);
+    _start();
+  }
+
+  Future<void> _start() async {
+    final telemetry = TelemetryService.instance;
+
+    try {
+      await _controller.play(widget.url);
+
+      telemetry.track('playback_started', {
+        'title': widget.title,
+        'url': widget.url,
+        'live': widget.isLive,
+      });
+    } catch (error) {
+      telemetry.track('playback_error', {
+        'title': widget.title,
+        'url': widget.url,
+        'error': '$error',
+      });
+    }
   }
 
   @override
   void dispose() {
+    TelemetryService.instance.track('playback_ended', {
+      'title': widget.title,
+      'live': widget.isLive,
+    });
     _controller.dispose();
     super.dispose();
   }

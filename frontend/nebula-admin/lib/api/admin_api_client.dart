@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../models/auth_session.dart';
 import '../models/device.dart';
+import '../models/monitor.dart';
 import '../models/playlist.dart';
 
 class AdminApiClient {
@@ -128,6 +129,84 @@ class AdminApiClient {
     final data = jsonDecode(response.body) as Map<String, dynamic>;
 
     return data['status'] as String;
+  }
+
+  /// Resumo do Nebula Monitor (telemetria + logs).
+  Future<MonitorSummary> monitorSummary(String token, int hours) async {
+    final response = await _client.get(
+      Uri.parse('${ApiConfig.baseUrl}/admin/monitor/summary?hours=$hours'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      throw AdminApiException(
+        'Falha ao carregar o monitor (${response.statusCode}).',
+      );
+    }
+
+    return MonitorSummary.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Eventos de telemetria recentes.
+  Future<List<TelemetryEvent>> listTelemetry(
+    String token, {
+    int hours = 24,
+    int limit = 100,
+    String? eventType,
+  }) async {
+    final filter = eventType == null ? '' : '&event_type=$eventType';
+
+    final response = await _client.get(
+      Uri.parse(
+        '${ApiConfig.baseUrl}/admin/monitor/telemetry'
+        '?hours=$hours&limit=$limit$filter',
+      ),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      throw AdminApiException(
+        'Falha ao listar telemetria (${response.statusCode}).',
+      );
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+    return (data['events'] as List<dynamic>)
+        .map((item) => TelemetryEvent.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Logs técnicos recentes.
+  Future<List<LogEntry>> listLogs(
+    String token, {
+    int hours = 24,
+    int limit = 100,
+    String? level,
+  }) async {
+    final filter = level == null ? '' : '&level=$level';
+
+    final response = await _client.get(
+      Uri.parse(
+        '${ApiConfig.baseUrl}/admin/monitor/logs'
+        '?hours=$hours&limit=$limit$filter',
+      ),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode != 200) {
+      throw AdminApiException(
+        'Falha ao listar logs (${response.statusCode}).',
+      );
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+    return (data['logs'] as List<dynamic>)
+        .map((item) => LogEntry.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   /// Remove o aparelho do cadastro.

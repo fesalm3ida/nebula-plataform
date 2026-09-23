@@ -13,6 +13,10 @@ from app.application.exceptions import (
 )
 from app.application.ports.nebula_core_gateway import (
     CoreDevice,
+    CoreHourlyPoint,
+    CoreLogEntry,
+    CoreObservabilitySummary,
+    CoreTelemetryEvent,
     CoreDeviceStatus,
     CoreLicense,
     CorePlan,
@@ -48,6 +52,9 @@ class FakeNebulaCoreGateway(NebulaCoreGateway):
         self._own_playlist: CorePlaylist | None = None
         # Permite simular um aparelho com pagamentos (nao excluivel).
         self._device_has_payments = False
+        # Dados do Nebula Monitor.
+        self._telemetry: list[CoreTelemetryEvent] = []
+        self._logs: list[CoreLogEntry] = []
 
     async def list_playlists(self) -> list[CorePlaylist]:
         return list(self._playlists)
@@ -83,6 +90,65 @@ class FakeNebulaCoreGateway(NebulaCoreGateway):
         self._devices.append(device)
 
         return device
+
+    async def get_observability_summary(
+        self,
+        hours: int,
+    ) -> CoreObservabilitySummary:
+        by_type: dict[str, int] = {}
+
+        for event in self._telemetry:
+            by_type[event.event_type] = by_type.get(event.event_type, 0) + 1
+
+        by_level: dict[str, int] = {}
+
+        for log in self._logs:
+            by_level[log.level] = by_level.get(log.level, 0) + 1
+
+        return CoreObservabilitySummary(
+            since="2026-09-23T00:00:00Z",
+            total_events=len(self._telemetry),
+            events_by_type=by_type,
+            events_per_hour=[
+                CoreHourlyPoint(hour="2026-09-23T00:00:00Z", count=len(self._telemetry))
+            ],
+            total_logs=len(self._logs),
+            logs_by_level=by_level,
+        )
+
+    async def list_telemetry_events(
+        self,
+        *,
+        hours: int,
+        limit: int,
+        device_id: str | None = None,
+        event_type: str | None = None,
+    ) -> list[CoreTelemetryEvent]:
+        events = [
+            event
+            for event in self._telemetry
+            if (device_id is None or str(event.device_id) == device_id)
+            and (event_type is None or event.event_type == event_type)
+        ]
+
+        return events[:limit]
+
+    async def list_logs(
+        self,
+        *,
+        hours: int,
+        limit: int,
+        device_id: str | None = None,
+        level: str | None = None,
+    ) -> list[CoreLogEntry]:
+        logs = [
+            log
+            for log in self._logs
+            if (device_id is None or str(log.device_id) == device_id)
+            and (level is None or log.level == level)
+        ]
+
+        return logs[:limit]
 
     async def delete_device(self, device_id: UUID) -> None:
         if self._device_has_payments:

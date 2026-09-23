@@ -9,6 +9,10 @@ from app.application.exceptions import (
     CoreResourceNotFoundError,
 )
 from app.application.ports.nebula_core_gateway import (
+    CoreHourlyPoint,
+    CoreLogEntry,
+    CoreObservabilitySummary,
+    CoreTelemetryEvent,
     CoreDevice,
     CoreDeviceStatus,
     CoreLicense,
@@ -109,6 +113,129 @@ class HTTPXNebulaCoreClient(NebulaCoreGateway):
         return [
             self._to_core_device(payload)
             for payload in data.get("devices", [])
+        ]
+
+    async def get_observability_summary(
+        self,
+        hours: int,
+    ) -> CoreObservabilitySummary:
+        try:
+            async with httpx.AsyncClient(
+                transport=self._transport,
+                timeout=_TIMEOUT,
+            ) as client:
+                response = await client.get(
+                    f"{self._base_url}/observability/summary",
+                    params={"hours": hours},
+                    headers=self._headers(),
+                )
+                self._ensure_success(response)
+                payload = response.json()
+        except httpx.HTTPError as error:
+            raise CoreCommunicationError(
+                "Failed to reach the Nebula Core."
+            ) from error
+
+        return CoreObservabilitySummary(
+            since=payload["since"],
+            total_events=payload["total_events"],
+            events_by_type=payload.get("events_by_type", {}),
+            events_per_hour=[
+                CoreHourlyPoint(hour=point["hour"], count=point["count"])
+                for point in payload.get("events_per_hour", [])
+            ],
+            total_logs=payload["total_logs"],
+            logs_by_level=payload.get("logs_by_level", {}),
+        )
+
+    async def list_telemetry_events(
+        self,
+        *,
+        hours: int,
+        limit: int,
+        device_id: str | None = None,
+        event_type: str | None = None,
+    ) -> list[CoreTelemetryEvent]:
+        params: dict[str, object] = {"hours": hours, "limit": limit}
+
+        if device_id:
+            params["device_id"] = device_id
+
+        if event_type:
+            params["event_type"] = event_type
+
+        try:
+            async with httpx.AsyncClient(
+                transport=self._transport,
+                timeout=_TIMEOUT,
+            ) as client:
+                response = await client.get(
+                    f"{self._base_url}/observability/telemetry",
+                    params=params,
+                    headers=self._headers(),
+                )
+                self._ensure_success(response)
+                payload = response.json()
+        except httpx.HTTPError as error:
+            raise CoreCommunicationError(
+                "Failed to reach the Nebula Core."
+            ) from error
+
+        return [
+            CoreTelemetryEvent(
+                event_id=UUID(item["event_id"]),
+                device_id=UUID(item["device_id"]),
+                session_id=UUID(item["session_id"]),
+                event_type=item["event_type"],
+                payload=item.get("payload", {}),
+                occurred_at=item["occurred_at"],
+            )
+            for item in payload.get("events", [])
+        ]
+
+    async def list_logs(
+        self,
+        *,
+        hours: int,
+        limit: int,
+        device_id: str | None = None,
+        level: str | None = None,
+    ) -> list[CoreLogEntry]:
+        params: dict[str, object] = {"hours": hours, "limit": limit}
+
+        if device_id:
+            params["device_id"] = device_id
+
+        if level:
+            params["level"] = level
+
+        try:
+            async with httpx.AsyncClient(
+                transport=self._transport,
+                timeout=_TIMEOUT,
+            ) as client:
+                response = await client.get(
+                    f"{self._base_url}/observability/logs",
+                    params=params,
+                    headers=self._headers(),
+                )
+                self._ensure_success(response)
+                payload = response.json()
+        except httpx.HTTPError as error:
+            raise CoreCommunicationError(
+                "Failed to reach the Nebula Core."
+            ) from error
+
+        return [
+            CoreLogEntry(
+                log_id=UUID(item["log_id"]),
+                device_id=UUID(item["device_id"]),
+                session_id=UUID(item["session_id"]),
+                level=item["level"],
+                message=item["message"],
+                occurred_at=item["occurred_at"],
+            )
+            for item in payload.get("logs", [])
         ]
 
     async def delete_device(self, device_id: UUID) -> None:

@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes.auth import router as admin_auth_router
 from app.api.routes.devices import router as admin_devices_router
 from app.api.routes.playlists import router as admin_playlists_router
+from app.api.routes.monitor import router as monitor_router
 from app.api.routes.portal import router as portal_router
 from app.core.config import get_settings
 
@@ -30,6 +31,7 @@ app.include_router(admin_auth_router)
 app.include_router(admin_devices_router)
 app.include_router(admin_playlists_router)
 app.include_router(portal_router)
+app.include_router(monitor_router)
 
 
 @app.get("/")
