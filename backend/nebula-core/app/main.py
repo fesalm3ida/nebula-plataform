@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes.devices import router as devices_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.sessions import router as sessions_router
@@ -16,9 +17,21 @@ from app.core.config import get_settings
 # em cada requisição.
 get_settings()
 
+# CORS para clientes de navegador: o app da LG Smart TV (webOS) e o portal
+# sao aplicacoes web e chamam esta API direto do runtime web da TV/browser.
+# Em producao, restrinja `allow_origins` aos dominios conhecidos.
+CORS_ALLOWED_ORIGINS = ["*"]
+
 app = FastAPI(
     title="Nebula Core",
     version="0.1.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ALLOWED_ORIGINS,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(devices_router)
