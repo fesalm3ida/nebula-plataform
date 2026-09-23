@@ -16,5 +16,6 @@
   "requiredPermissions": [
     "internet"
   ],
-  "supportGIP": true
+  "supportGIP": true,
+  "requiredACG": []
 }
