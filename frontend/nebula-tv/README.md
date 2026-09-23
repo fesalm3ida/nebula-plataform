@@ -38,23 +38,53 @@ npm test                    # parser M3U + busca + consistência
 
 ### Instalar na TV (modo desenvolvedor)
 
-1. Na TV: loja de apps → instale **Developer Mode** → ative → anote **IP**,
-   **porta** e a **passphrase**;
-2. No PC (a CLI roda em Linux/WSL, macOS e Windows):
+Siga a documentação oficial
+([App Testing with Developer Mode App](https://webostv.developer.lge.com/develop/getting-started/developer-mode-app)).
+
+**Pré-requisitos:** TV e PC na **mesma rede**; CLI webOS no PC
+(`npm install -g @webos-tools/cli`); **conta no LG Developer site**
+(https://developer.lge.com — gratuita).
+
+1. **Instalar o app Developer Mode na TV**: LG Apps → buscar *Developer Mode* →
+   Install;
+2. **Ativar**: abrir o app → entrar com **e-mail e senha da conta LG Developer** →
+   botão **Dev Mode Status** → a TV **reinicia**;
+   > ⚠️ Ao expirar a sessão (ou após 10 reinícios sem rede), o Developer Mode é
+   > desativado e **os apps instalados por ele são desinstalados**.
+3. **Registrar a TV no PC**:
    ```bash
-   npm install -g @webos-tools/cli
-
-   npm run device:add       # name: tv | host: <IP> | port: 9922 | passphrase: <da TV>
-   npm run device:list      # confere
-   npm run device:info      # a TV responde?
-
-   npm test                 # testes do app
-   npm run package          # gera dist/com.nebula.tv_0.1.0_all.ipk
+   npm run device:add
+   #  Device Name ...... tv
+   #  Device IP ........ <IP mostrado na TV>       (ex.: 192.168.15.4)
+   #  Device Port ...... 9922
+   #  ssh user ......... prisoner                  <-- usuario fixo
+   #  description ...... nebula tv
+   #  Set default? ..... Yes
+   #  Save? ............ Yes
+   #  Password ......... NAO e necessario (o Developer Mode nao usa senha)
+   npm run device:list
+   ```
+4. **Autorizar o PC (Key Server)**: no app Developer Mode da TV clique em
+   **Key Server** e depois, no PC:
+   ```bash
+   npm run device:key      # ares-novacom --device tv --getkey
+   # input passphrase: <os 6 caracteres no canto inferior esquerdo da TV>
+   ```
+5. **Conferir a conexão**:
+   ```bash
+   npm run device:info     # ares-device --system-info --device tv
+   # modelName / sdkVersion / firmwareVersion ...
+   ```
+6. **Empacotar e instalar o Nebula TV**:
+   ```bash
+   npm test
+   npm run package         # dist/com.nebula.tv_0.1.0_all.ipk
    npm run install:tv
    npm run launch
    ```
-3. A "sessão" do modo desenvolvedor expira periodicamente — reative no app
-   **Developer Mode** da TV e repita `install`/`launch`.
+
+**Renovar a sessão:** no app Developer Mode, clique em **EXTEND** (a TV precisa
+estar online). O campo *Remain Session* mostra o tempo restante.
 
 ### API do Core
 

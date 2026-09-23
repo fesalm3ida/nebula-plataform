@@ -7,12 +7,13 @@
     "test": "node test/m3u.test.js && node test/search.test.js && node test/structure.test.js",
     "device:add": "ares-setup-device",
     "device:list": "ares-setup-device --list",
-    "device:info": "ares-device-info -d tv",
+    "device:key": "ares-novacom --device tv --getkey",
+    "device:info": "ares-device --system-info --device tv",
     "package": "ares-package . -o dist",
-    "install:tv": "ares-install dist/com.nebula.tv_0.1.0_all.ipk -d tv",
-    "launch": "ares-launch com.nebula.tv -d tv",
-    "close": "ares-launch --close com.nebula.tv -d tv",
-    "inspect": "ares-inspect com.nebula.tv -d tv"
+    "install:tv": "ares-install dist/com.nebula.tv_0.1.0_all.ipk --device tv",
+    "launch": "ares-launch com.nebula.tv --device tv",
+    "close": "ares-launch --close com.nebula.tv --device tv",
+    "inspect": "ares-inspect com.nebula.tv --device tv"
   },
   "webosCli": {
     "instalada": "@webos-tools/cli (global)",
