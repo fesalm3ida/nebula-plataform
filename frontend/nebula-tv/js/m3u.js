@@ -115,5 +115,38 @@
     });
   }
 
-  global.NebulaM3u = { parse: parse, categoriesOf: categoriesOf, classify: classify };
+  /**
+   * Nome da serie sem o sufixo de temporada/episodio.
+   * Ex.: "Neonias S01E02" -> "Neonias"  (mesma regra do app Android)
+   */
+  function seriesNameOf(title) {
+    return String(title || '')
+      .replace(/\s+S\d+\s*E\d+.*$/i, '')
+      .trim();
+  }
+
+  /** Temporada/episodio presente no titulo (ex.: "S01E02") ou ''. */
+  function seasonEpisodeOf(title) {
+    var match = String(title || '').match(/(S\d+\s*E\d+)/i);
+
+    return match ? match[1].replace(/\s+/g, '').toUpperCase() : '';
+  }
+
+  /** Ordena episodios por temporada e numero. */
+  function episodeOrder(label) {
+    var match = String(label || '').match(/S(\d+)E(\d+)/i);
+
+    if (!match) return 0;
+
+    return Number(match[1]) * 1000 + Number(match[2]);
+  }
+
+  global.NebulaM3u = {
+    parse: parse,
+    categoriesOf: categoriesOf,
+    classify: classify,
+    seriesNameOf: seriesNameOf,
+    seasonEpisodeOf: seasonEpisodeOf,
+    episodeOrder: episodeOrder
+  };
 })(window);

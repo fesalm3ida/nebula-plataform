@@ -89,6 +89,31 @@
       </div>
     </section>
 
+    <!-- Séries: uma capa por série (episódios agrupados) -->
+    <section id="screen-series" class="screen">
+      <header class="topbar">
+        <h2>Séries</h2>
+        <div class="search-bar">
+          <input id="series-search" class="search-input focusable" type="text"
+                 placeholder="Buscar série" autocomplete="off">
+          <span id="series-count" class="muted"></span>
+        </div>
+      </header>
+      <div class="catalog-body">
+        <aside id="series-categories" class="categories"></aside>
+        <div id="series-items" class="items posters"></div>
+      </div>
+    </section>
+
+    <!-- Episódios de uma série -->
+    <section id="screen-episodes" class="screen">
+      <header class="topbar">
+        <h2 id="episodes-title">Episódios</h2>
+        <span id="episodes-count" class="muted"></span>
+      </header>
+      <div id="episode-list" class="channels episodes"></div>
+    </section>
+
     <!-- Player -->
     <section id="screen-player" class="screen player">
       <video id="video" playsinline></video>

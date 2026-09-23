@@ -310,3 +310,21 @@ html, body {
 
 .preview-info strong { font-size: 32px; }
 .preview-info .muted { font-size: 20px; }
+
+/* ------------------------------------------------ Series: episodios ------- */
+
+.episodes { height: 880px; }
+
+.episode-label {
+  margin-left: auto;
+  color: var(--primary-soft);
+  font-weight: bold;
+  font-size: 20px;
+  flex: 0 0 auto;
+}
+
+.poster-sub {
+  padding: 0 14px 12px;
+  color: var(--muted);
+  font-size: 18px;
+}

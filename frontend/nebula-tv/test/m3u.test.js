@@ -5,7 +5,8 @@
 global.window = {};
 require('../js/m3u.js');
 
-const { parse, categoriesOf, classify } = global.window.NebulaM3u;
+const { parse, categoriesOf, classify, seriesNameOf, seasonEpisodeOf, episodeOrder } =
+  global.window.NebulaM3u;
 
 let falhas = 0;
 
@@ -57,6 +58,18 @@ check('classificacao por URL (/movie/)', classify('http://x/movie/a/b.mp4'), 'mo
 check('classificacao por URL (/series/)', classify('http://x/series/a/b.mkv'), 'series');
 check('classificacao por URL (resto = live)', classify('http://x/live/a/b.ts'), 'live');
 check('lista vazia', parse('').length, 0);
+
+// ------------------------------------------------- agrupamento de series ---
+check('nome da serie sem SxxExx', seriesNameOf('Neonias S01E02'), 'Neonias');
+check('nome da serie com sufixo extra', seriesNameOf('O Prazer e Meu S01E01 - Piloto'),
+  'O Prazer e Meu');
+check('titulo sem episodio permanece', seriesNameOf('Breaking Bad'), 'Breaking Bad');
+check('temporada/episodio detectado', seasonEpisodeOf('Neonias S01E02'), 'S01E02');
+check('episodio com espaco normalizado', seasonEpisodeOf('Serie S01 E02'), 'S01E02');
+check('sem episodio retorna vazio', seasonEpisodeOf('Filme Qualquer'), '');
+check('ordenacao por temporada/episodio',
+  [episodeOrder('S02E01'), episodeOrder('S01E10')].sort((a, b) => a - b),
+  [episodeOrder('S01E10'), episodeOrder('S02E01')]);
 
 console.log(falhas === 0 ? '\nTodos os testes passaram ✅' : `\n${falhas} teste(s) falharam ❌`);
 process.exit(falhas === 0 ? 0 : 1);

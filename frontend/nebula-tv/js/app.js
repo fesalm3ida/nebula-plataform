@@ -33,6 +33,8 @@
     focus: { column: 0, index: 0 },
     playerVisible: false,
     previewTimer: null,
+    seriesGroups: [],
+    episodeGroup: null,
     hideTimer: null
   };
 
@@ -58,7 +60,7 @@
 
   function show(screenId) {
     ['screen-boot', 'screen-activation', 'screen-menu', 'screen-live',
-     'screen-catalog', 'screen-player']
+     'screen-catalog', 'screen-series', 'screen-episodes', 'screen-player']
       .forEach(function (id) { $(id).classList.toggle('active', id === screenId); });
   }
 
@@ -594,6 +596,236 @@
     }
   }
 
+  /* -------------------------------------------------------------- series --- */
+
+  var MAX_SERIES = 300;
+
+  /** Agrupa os episodios em uma entrada por serie (como o IBO). */
+  function groupSeries(items) {
+    var groups = {};
+    var order = [];
+
+    items.forEach(function (episode) {
+      var name = window.NebulaM3u.seriesNameOf(episode.name) || episode.name;
+      var key = window.NebulaSearch.normalize(name);
+      var group = groups[key];
+
+      if (!group) {
+        group = {
+          name: name,
+          poster: '',
+          category: episode.group || '',
+          episodes: []
+        };
+        groups[key] = group;
+        order.push(group);
+      }
+
+      if (!group.poster && episode.logo) {
+        group.poster = episode.logo;
+      }
+
+      group.episodes.push(episode);
+    });
+
+    order.forEach(function (group) {
+      group.episodes.sort(function (a, b) {
+        return window.NebulaM3u.episodeOrder(
+          window.NebulaM3u.seasonEpisodeOf(a.name)
+        ) - window.NebulaM3u.episodeOrder(
+          window.NebulaM3u.seasonEpisodeOf(b.name)
+        );
+      });
+    });
+
+    return order;
+  }
+
+  function openSeries() {
+    state.section = 'series';
+    state.catalog = state.channels.filter(function (item) {
+      return item.kind === 'series';
+    });
+    state.seriesGroups = groupSeries(state.catalog);
+    state.category = null;
+    state.query = '';
+    state.episodeGroup = null;
+
+    var search = $('series-search');
+
+    if (search) {
+      search.value = '';
+    }
+
+    renderSeriesCategories();
+    renderSeries();
+    show('screen-series');
+    focusFirst();
+  }
+
+  function seriesItems() {
+    var groups = state.seriesGroups;
+
+    if (state.category) {
+      groups = groups.filter(function (group) {
+        return group.category === state.category;
+      });
+    }
+
+    if (state.query) {
+      groups = groups.filter(function (group) {
+        return window.NebulaSearch.matches(group.name, state.query);
+      });
+    }
+
+    return groups;
+  }
+
+  function renderSeriesCategories() {
+    var container = $('series-categories');
+    var seen = {};
+    var categories = [];
+
+    state.seriesGroups.forEach(function (group) {
+      if (group.category && !seen[group.category]) {
+        seen[group.category] = 0;
+      }
+
+      if (group.category) {
+        seen[group.category] += 1;
+      }
+    });
+
+    Object.keys(seen).sort(function (a, b) {
+      return a.localeCompare(b);
+    }).forEach(function (name) {
+      categories.push({ name: name, total: seen[name] });
+    });
+
+    container.innerHTML = '';
+
+    [{ name: null, label: 'Todas (' + state.seriesGroups.length + ')' }]
+      .concat(categories.map(function (entry) {
+        return { name: entry.name, label: entry.name + ' (' + entry.total + ')' };
+      }))
+      .forEach(function (entry) {
+        var node = document.createElement('div');
+
+        node.className = 'category focusable';
+        node.classList.toggle('focused', entry.name === state.category);
+        node.textContent = entry.label;
+        node.dataset.group = entry.name || '';
+        container.appendChild(node);
+      });
+  }
+
+  function renderSeries() {
+    var container = $('series-items');
+    var groups = seriesItems();
+    var limit = Math.min(groups.length, MAX_SERIES);
+
+    container.innerHTML = '';
+    $('series-count').textContent = groups.length + ' séries';
+
+    for (var i = 0; i < limit; i++) {
+      container.appendChild(buildSeriesCard(groups[i]));
+    }
+
+    if (!groups.length) {
+      var empty = document.createElement('div');
+
+      empty.className = 'limit-hint';
+      empty.textContent = 'Nenhuma série encontrada.';
+      container.appendChild(empty);
+    }
+  }
+
+  function buildSeriesCard(group) {
+    var card = document.createElement('div');
+    var media = document.createElement('div');
+    var title = document.createElement('div');
+    var sub = document.createElement('div');
+
+    card.className = 'poster focusable';
+    card.dataset.group = window.NebulaSearch.normalize(group.name);
+
+    media.className = 'poster-media';
+
+    if (group.poster) {
+      var image = document.createElement('img');
+
+      image.alt = '';
+      image.src = group.poster;
+      image.addEventListener('error', function () {
+        media.innerHTML = '';
+        media.appendChild(fallbackLabel({ name: group.name }));
+      });
+      media.appendChild(image);
+    } else {
+      media.appendChild(fallbackLabel({ name: group.name }));
+    }
+
+    title.className = 'poster-title';
+    title.textContent = group.name;
+
+    sub.className = 'poster-sub';
+    sub.textContent = group.episodes.length === 1
+      ? '1 episódio'
+      : group.episodes.length + ' episódios';
+
+    card.appendChild(media);
+    card.appendChild(title);
+    card.appendChild(sub);
+
+    return card;
+  }
+
+  /** Lista os episódios da serie selecionada. */
+  function openEpisodes(group) {
+    state.episodeGroup = group;
+
+    $('episodes-title').textContent = group.name;
+    $('episodes-count').textContent = group.episodes.length + ' episódios';
+
+    renderEpisodes();
+    show('screen-episodes');
+    focusFirst();
+  }
+
+  function renderEpisodes() {
+    var container = $('episode-list');
+    var group = state.episodeGroup;
+
+    container.innerHTML = '';
+
+    if (!group) return;
+
+    group.episodes.forEach(function (episode, index) {
+      var row = document.createElement('div');
+      var number = document.createElement('span');
+      var name = document.createElement('span');
+      var label = document.createElement('span');
+
+      row.className = 'channel focusable';
+      row.dataset.url = episode.url || '';
+      row.dataset.title = episode.name || '';
+
+      number.className = 'channel-num';
+      number.textContent = String(index + 1);
+
+      name.className = 'channel-name';
+      name.textContent = window.NebulaM3u.seriesNameOf(episode.name) || episode.name;
+
+      label.className = 'episode-label';
+      label.textContent = window.NebulaM3u.seasonEpisodeOf(episode.name);
+
+      row.appendChild(number);
+      row.appendChild(name);
+      row.appendChild(label);
+      container.appendChild(row);
+    });
+  }
+
   /* -------------------------------------------------------------- player --- */
 
   function play(url, title) {
@@ -792,6 +1024,11 @@
         return;
       }
 
+      if (item.id === 'series') {
+        openSeries();
+        return;
+      }
+
       openCatalog(item.id);
       return;
     }
@@ -799,10 +1036,27 @@
     if (node.classList.contains('category')) {
       state.category = node.dataset.group || null;
 
-      if (state.section === 'live' && document.querySelector('#screen-live.active')) {
+      var active = document.querySelector('.screen.active');
+
+      if (active && active.id === 'screen-live') {
         renderLiveChannels();
+      } else if (active && active.id === 'screen-series') {
+        renderSeries();
       } else {
         renderItems();
+      }
+
+      return;
+    }
+
+    if (node.classList.contains('poster') && document.querySelector('#screen-series.active')) {
+      var wanted = node.dataset.group;
+
+      for (var i = 0; i < state.seriesGroups.length; i++) {
+        if (window.NebulaSearch.normalize(state.seriesGroups[i].name) === wanted) {
+          openEpisodes(state.seriesGroups[i]);
+          return;
+        }
       }
 
       return;
@@ -869,7 +1123,14 @@
 
       var active = document.querySelector('.screen.active');
 
-      if (active && (active.id === 'screen-catalog' || active.id === 'screen-live')) {
+      if (active && active.id === 'screen-episodes') {
+        show('screen-series');
+        focusFirst();
+        return;
+      }
+
+      if (active && (active.id === 'screen-catalog' || active.id === 'screen-live' ||
+          active.id === 'screen-series')) {
         pausePreview();
         showMenu();
         focusFirst();
@@ -957,6 +1218,26 @@
 
     liveSearch.addEventListener('focus', function () { state.searchActive = true; });
     liveSearch.addEventListener('blur', function () { state.searchActive = false; });
+
+    var seriesSearch = $('series-search');
+    var seriesDebounce = null;
+
+    seriesSearch.addEventListener('input', function () {
+      clearTimeout(seriesDebounce);
+      seriesDebounce = setTimeout(function () {
+        state.query = seriesSearch.value.trim();
+        renderSeries();
+
+        var first = document.querySelector('#series-items .poster');
+
+        if (first) {
+          setFocus(first);
+        }
+      }, 250);
+    });
+
+    seriesSearch.addEventListener('focus', function () { state.searchActive = true; });
+    seriesSearch.addEventListener('blur', function () { state.searchActive = false; });
 
     fitStage();
     window.addEventListener('resize', fitStage);
