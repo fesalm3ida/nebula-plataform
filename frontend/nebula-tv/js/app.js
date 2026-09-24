@@ -1184,9 +1184,8 @@
   }
 
   function activateFocused() {
-    var node = nav.nodes.indexOf(document.activeElement) !== -1
-      ? document.activeElement
-      : document.querySelector('.focusable.focused');
+    // A classe .focused e a unica fonte da verdade (so setFocus a aplica).
+    var node = document.querySelector('.focusable.focused');
 
     if (!node) return;
 
@@ -1250,6 +1249,8 @@
       play(node.dataset.url, node.dataset.title || '');
       return;
     }
+
+    console.log('[nebula] ativar:', node.className, node.dataset.url || '');
 
     if (node.classList.contains('poster')) {
       if (node.dataset.url) {
@@ -1340,9 +1341,14 @@
     }
 
     var screen = document.querySelector('.screen.active');
+    var focused = document.querySelector('.focusable.focused');
+    var what = focused
+      ? focused.className.replace('focusable', '').trim() +
+        ' "' + String(focused.dataset.title || focused.textContent || '')
+          .trim().slice(0, 18) + '"'
+      : 'SEM FOCO';
 
-    showKeyHint('tecla ' + code + ' · ' + nav.nodes.length + ' itens · ' +
-      ((screen || {}).id || '').replace('screen-', '') +
+    showKeyHint('tecla ' + code + ' · ' + what +
       (state.searchActive ? ' · BUSCA' : ''));
 
     console.log('[nebula] key=' + code, 'busca=' + state.searchActive,
