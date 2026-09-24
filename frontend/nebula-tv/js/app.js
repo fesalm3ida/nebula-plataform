@@ -71,7 +71,7 @@
     }
 
     nav.nodes = [];
-    nav.rects = [];
+    nav.place = [];
 
     // Reconstroi no proximo frame, quando o layout da tela ja esta aplicado
     // (medir com a tela oculta retornava zero elementos focaveis).
@@ -924,39 +924,68 @@
 
   // --------------------------------------------------------- navegacao ------
   //
-  // As posicoes sao medidas UMA vez por render (cache). Antes, cada tecla
-  // media o retangulo de ~260 elementos, forcando reflow e travando em CPU
-  // de TV.
+  // Modelo DETERMINISTICO de colunas (padrao de TV): nada de geometria.
+  // Cada container marcado com data-nav="N" e uma coluna com N itens por
+  // linha (grade) ou 1 (lista). Isso torna a navegacao previsivel e rapida
+  // na CPU da TV.
 
-  var nav = { nodes: [], rects: [] };
+  var nav = { columns: [], nodes: [], place: [], col: 0, row: 0 };
 
-  /** Reconstroi a lista de elementos focaveis e suas posicoes (em cache). */
+  /** Reconstroi as colunas a partir do DOM da tela ativa (em cache). */
   function rebuildNav() {
     var screen = document.querySelector('.screen.active');
 
+    nav.columns = [];
     nav.nodes = [];
-    nav.rects = [];
+    nav.place = [];
 
     if (!screen) return;
 
-    Array.prototype.slice.call(screen.querySelectorAll('.focusable'))
-      .filter(function (node) { return node.offsetParent !== null; })
-      .forEach(function (node) {
-        var rect = node.getBoundingClientRect();
+    var columns = screen.querySelectorAll('[data-nav]');
 
+    Array.prototype.slice.call(columns).forEach(function (container) {
+      var cols = Number(container.getAttribute('data-nav')) || 1;
+      var items = Array.prototype.slice
+        .call(container.querySelectorAll('.focusable'))
+        .filter(function (node) { return node.offsetParent !== null; });
+
+      if (!items.length) return;
+
+      var columnIndex = nav.columns.length;
+
+      nav.columns.push({ nodes: items, cols: cols });
+
+      items.forEach(function (node, row) {
+        nav.place.push({ col: columnIndex, row: row });
         nav.nodes.push(node);
-        nav.rects.push({
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height / 2
-        });
+      });
+    });
+
+    // Elementos focaveis fora de qualquer coluna (ex.: campo de busca).
+    var extras = Array.prototype.slice
+      .call(screen.querySelectorAll('.focusable'))
+      .filter(function (node) {
+        return node.offsetParent !== null && nav.nodes.indexOf(node) === -1;
       });
 
-    // Preserva o elemento em foco (a tela pode ter sido re-renderizada).
-    if (state.focusIndex >= nav.nodes.length) {
-      state.focusIndex = 0;
+    if (extras.length) {
+      var extraIndex = nav.columns.length;
+
+      nav.columns.push({ nodes: extras, cols: 1 });
+
+      extras.forEach(function (node, row) {
+        nav.place.push({ col: extraIndex, row: row });
+        nav.nodes.push(node);
+      });
     }
 
-    console.log('[nebula] nav reconstruida:', nav.nodes.length, 'elementos');
+    if (nav.col >= nav.columns.length) {
+      nav.col = 0;
+      nav.row = 0;
+    }
+
+    console.log('[nebula] nav:', nav.columns.length, 'colunas ·',
+      nav.nodes.length, 'itens');
   }
 
   function focusableNodes() {
@@ -967,26 +996,84 @@
     return nav.nodes;
   }
 
-  function currentIndex() {
-    if (state.focusIndex >= 0 && state.focusIndex < nav.nodes.length) {
-      return state.focusIndex;
-    }
+  function nodeAt(col, row) {
+    var column = nav.columns[col];
 
-    var current = document.querySelector('.focusable.focused');
+    if (!column) return null;
 
-    return current ? nav.nodes.indexOf(current) : -1;
+    var index = Math.min(Math.max(row, 0), column.nodes.length - 1);
+
+    return column.nodes[index];
   }
 
+  function moveFocus(direction) {
+    if (!nav.columns.length) {
+      rebuildNav();
+    }
+
+    if (!nav.columns.length) return;
+
+    var column = nav.columns[nav.col];
+
+    if (direction === 'up' || direction === 'down') {
+      var step = direction === 'up' ? -1 : 1;
+      var distance = column.cols > 1 ? column.cols : 1;
+      var target = nav.row + step * distance;
+
+      if (target >= 0 && target < column.nodes.length) {
+        nav.row = target;
+        setFocus(nodeAt(nav.col, nav.row));
+        return;
+      }
+
+      // Lista: se sair dos limites, sobe/desce uma linha mesmo assim.
+      if (column.cols === 1) {
+        nav.row = target < 0 ? 0 : column.nodes.length - 1;
+        setFocus(nodeAt(nav.col, nav.row));
+      }
+
+      return;
+    }
+
+    // left / right
+    var delta = direction === 'right' ? 1 : -1;
+
+    if (column.cols > 1) {
+      var next = nav.row + delta;
+
+      if (next >= 0 && next < column.nodes.length) {
+        nav.row = next;
+        setFocus(nodeAt(nav.col, nav.row));
+        return;
+      }
+    }
+
+    // Muda de coluna (mantendo a posicao relativa).
+    var targetCol = nav.col + delta;
+
+    if (targetCol < 0 || targetCol >= nav.columns.length) {
+      return;
+    }
+
+    nav.col = targetCol;
+    nav.row = Math.min(nav.row, nav.columns[targetCol].nodes.length - 1);
+    setFocus(nodeAt(nav.col, nav.row));
+  }
+
+  /** Foco com rolagem sob medida (scrollIntoView e caro na TV). */
   function setFocus(node) {
     if (!node) return;
 
-    // Auto-recuperacao: se o cache estiver desatualizado (elemento novo ou
-    // tela recem-exibida), reconstroi antes de destacar.
     if (nav.nodes.indexOf(node) === -1) {
       rebuildNav();
     }
 
-    state.focusIndex = nav.nodes.indexOf(node);
+    var place = nav.place[nav.nodes.indexOf(node)];
+
+    if (place) {
+      nav.col = place.col;
+      nav.row = place.row;
+    }
 
     nav.nodes.forEach(function (item) {
       item.classList.toggle('focused', item === node);
@@ -1000,9 +1087,7 @@
       node.focus();
     }
 
-    if (node.scrollIntoView) {
-      node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    }
+    scrollIntoViewIfNeeded(node);
 
     if (node.classList.contains('channel')) {
       updatePreview({
@@ -1013,92 +1098,53 @@
     }
   }
 
+  /** Rola apenas o container necessario, e somente se preciso. */
+  function scrollIntoViewIfNeeded(node) {
+    var scroller = node.parentNode;
+
+    while (scroller && scroller !== document) {
+      var style = window.getComputedStyle(scroller);
+
+      if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+        break;
+      }
+
+      scroller = scroller.parentNode;
+    }
+
+    if (!scroller || scroller === document) {
+      scroller = null;
+    }
+
+    if (!scroller) {
+      node.scrollIntoView({ block: 'nearest' });
+      return;
+    }
+
+    var nodeRect = node.getBoundingClientRect();
+    var boxRect = scroller.getBoundingClientRect();
+
+    if (nodeRect.top < boxRect.top) {
+      scroller.scrollTop -= boxRect.top - nodeRect.top + 12;
+    } else if (nodeRect.bottom > boxRect.bottom) {
+      scroller.scrollTop += nodeRect.bottom - boxRect.bottom + 12;
+    }
+  }
+
   function focusFirst() {
     rebuildNav();
 
-    var nodes = focusableNodes();
+    if (!nav.nodes.length) return;
 
-    if (!nodes.length) return;
-
-    var content = nodes.filter(function (node) {
-      return node.tagName !== 'INPUT';
-    });
-
-    setFocus(content.length ? content[0] : nodes[0]);
-  }
-
-  /** Navegacao espacial usando as posicoes em cache (rapida na TV). */
-  function moveFocusDirection(direction) {
-    var nodes = nav.nodes;
-
-    if (!nodes.length) {
-      rebuildNav();
-      nodes = nav.nodes;
-    }
-
-    if (!nodes.length) return;
-
-    var index = currentIndex();
-
-    if (index < 0) {
-      focusFirst();
-      return;
-    }
-
-    var origin = nav.rects[index];
-    var best = -1;
-    var bestScore = Infinity;
-
-    for (var i = 0; i < nodes.length; i++) {
-      if (i === index) continue;
-
-      var dx = nav.rects[i].x - origin.x;
-      var dy = nav.rects[i].y - origin.y;
-      var primary;
-      var secondary;
-
-      if (direction === 'left') {
-        if (dx > -4) continue;
-        primary = -dx; secondary = Math.abs(dy);
-      } else if (direction === 'right') {
-        if (dx < 4) continue;
-        primary = dx; secondary = Math.abs(dy);
-      } else if (direction === 'up') {
-        if (dy > -4) continue;
-        primary = -dy; secondary = Math.abs(dx);
-      } else {
-        if (dy < 4) continue;
-        primary = dy; secondary = Math.abs(dx);
-      }
-
-      var score = primary + secondary * 4;
-
-      if (score < bestScore) {
-        bestScore = score;
-        best = i;
-      }
-    }
-
-    if (best >= 0) {
-      setFocus(nodes[best]);
-      return;
-    }
-
-    // Sem vizinho na direcao: segue na ordem do documento (nunca trava).
-    var step = { left: -1, up: -1, right: 1, down: 1 }[direction];
-    var fallback = index + step;
-
-    if (fallback >= 0 && fallback < nodes.length) {
-      setFocus(nodes[fallback]);
-      return;
-    }
-
-    console.log('[nebula] sem vizinho para', direction,
-      '| focaveis=' + nodes.length, '| indice=' + index);
+    nav.col = 0;
+    nav.row = 0;
+    setFocus(nodeAt(0, 0));
   }
 
   function activateFocused() {
-    var node = document.querySelector('.focusable.focused');
+    var node = nav.nodes.indexOf(document.activeElement) !== -1
+      ? document.activeElement
+      : document.querySelector('.focusable.focused');
 
     if (!node) return;
 
@@ -1318,7 +1364,7 @@
           document.activeElement.blur();
         }
 
-        moveFocusDirection('down');
+        moveFocus('down');
         return;
       }
 
@@ -1341,7 +1387,7 @@
 
     if (directions[code]) {
       event.preventDefault();
-      moveFocusDirection(directions[code]);
+      moveFocus(directions[code]);
       return;
     }
 
