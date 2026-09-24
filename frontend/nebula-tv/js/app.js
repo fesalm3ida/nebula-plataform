@@ -30,7 +30,7 @@
     query: '',
     searchActive: false,
     catalog: [],
-    focus: { column: 0, index: 0 },
+    focusIndex: 0,
     playerVisible: false,
     playReturn: 'screen-catalog',
     previewTimer: null,
@@ -358,7 +358,6 @@
       var node = document.createElement('div');
 
       node.className = 'category focusable';
-      node.classList.toggle('focused', entry.name === state.category);
       node.textContent = entry.label;
       node.dataset.group = entry.name || '';
       container.appendChild(node);
@@ -507,7 +506,6 @@
       var node = document.createElement('div');
 
       node.className = 'category focusable';
-      node.classList.toggle('focused', entry.name === state.category);
       node.textContent = entry.label;
       node.dataset.group = entry.name || '';
       container.appendChild(node);
@@ -746,7 +744,6 @@
         var node = document.createElement('div');
 
         node.className = 'category focusable';
-        node.classList.toggle('focused', entry.name === state.category);
         node.textContent = entry.label;
         node.dataset.group = entry.name || '';
         container.appendChild(node);
@@ -866,6 +863,14 @@
   function play(url, title) {
     var video = $('video');
 
+    // IMPORTANTE: gravar a origem ANTES de trocar de tela (senao gravariamos
+    // 'screen-player' e o Voltar cairia numa tela preta).
+    var active = document.querySelector('.screen.active');
+
+    state.playReturn = active && active.id !== 'screen-player'
+      ? active.id
+      : 'screen-catalog';
+
     pausePreview();
 
     $('player-title').textContent = title;
@@ -874,10 +879,6 @@
 
     show('screen-player');
     state.playerVisible = true;
-    var active = document.querySelector('.screen.active');
-
-    state.playReturn = active ? active.id : 'screen-catalog';
-
     api.telemetry('playback_started', { title: title, url: url, live: state.section === 'live' })
       .catch(function () { /* melhor esforço */ });
     scheduleOverlayHide();
@@ -950,6 +951,11 @@
         });
       });
 
+    // Preserva o elemento em foco (a tela pode ter sido re-renderizada).
+    if (state.focusIndex >= nav.nodes.length) {
+      state.focusIndex = 0;
+    }
+
     console.log('[nebula] nav reconstruida:', nav.nodes.length, 'elementos');
   }
 
@@ -962,11 +968,13 @@
   }
 
   function currentIndex() {
+    if (state.focusIndex >= 0 && state.focusIndex < nav.nodes.length) {
+      return state.focusIndex;
+    }
+
     var current = document.querySelector('.focusable.focused');
 
-    if (!current) return -1;
-
-    return nav.nodes.indexOf(current);
+    return current ? nav.nodes.indexOf(current) : -1;
   }
 
   function setFocus(node) {
@@ -977,6 +985,8 @@
     if (nav.nodes.indexOf(node) === -1) {
       rebuildNav();
     }
+
+    state.focusIndex = nav.nodes.indexOf(node);
 
     nav.nodes.forEach(function (item) {
       item.classList.toggle('focused', item === node);
