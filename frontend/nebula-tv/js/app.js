@@ -370,7 +370,10 @@
     var limit = Math.min(items.length, MAX_RENDER);
 
     container.innerHTML = '';
-    $('live-count').textContent = items.length + ' canais';
+
+    var liveLabel = state.category ? state.category + ' · ' : '';
+
+    $('live-count').textContent = liveLabel + items.length + ' canais';
 
     for (var i = 0; i < limit; i++) {
       container.appendChild(buildChannelRow(items[i], i + 1));
@@ -588,9 +591,12 @@
     var limit = Math.min(items.length, MAX_RENDER);
 
     container.innerHTML = '';
+
+    var catalogLabel = state.category ? state.category + ' · ' : '';
+
     $('catalog-count').textContent = state.query
-      ? items.length + ' resultado(s)'
-      : items.length + ' itens';
+      ? catalogLabel + items.length + ' resultado(s)'
+      : catalogLabel + items.length + ' itens';
 
     for (var i = 0; i < limit; i++) {
       container.appendChild(buildCard(items[i]));
@@ -756,7 +762,10 @@
     var limit = Math.min(groups.length, MAX_SERIES);
 
     container.innerHTML = '';
-    $('series-count').textContent = groups.length + ' séries';
+
+    var seriesLabel = state.category ? state.category + ' · ' : '';
+
+    $('series-count').textContent = seriesLabel + groups.length + ' séries';
 
     for (var i = 0; i < limit; i++) {
       container.appendChild(buildSeriesCard(groups[i]));
@@ -1096,6 +1105,39 @@
         url: node.dataset.url
       });
     }
+
+    if (node.classList.contains('category')) {
+      syncCategoryFocus(node);
+    }
+  }
+
+  /**
+   * Padrao do IBO: mover o cursor na coluna de categorias filtra a grade na
+   * hora, sem precisar apertar OK. O cursor permanece na categoria.
+   */
+  function syncCategoryFocus(node) {
+    var group = node.dataset.group || null;
+
+    if (state.category === group) {
+      return;
+    }
+
+    state.category = group;
+
+    var active = document.querySelector('.screen.active');
+
+    if (!active) return;
+
+    if (active.id === 'screen-live') {
+      renderLiveChannels();
+    } else if (active.id === 'screen-series') {
+      renderSeries();
+    } else if (active.id === 'screen-catalog') {
+      renderItems();
+    }
+
+    rebuildNav();
+    setFocus(node);
   }
 
   /** Rola apenas o container necessario, e somente se preciso. */
