@@ -1098,6 +1098,46 @@
 
   /* ------------------------------------------------------------- eventos --- */
 
+  /** Elemento focavel sob o ponteiro (Magic Remote, mouse ou DevTools). */
+  function focusableFrom(target) {
+    var node = target;
+
+    while (node && node !== document) {
+      if (node.classList && node.classList.contains('focusable')) {
+        return node;
+      }
+
+      node = node.parentNode;
+    }
+
+    return null;
+  }
+
+  // O controle "Magic Remote" da LG envia eventos de mouse: passar o ponteiro
+  // move o foco e clicar equivale a apertar OK.
+  document.addEventListener('mousemove', function (event) {
+    var node = focusableFrom(event.target);
+
+    if (node && !node.classList.contains('focused')) {
+      setFocus(node);
+    }
+  });
+
+  document.addEventListener('click', function (event) {
+    var node = focusableFrom(event.target);
+
+    if (!node) return;
+
+    event.preventDefault();
+    setFocus(node);
+    activateFocused();
+  });
+
+  // Evita o menu de contexto do botao direito no controle.
+  document.addEventListener('contextmenu', function (event) {
+    event.preventDefault();
+  });
+
   /** Converte event.key (norma moderna) em keyCode, como fallback. */
   function keyCodeFromName(name) {
     var map = {
