@@ -328,3 +328,21 @@ html, body {
   color: var(--muted);
   font-size: 18px;
 }
+
+/* Indicador de diagnostico: mostra a ultima tecla recebida do controle. */
+.key-hint {
+  position: absolute;
+  right: 40px;
+  bottom: 32px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  background: rgba(139, 63, 253, .9);
+  color: #fff;
+  font-size: 22px;
+  opacity: 0;
+  transition: opacity .2s ease;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.key-hint.visible { opacity: 1; }

@@ -33,6 +33,8 @@
     focus: { column: 0, index: 0 },
     playerVisible: false,
     previewTimer: null,
+    scrollTimer: null,
+    hintTimer: null,
     seriesGroups: [],
     episodeGroup: null,
     hideTimer: null
@@ -66,6 +68,9 @@
     if (document.activeElement && document.activeElement.tagName === 'INPUT') {
       document.activeElement.blur();
     }
+
+    nav.nodes = [];
+    nav.rects = [];
 
     ['screen-boot', 'screen-activation', 'screen-menu', 'screen-live',
      'screen-catalog', 'screen-series', 'screen-episodes', 'screen-player']
@@ -299,6 +304,7 @@
 
     renderLiveCategories();
     renderLiveChannels();
+    rebuildNav();
     show('screen-live');
     focusFirst();
 
@@ -469,6 +475,7 @@
 
     renderCategories();
     renderItems();
+    rebuildNav();
     show('screen-catalog');
     focusFirst();
   }
@@ -676,6 +683,7 @@
 
     renderSeriesCategories();
     renderSeries();
+    rebuildNav();
     show('screen-series');
     focusFirst();
   }
@@ -805,6 +813,7 @@
     $('episodes-count').textContent = group.episodes.length + ' episódios';
 
     renderEpisodes();
+    rebuildNav();
     show('screen-episodes');
     focusFirst();
   }
@@ -899,36 +908,74 @@
 
   /* -------------------------------------------------- foco (controle remoto) --- */
 
-  function focusableNodes() {
+  // --------------------------------------------------------- navegacao ------
+  //
+  // As posicoes sao medidas UMA vez por render (cache). Antes, cada tecla
+  // media o retangulo de ~260 elementos, forcando reflow e travando em CPU
+  // de TV.
+
+  var nav = { nodes: [], rects: [] };
+
+  /** Reconstroi a lista de elementos focaveis e suas posicoes (em cache). */
+  function rebuildNav() {
     var screen = document.querySelector('.screen.active');
 
-    if (!screen) return [];
+    nav.nodes = [];
+    nav.rects = [];
 
-    return Array.prototype.slice.call(screen.querySelectorAll('.focusable'))
-      .filter(function (node) { return node.offsetParent !== null; });
+    if (!screen) return;
+
+    Array.prototype.slice.call(screen.querySelectorAll('.focusable'))
+      .filter(function (node) { return node.offsetParent !== null; })
+      .forEach(function (node) {
+        var rect = node.getBoundingClientRect();
+
+        nav.nodes.push(node);
+        nav.rects.push({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        });
+      });
+
+    console.log('[nebula] nav reconstruida:', nav.nodes.length, 'elementos');
+  }
+
+  function focusableNodes() {
+    if (!nav.nodes.length) {
+      rebuildNav();
+    }
+
+    return nav.nodes;
+  }
+
+  function currentIndex() {
+    var current = document.querySelector('.focusable.focused');
+
+    if (!current) return -1;
+
+    return nav.nodes.indexOf(current);
   }
 
   function setFocus(node) {
-    focusableNodes().forEach(function (item) {
+    if (!node) return;
+
+    nav.nodes.forEach(function (item) {
       item.classList.toggle('focused', item === node);
 
-      // Sincroniza o foco real: evita divergencia entre o destaque visual e o
-      // elemento realmente focado (o que travava a navegacao no controle).
       if (item.tagName === 'INPUT' && item !== node) {
         item.blur();
       }
     });
 
-    if (node && node.tagName === 'INPUT') {
+    if (node.tagName === 'INPUT') {
       node.focus();
     }
 
-    if (node && node.scrollIntoView) {
+    if (node.scrollIntoView) {
       node.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     }
 
-    // Canal em foco no Ao vivo: atualiza o preview.
-    if (node && node.classList.contains('channel')) {
+    if (node.classList.contains('channel')) {
       updatePreview({
         name: node.dataset.title,
         group: node.dataset.group,
@@ -942,8 +989,6 @@
 
     if (!nodes.length) return;
 
-    // O campo de busca vem primeiro no HTML, mas o foco inicial deve ir para
-    // o conteudo (categorias/itens) — a busca e opcional.
     var content = nodes.filter(function (node) {
       return node.tagName !== 'INPUT';
     });
@@ -951,76 +996,74 @@
     setFocus(content.length ? content[0] : nodes[0]);
   }
 
-  /** Navegacao espacial: escolhe o vizinho mais proximo na direcao pedida. */
+  /** Navegacao espacial usando as posicoes em cache (rapida na TV). */
   function moveFocusDirection(direction) {
-    var nodes = focusableNodes();
-    var current = document.querySelector('.focusable.focused');
+    var nodes = nav.nodes;
+
+    if (!nodes.length) {
+      rebuildNav();
+      nodes = nav.nodes;
+    }
 
     if (!nodes.length) return;
 
-    if (!current) {
+    var index = currentIndex();
+
+    if (index < 0) {
       focusFirst();
       return;
     }
 
-    var origin = current.getBoundingClientRect();
-    var originX = origin.left + origin.width / 2;
-    var originY = origin.top + origin.height / 2;
-
-    var best = null;
+    var origin = nav.rects[index];
+    var best = -1;
     var bestScore = Infinity;
 
-    nodes.forEach(function (node) {
-      if (node === current) return;
+    for (var i = 0; i < nodes.length; i++) {
+      if (i === index) continue;
 
-      var rect = node.getBoundingClientRect();
-      var dx = (rect.left + rect.width / 2) - originX;
-      var dy = (rect.top + rect.height / 2) - originY;
-
-      var primary = 0;
-      var secondary = 0;
+      var dx = nav.rects[i].x - origin.x;
+      var dy = nav.rects[i].y - origin.y;
+      var primary;
+      var secondary;
 
       if (direction === 'left') {
-        if (dx > -4) return;
+        if (dx > -4) continue;
         primary = -dx; secondary = Math.abs(dy);
       } else if (direction === 'right') {
-        if (dx < 4) return;
+        if (dx < 4) continue;
         primary = dx; secondary = Math.abs(dy);
       } else if (direction === 'up') {
-        if (dy > -4) return;
+        if (dy > -4) continue;
         primary = -dy; secondary = Math.abs(dx);
       } else {
-        if (dy < 4) return;
+        if (dy < 4) continue;
         primary = dy; secondary = Math.abs(dx);
       }
 
-      // Prioriza a direcao principal e penaliza o desvio lateral.
       var score = primary + secondary * 4;
 
       if (score < bestScore) {
         bestScore = score;
-        best = node;
+        best = i;
       }
-    });
+    }
 
-    if (best) {
-      console.log('[nebula] foco ->', best.className,
-        (best.dataset.title || best.textContent || '').slice(0, 30));
-      setFocus(best);
+    if (best >= 0) {
+      setFocus(nodes[best]);
+      return;
+    }
+
+    // Sem vizinho na direcao: segue na ordem do documento (nunca trava).
+    var step = { left: -1, up: -1, right: 1, down: 1 }[direction];
+    var fallback = index + step;
+
+    if (fallback >= 0 && fallback < nodes.length) {
+      setFocus(nodes[fallback]);
       return;
     }
 
     console.log('[nebula] sem vizinho para', direction,
-      '| focaveis=' + nodes.length, '| atual=' + current.className);
-
-    // Sem vizinho naquela direcao (ex.: fim da grade): nao trava o usuario —
-    // cai para o vizinho na ordem do documento.
-    var index = nodes.indexOf(current);
-    var fallback = { left: -1, up: -1, right: 1, down: 1 }[direction];
-
-    if (fallback && nodes[index + fallback]) {
-      setFocus(nodes[index + fallback]);
-    }
+      '| focaveis=' + nodes.length, '| indice=' + index);
   }
 
   function activateFocused() {
@@ -1138,6 +1181,20 @@
     event.preventDefault();
   });
 
+  /** Mostra a ultima tecla por 1,4s (diagnostico visivel na TV). */
+  function showKeyHint(text) {
+    var hint = $('key-hint');
+
+    if (!hint) return;
+
+    hint.textContent = text;
+    hint.classList.add('visible');
+    clearTimeout(state.hintTimer);
+    state.hintTimer = setTimeout(function () {
+      hint.classList.remove('visible');
+    }, 1400);
+  }
+
   /** Converte event.key (norma moderna) em keyCode, como fallback. */
   function keyCodeFromName(name) {
     var map = {
@@ -1163,8 +1220,14 @@
       }
     }
 
+    var screen = document.querySelector('.screen.active');
+
+    showKeyHint('tecla ' + code + ' · ' + nav.nodes.length + ' itens · ' +
+      ((screen || {}).id || '').replace('screen-', '') +
+      (state.searchActive ? ' · BUSCA' : ''));
+
     console.log('[nebula] key=' + code, 'busca=' + state.searchActive,
-      'tela=' + (document.querySelector('.screen.active') || {}).id);
+      'tela=' + ((screen || {}).id));
 
     if (state.playerVisible) {
       if (code === KEYS.BACK || code === KEYS.ESC) {
@@ -1314,8 +1377,18 @@
     seriesSearch.addEventListener('focus', function () { state.searchActive = true; });
     seriesSearch.addEventListener('blur', function () { state.searchActive = false; });
 
+    document.addEventListener('scroll', function () {
+      clearTimeout(state.scrollTimer);
+      state.scrollTimer = setTimeout(rebuildNav, 120);
+    }, true);
+
+    state.scrollTimer = null;
+
     fitStage();
-    window.addEventListener('resize', fitStage);
+    window.addEventListener('resize', function () {
+      fitStage();
+      rebuildNav();
+    });
 
     boot();
   });
