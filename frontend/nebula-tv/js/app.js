@@ -1114,13 +1114,28 @@
       nav.row = place.row;
     }
 
+    // Limpa a classe em TODO o documento: um elemento que saiu da navegacao
+    // (ex.: tile do menu apos trocar de tela) mantinha '.focused' e o
+    // activateFocused acabava ativando ele, nao o item visivel.
+    var previous = document.querySelectorAll('.focusable.focused');
+
+    for (var i = 0; i < previous.length; i++) {
+      if (previous[i] !== node) {
+        previous[i].classList.remove('focused');
+      }
+    }
+
     nav.nodes.forEach(function (item) {
-      item.classList.toggle('focused', item === node);
+      if (item !== node) {
+        item.classList.toggle('focused', false);
+      }
 
       if (item.tagName === 'INPUT' && item !== node) {
         item.blur();
       }
     });
+
+    node.classList.add('focused');
 
     if (node.tagName === 'INPUT') {
       node.focus();
@@ -1214,8 +1229,14 @@
   }
 
   function activateFocused() {
-    // A classe .focused e a unica fonte da verdade (so setFocus a aplica).
-    var node = document.querySelector('.focusable.focused');
+    // Fonte da verdade: a POSICAO na navegacao (nao uma consulta no documento,
+    // que podia retornar um elemento invisivel de outra tela).
+    var column = nav.columns[nav.col];
+    var node = column ? column.nodes[nav.row] : null;
+
+    if (!node) {
+      node = document.querySelector('.focusable.focused');
+    }
 
     if (!node) return;
 
