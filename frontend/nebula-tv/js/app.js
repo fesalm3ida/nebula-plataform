@@ -1276,9 +1276,33 @@
     return null;
   }
 
-  // O controle "Magic Remote" da LG envia eventos de mouse: passar o ponteiro
-  // move o foco e clicar equivale a apertar OK.
+  // O "Magic Remote" envia eventos de mouse, mas o webOS tambem dispara um
+  // ponteiro FANTASMA (parado, muitas vezes no canto superior esquerdo =
+  // sobre a categoria "Todos"). Sem filtrar isso, cada tecla do controle
+  // movia o foco para onde o ponteiro estivesse e a categoria era resetada.
+  var pointer = { x: null, y: null, active: false };
+
   document.addEventListener('mousemove', function (event) {
+    if (pointer.x === null) {
+      // Primeiro evento: apenas guarda a posicao de referencia.
+      pointer.x = event.clientX;
+      pointer.y = event.clientY;
+      return;
+    }
+
+    var moved = Math.abs(event.clientX - pointer.x) >= 4 ||
+      Math.abs(event.clientY - pointer.y) >= 4;
+
+    pointer.x = event.clientX;
+    pointer.y = event.clientY;
+
+    if (!moved) {
+      return;
+    }
+
+    // So a partir do primeiro movimento real consideramos o ponteiro ativo.
+    pointer.active = true;
+
     var node = focusableFrom(event.target);
 
     if (node && !node.classList.contains('focused')) {
@@ -1287,6 +1311,12 @@
   });
 
   document.addEventListener('click', function (event) {
+    // O OK do controle tambem chega como keydown: se o ponteiro nunca se
+    // moveu, ignoramos o clique para nao ativar o elemento errado.
+    if (!pointer.active) {
+      return;
+    }
+
     var node = focusableFrom(event.target);
 
     if (!node) return;
