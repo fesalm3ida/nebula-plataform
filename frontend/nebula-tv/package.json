@@ -16,7 +16,9 @@
     "close": "ares-launch --close com.nebula.tv",
     "inspect": "ares-inspect com.nebula.tv",
     "deploy": "npm run package && npm run install:tv && npm run launch",
-    "deploy:clean": "npm run package && npm run uninstall:tv && npm run install:tv && npm run launch"
+    "deploy:clean": "npm run package && npm run uninstall:tv && npm run install:tv && npm run launch",
+    "version:tv": "ares-install --listfull | grep -A 30 'id : com.nebula.tv' | grep -E 'version|title'",
+    "running": "ares-launch -r"
   },
   "webosCli": {
     "instalada": "@webos-tools/cli (global)",

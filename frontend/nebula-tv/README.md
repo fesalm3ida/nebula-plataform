@@ -87,6 +87,17 @@ Siga a documentação oficial
 > `ares-setup-device --list`. Para escolher outro, acrescente
 > `--device <nome>` (ex.: `ares-install ... --device lg-sala`).
 
+### Como o app chega na TV
+
+O app **não atualiza sozinho**: ele é um pacote instalado (como um app de
+loja). Toda alteração precisa ser **reempacotada e reinstalada**:
+
+```bash
+npm run deploy        # package -> install -> launch (preserva a ativação)
+npm run version:tv    # confere a versão que está instalada na TV
+npm run running       # lista os apps rodando na TV
+```
+
 ### Atualizar o app na TV
 
 O webOS reaproveita o pacote instalado quando a **versão não muda** — por isso,
