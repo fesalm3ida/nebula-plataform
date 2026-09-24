@@ -32,6 +32,7 @@
     catalog: [],
     focus: { column: 0, index: 0 },
     playerVisible: false,
+    playReturn: 'screen-catalog',
     previewTimer: null,
     scrollTimer: null,
     hintTimer: null,
@@ -71,6 +72,14 @@
 
     nav.nodes = [];
     nav.rects = [];
+
+    // Reconstroi no proximo frame, quando o layout da tela ja esta aplicado
+    // (medir com a tela oculta retornava zero elementos focaveis).
+    if (window.requestAnimationFrame) {
+      window.requestAnimationFrame(rebuildNav);
+    } else {
+      setTimeout(rebuildNav, 0);
+    }
 
     ['screen-boot', 'screen-activation', 'screen-menu', 'screen-live',
      'screen-catalog', 'screen-series', 'screen-episodes', 'screen-player']
@@ -865,6 +874,10 @@
 
     show('screen-player');
     state.playerVisible = true;
+    var active = document.querySelector('.screen.active');
+
+    state.playReturn = active ? active.id : 'screen-catalog';
+
     api.telemetry('playback_started', { title: title, url: url, live: state.section === 'live' })
       .catch(function () { /* melhor esforço */ });
     scheduleOverlayHide();
@@ -894,7 +907,7 @@
     api.telemetry('playback_ended', { title: $('player-title').textContent })
       .catch(function () { /* melhor esforço */ });
 
-    show('screen-catalog');
+    show(state.playReturn || 'screen-catalog');
     focusFirst();
   }
 
@@ -959,6 +972,12 @@
   function setFocus(node) {
     if (!node) return;
 
+    // Auto-recuperacao: se o cache estiver desatualizado (elemento novo ou
+    // tela recem-exibida), reconstroi antes de destacar.
+    if (nav.nodes.indexOf(node) === -1) {
+      rebuildNav();
+    }
+
     nav.nodes.forEach(function (item) {
       item.classList.toggle('focused', item === node);
 
@@ -985,6 +1004,8 @@
   }
 
   function focusFirst() {
+    rebuildNav();
+
     var nodes = focusableNodes();
 
     if (!nodes.length) return;
