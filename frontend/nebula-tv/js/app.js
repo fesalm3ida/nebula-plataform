@@ -45,6 +45,34 @@
 
   function $(id) { return document.getElementById(id); }
 
+  var SCREEN_IDS = [
+    'screen-boot', 'screen-activation', 'screen-menu', 'screen-live',
+    'screen-catalog', 'screen-series', 'screen-episodes', 'screen-player'
+  ];
+
+  /**
+   * Tela ativa por ID (nunca por consulta de classe: a busca por classe pode
+   * casar com outro elemento e foi o que montou a navegacao com elementos de
+   * TODAS as telas, deixando o foco preso em um tile invisivel do menu).
+   */
+  function activeScreen() {
+    for (var i = 0; i < SCREEN_IDS.length; i++) {
+      var element = $(SCREEN_IDS[i]);
+
+      if (element && element.classList.contains('active')) {
+        return element;
+      }
+    }
+
+    return null;
+  }
+
+  function activeScreenId() {
+    var screen = activeScreen();
+
+    return screen ? screen.id : 'NENHUMA';
+  }
+
   /**
    * Escala o palco de 1920x1080 para o viewport real da TV e centraliza.
    * Muitas LG expoem 1280x720 no runtime web — sem isso o layout vaza da tela.
@@ -81,9 +109,11 @@
       setTimeout(rebuildNav, 0);
     }
 
-    ['screen-boot', 'screen-activation', 'screen-menu', 'screen-live',
-     'screen-catalog', 'screen-series', 'screen-episodes', 'screen-player']
-      .forEach(function (id) { $(id).classList.toggle('active', id === screenId); });
+    SCREEN_IDS.forEach(function (id) {
+      $(id).classList.toggle('active', id === screenId);
+    });
+
+    console.log('[nebula] show:', screenId, '-> ativa:', activeScreenId());
   }
 
   /* ---------------------------------------------------------- identidade --- */
@@ -874,7 +904,7 @@
 
     // IMPORTANTE: gravar a origem ANTES de trocar de tela (senao gravariamos
     // 'screen-player' e o Voltar cairia numa tela preta).
-    var active = document.querySelector('.screen.active');
+    var active = activeScreen();
 
     state.playReturn = active && active.id !== 'screen-player'
       ? active.id
@@ -942,7 +972,7 @@
 
   /** Reconstroi as colunas a partir do DOM da tela ativa (em cache). */
   function rebuildNav() {
-    var screen = document.querySelector('.screen.active');
+    var screen = activeScreen();
 
     nav.columns = [];
     nav.nodes = [];
@@ -993,8 +1023,8 @@
       nav.row = 0;
     }
 
-    console.log('[nebula] nav:', nav.columns.length, 'colunas ·',
-      nav.nodes.length, 'itens');
+    console.log('[nebula] tela=' + activeScreenId() + ' · ' + nav.columns.length +
+      ' colunas · ' + nav.nodes.length + ' itens');
   }
 
   function focusableNodes() {
@@ -1124,7 +1154,7 @@
 
     state.category = group;
 
-    var active = document.querySelector('.screen.active');
+    var active = activeScreen();
 
     if (!active) return;
 
@@ -1224,7 +1254,7 @@
     if (node.classList.contains('category')) {
       state.category = node.dataset.group || null;
 
-      var active = document.querySelector('.screen.active');
+      var active = activeScreen();
 
       if (active && active.id === 'screen-live') {
         renderLiveChannels();
@@ -1429,7 +1459,7 @@
     if (code === KEYS.BACK || code === KEYS.ESC) {
       event.preventDefault();
 
-      var active = document.querySelector('.screen.active');
+      var active = activeScreen();
 
       if (active && active.id === 'screen-episodes') {
         show('screen-series');
