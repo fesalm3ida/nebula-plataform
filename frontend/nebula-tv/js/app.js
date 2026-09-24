@@ -149,6 +149,15 @@
           return showActivation('');
         }
 
+        // 404: aparelho ativo, porem sem lista associada. Em vez do erro cru,
+        // mostra MAC + codigo para o usuario cadastrar a lista no portal.
+        if (error && error.status === 404) {
+          return showActivation(
+            'Nenhuma lista cadastrada para este aparelho. Acesse o portal, ' +
+            'informe o MAC e o código abaixo e cadastre sua lista.'
+          );
+        }
+
         setStatus('Erro: ' + (error && error.message ? error.message : error));
       });
   }
