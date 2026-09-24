@@ -1194,6 +1194,11 @@
       return;
     }
 
+    showKeyHint('ATIVAR: ' + node.className +
+      ' | ' + String(node.dataset.title || node.textContent || '')
+        .trim().slice(0, 22) +
+      (node.dataset.url ? ' | URL ok' : ' | SEM URL'));
+
     if (node.classList.contains('tile')) {
       var item = MENU[Number(node.dataset.index)];
 
@@ -1370,13 +1375,12 @@
       }
     }
 
-    var screen = document.querySelector('.screen.active');
     var focused = document.querySelector('.focusable.focused');
     var what = focused
-      ? focused.className.replace('focusable', '').trim() +
+      ? '[' + nav.col + ',' + nav.row + '] ' + focused.className +
         ' "' + String(focused.dataset.title || focused.textContent || '')
-          .trim().slice(0, 18) + '"'
-      : 'SEM FOCO';
+          .trim().slice(0, 14) + '"'
+      : 'SEM FOCO (nav ' + nav.nodes.length + ')';
 
     showKeyHint('tecla ' + code + ' · ' + what +
       (state.searchActive ? ' · BUSCA' : ''));
