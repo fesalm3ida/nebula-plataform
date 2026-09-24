@@ -1285,7 +1285,7 @@
   // ponteiro FANTASMA (parado, muitas vezes no canto superior esquerdo =
   // sobre a categoria "Todos"). Sem filtrar isso, cada tecla do controle
   // movia o foco para onde o ponteiro estivesse e a categoria era resetada.
-  var pointer = { x: null, y: null, active: false };
+  var pointer = { x: null, y: null, active: false, mutedUntil: 0 };
 
   document.addEventListener('mousemove', function (event) {
     if (pointer.x === null) {
@@ -1305,6 +1305,12 @@
       return;
     }
 
+    // Logo apos uma tecla do controle, o webOS costuma emitir um movimento
+    // fantasma: ignoramos para nao roubar o foco de quem esta navegando.
+    if (Date.now() < pointer.mutedUntil) {
+      return;
+    }
+
     // So a partir do primeiro movimento real consideramos o ponteiro ativo.
     pointer.active = true;
 
@@ -1316,19 +1322,21 @@
   });
 
   document.addEventListener('click', function (event) {
-    // O OK do controle tambem chega como keydown: se o ponteiro nunca se
-    // moveu, ignoramos o clique para nao ativar o elemento errado.
+    // ATENCAO: o OK do Magic Remote chega como CLIQUE na posicao do ponteiro.
+    // Se ativassemos o elemento sob o ponteiro, apertar OK com o ponteiro
+    // parado sobre uma categoria (ex.: "Todos") ativaria a categoria errada.
+    // Portanto o clique apenas MOVE O FOCO; a ativacao e sempre pela tecla OK.
+    event.preventDefault();
+
     if (!pointer.active) {
       return;
     }
 
     var node = focusableFrom(event.target);
 
-    if (!node) return;
-
-    event.preventDefault();
-    setFocus(node);
-    activateFocused();
+    if (node) {
+      setFocus(node);
+    }
   });
 
   // Evita o menu de contexto do botao direito no controle.
@@ -1364,6 +1372,9 @@
 
   document.addEventListener('keydown', function (event) {
     var code = event.keyCode || event.which || keyCodeFromName(event.key);
+
+    // Silencia o ponteiro por 600ms apos qualquer tecla do controle.
+    pointer.mutedUntil = Date.now() + 600;
 
     // Auto-correcao: se o estado de busca ficou "preso" (sem nenhum input
     // realmente focado), as setas voltam a navegar.
