@@ -4,7 +4,7 @@
   "private": true,
   "description": "Nebula TV — app para LG Smart TV (webOS)",
   "scripts": {
-    "test": "node test/m3u.test.js && node test/search.test.js && node test/structure.test.js",
+    "test": "node test/m3u.test.js && node test/search.test.js && node test/api.test.js && node test/structure.test.js",
     "device:add": "ares-setup-device",
     "device:list": "ares-setup-device --list",
     "device:key": "ares-novacom --getkey",
