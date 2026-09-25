@@ -20,10 +20,10 @@ Android (`Nebula Core`), então a escolha é só de camada de apresentação.
 appinfo.json     metadados do app webOS (id, ícone, resolução)
 index.html       telas: boot, ativação, menu, catálogo, player
 css/tv.css       tema roxo/preto e foco para controle remoto (10-foot UI)
-js/api.js        cliente da API do Nebula Core (registro, auth, sessão, telemetria)
+js/api.js        cliente do Nebula Core (registro, auth, sessão, telemetria, timeout)
 js/m3u.js        parser M3U/M3U_PLUS (mesmas regras do app Android)
 js/app.js        fluxo do app e navegação por controle remoto
-test/            testes do parser (Node)
+test/            testes do parser, da busca, do cliente HTTP e da estrutura (Node)
 icons/           ícones e fundo exigidos pelo pacote
 ```
 
@@ -134,6 +134,13 @@ sobrescrito definindo `window.NEBULA_CORE_API` antes do script:
   o **teclado virtual da TV**; o filtro aplica enquanto você digita (debounce de
   250 ms) e ignora acentos e maiúsculas, aceitando vários termos em qualquer
   ordem (mesmas regras do app Android);
+- **Enquanto você digita o foco permanece no campo** (o webOS fecha o teclado
+  virtual quando o input perde o foco); **OK** fecha o texto digitado e desce
+  para o primeiro resultado;
+- **Como chegar ao campo**: em **Ao vivo**, com o foco na lista de canais, o `→`
+  já alcança o campo. Em **Filmes** e **Séries** a grade tem 6 colunas por linha,
+  então o `→` apenas anda dentro da grade — o caminho é o **`↑`** a partir da
+  primeira linha, e o `↓` volta para o card de onde você saiu;
 - **Navegação espacial**: as setas do controle escolhem o vizinho mais próximo
   na direção (funciona em grade, lista e colunas);
 - Listas gigantes (dezenas de milhares de itens) renderizam no máximo **240**
@@ -142,8 +149,14 @@ sobrescrito definindo `window.NEBULA_CORE_API` antes do script:
 ## Testes
 
 ```bash
-npm test    # parser M3U + busca + consistência da estrutura (Node)
+npm test    # parser M3U + busca + cliente HTTP (prazo) + consistência da estrutura
 ```
+
+Os testes rodam em **Node**, sem TV e sem rede. O do cliente
+(`test/api.test.js`) usa um `fetch` falso simulando um servidor que aceita a
+conexão e nunca responde, para provar que a requisição pendente estoura o prazo,
+que o `AbortController` é acionado quando existe, e que respostas normais
+(200/403/503) mantêm o tratamento anterior.
 
 ## Fluxo do app
 
@@ -156,13 +169,37 @@ npm test    # parser M3U + busca + consistência da estrutura (Node)
 5. **Player**: `<video>` em tela cheia; **OK** pausa/retoma, **Voltar** sai;
 6. **Telemetria**: envia `playback_started` / `playback_ended` ao Nebula Monitor.
 
+### Quando o Core não responde
+
+O boot é a única parte do app que precisa da rede para chegar ao catálogo, então
+tem prazo e repetição próprios:
+
+- **prazo por requisição:** 15 s (`REQUEST_TIMEOUT` em `js/api.js`), ajustável por
+  chamada no 4º argumento. O `fetch` não tem timeout próprio: sem ele, um servidor
+  que aceita a conexão e não responde (instância dormindo, portal de wifi, TCP
+  meio-aberto) deixa a promessa pendente por minutos — a TV congelava em
+  "Conectando…" e nem o tratamento de erro chegava a rodar;
+- **repetição:** até **3 tentativas** com 2 s de intervalo, com o motivo na tela
+  ("Conectando: sem resposta, tentando de novo — restam 2 tentativa(s)…"). Somado
+  ao prazo, cobre ~49 s de indisponibilidade, que é a ordem de grandeza de uma
+  instância do Core acordando na nuvem;
+- **o que não se repete:** 401/403/404/409. Repetir não mudaria o resultado e, em
+  401/403, o app ainda regeneraria a identidade (novo MAC e novo código),
+  desfazendo a ativação do aparelho por causa de uma oscilação de rede;
+- **saída:** esgotadas as tentativas aparecem **"Tentar novamente"** (refaz o boot
+  inteiro) e o **Voltar** fecha o app. Antes disso a tela de boot não tinha nada
+  focável, e nem as setas nem o Voltar faziam algo — a TV ficava presa;
+- **o que ainda não tem prazo:** o download da lista (~80 MB). Se o servidor do
+  provedor parar de enviar bytes no meio, a barra congela no percentual
+  alcançado; o Voltar na tela de boot é a saída.
+
 ## Atalhos do controle
 
 | Tecla | Ação |
 |---|---|
 | ↑ ↓ ← → | navegar |
 | OK (Enter) | selecionar / pausar-retomar no player |
-| Voltar (461) | voltar de tela / sair do player |
+| Voltar (461) | voltar de tela / sair do player / fechar o app na tela de boot |
 
 ## Melhorias pendentes (UX)
 
