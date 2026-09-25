@@ -163,3 +163,11 @@ npm test    # parser M3U + busca + consistência da estrutura (Node)
 | ↑ ↓ ← → | navegar |
 | OK (Enter) | selecionar / pausar-retomar no player |
 | Voltar (461) | voltar de tela / sair do player |
+
+## Melhorias pendentes (UX)
+
+- **Preview no catálogo:** exibir o preview do título focado em um painel
+  **retangular**, no **mesmo padrão já usado na seção de canais ao vivo** —
+  *(o Ibo usa um preview circular; aqui o padrão do projeto é retangular)*.
+- Ordenação ("Ordem por número") na grade.
+- EPG (guia de programação) quando houver fonte XMLTV.
