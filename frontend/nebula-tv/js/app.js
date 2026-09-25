@@ -898,6 +898,54 @@
 
   /* -------------------------------------------------------------- player --- */
 
+  /** Texto legivel do erro de video (aparece na tela e no console). */
+  function videoErrorText() {
+    var error = $('video').error;
+
+    if (!error) return 'sem detalhe';
+
+    var codes = {
+      1: 'ABORTED (cancelado)',
+      2: 'NETWORK (rede/CORS)',
+      3: 'DECODE (codec)',
+      4: 'SRC_NOT_SUPPORTED (formato nao suportado)'
+    };
+
+    return (codes[error.code] || ('codigo ' + error.code)) +
+      (error.message ? ' · ' + error.message : '');
+  }
+
+  /** Liga os avisos do elemento de video (uma vez). */
+  function watchVideoEvents() {
+    var video = $('video');
+
+    if (video.dataset.watched) return;
+
+    video.dataset.watched = '1';
+
+    video.addEventListener('error', function () {
+      var detail = videoErrorText();
+
+      $('player-hint').textContent = 'ERRO: ' + detail;
+      showKeyHint('ERRO VIDEO: ' + detail);
+      console.log('[nebula] erro de video:', detail, video.currentSrc || video.src);
+    });
+
+    video.addEventListener('stalled', function () {
+      $('player-hint').textContent = 'Carregando (conexão lenta)…';
+    });
+
+    video.addEventListener('waiting', function () {
+      $('player-hint').textContent = 'Carregando…';
+    });
+
+    video.addEventListener('playing', function () {
+      $('player-hint').textContent = 'OK: pausar · Voltar: sair';
+      showKeyHint('▶ reproduzindo');
+      console.log('[nebula] reproduzindo:', video.currentSrc || video.src);
+    });
+  }
+
   function play(url, title) {
     var video = $('video');
 
@@ -911,7 +959,9 @@
 
     pausePreview();
 
+    watchVideoEvents();
     $('player-title').textContent = title;
+    $('player-hint').textContent = 'Conectando ao canal…';
     video.src = url;
     video.play().catch(function () { /* o usuario aperta OK */ });
 
