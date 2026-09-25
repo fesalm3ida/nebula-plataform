@@ -36,6 +36,7 @@
     previewTimer: null,
     scrollTimer: null,
     filterTimer: null,
+    searchTimer: null,
     hintTimer: null,
     seriesGroups: [],
     episodeGroup: null,
@@ -801,15 +802,59 @@
     state.focus = { column: 0, index: 0 };
   }
 
-  function applyQuery(value) {
-    state.query = value.trim();
-    renderItems();
+  /**
+   * Aplica a busca de uma tela: re-renderiza a lista e MANTEM o foco no campo.
+   *
+   * O comportamento anterior movia o foco para o primeiro resultado a cada
+   * tecla (via debounce). Como o webOS fecha o teclado virtual quando o input
+   * perde o foco — e o `setFocus` desfoca todo input que nao seja o no focado —
+   * digitar exigia re-selecionar o campo a cada letra digitada ou apagada.
+   */
+  function applySearch(input, render) {
+    state.query = input.value.trim();
+    render();
 
-    var first = document.querySelector('#catalog-items .poster');
+    // O render trocou os cards: reconstroi o nav para apontar para os nos
+    // novos. Enquanto o usuario digita, o proprio campo continua sendo o no
+    // focado (setFocus reaplica o '.focused' e o focus() sem perder o cursor).
+    refreshNav(document.activeElement === input ? input : null);
+  }
 
-    if (first) {
-      setFocus(first);
+  /** Container da lista de conteudo de cada tela. */
+  var CONTENT_CONTAINER = {
+    'screen-live': 'live-channels',
+    'screen-catalog': 'catalog-items',
+    'screen-series': 'series-items'
+  };
+
+  /** Primeiro item da lista de conteudo da tela ativa (destino do OK na busca). */
+  function firstContentNode() {
+    var screen = activeScreen();
+    var id = screen ? CONTENT_CONTAINER[screen.id] : null;
+    var container = id ? $(id) : null;
+
+    return container ? container.querySelector('.focusable') : null;
+  }
+
+  /** Campo de busca de cada tela e o render correspondente. */
+  var SEARCH_FIELDS = {
+    'catalog-search': renderItems,
+    'live-search': renderLiveChannels,
+    'series-search': renderSeries
+  };
+
+  /** Fecha o texto do campo ativo na lista e cancela o debounce pendente. */
+  function commitSearch() {
+    var input = document.activeElement;
+    var render = input ? SEARCH_FIELDS[input.id] : null;
+
+    if (!render) {
+      return;
     }
+
+    clearTimeout(state.searchTimer);
+    state.searchTimer = null;
+    applySearch(input, render);
   }
 
   /* -------------------------------------------------------------- series --- */
@@ -1282,6 +1327,32 @@
     }
   }
 
+  /**
+   * Reconstroi a navegacao DEPOIS de um re-render e mantem o foco onde estava.
+   *
+   * Todo render recria os cards (innerHTML = ''), mas o `nav` continuava
+   * apontando para os nos ANTIGOS ja desanexados: a seta movia o foco para um
+   * elemento fora do documento (nada se destacava, o container rolava para o
+   * topo) e o OK seguinte tocava o item antigo. O `ensureFocus` nao resolvia
+   * porque ele so age quando NAO existe '.focused' no documento.
+   */
+  function refreshNav(keepNode) {
+    rebuildNav();
+
+    var node = keepNode || document.querySelector('.focusable.focused');
+    var screen = activeScreen();
+
+    // O no preservado sobreviveu ao render (ex.: a categoria): reindexa a
+    // posicao nele com as colunas novas, para que a grade aponte para os
+    // cards recem-criados.
+    if (node && screen && screen.contains(node)) {
+      setFocus(node);
+      return;
+    }
+
+    ensureFocus();
+  }
+
   function focusableNodes() {
     if (!nav.nodes.length) {
       rebuildNav();
@@ -1439,7 +1510,9 @@
       } else if (active.id === 'screen-catalog') {
         renderItems();
       }
-      ensureFocus();
+      // Depois do re-render o `nav` precisa apontar para os cards NOVOS; a
+      // categoria continua sendo o no focado.
+      refreshNav(node);
     }, 160);
 
     rebuildNav();
@@ -1546,6 +1619,10 @@
       } else {
         renderItems();
       }
+
+      // Sem isto a grade ficava apontando para os cards antigos e a seta
+      // seguinte nao movia o destaque (o no focado saia do documento).
+      refreshNav(node);
 
       return;
     }
@@ -1766,11 +1843,24 @@
       if (code === KEYS.ENTER) {
         event.preventDefault();
 
+        // Fecha o texto atual na lista e cancela o debounce pendente: um
+        // re-render depois daqui roubaria o foco de volta para o primeiro card.
+        commitSearch();
+
         if (document.activeElement && document.activeElement.blur) {
           document.activeElement.blur();
         }
 
-        moveFocus('down');
+        // O campo de busca e uma coluna de um no so — o moveFocus('down')
+        // ficava preso nele. Desce direto para o primeiro resultado.
+        var target = firstContentNode();
+
+        if (target) {
+          setFocus(target);
+        } else {
+          moveFocus('down');
+        }
+
         return;
       }
 
@@ -1793,6 +1883,20 @@
 
     if (directions[code]) {
       event.preventDefault();
+
+      // Campo de busca focado (sem o teclado aberto): descer sai do campo em
+      // vez de ficar preso na coluna de um no so.
+      var focado = document.querySelector('.focusable.focused');
+
+      if (directions[code] === 'down' && focado && focado.tagName === 'INPUT') {
+        var primeiro = firstContentNode();
+
+        if (primeiro) {
+          setFocus(primeiro);
+          return;
+        }
+      }
+
       moveFocus(directions[code]);
       return;
     }
@@ -1807,58 +1911,24 @@
     el.activationCheck = $('activation-check');
     el.activationCheck.addEventListener('click', function () { boot(); });
 
-    // Busca: filtra enquanto digita (com debounce) e re-renderiza a grade.
-    var search = $('catalog-search');
-    var debounce = null;
+    // Busca: filtra enquanto digita (com debounce) mantendo o foco no campo, e
+    // marca quando o usuario esta digitando (para as setas nao roubarem o foco).
+    Object.keys(SEARCH_FIELDS).forEach(function (inputId) {
+      var input = $(inputId);
 
-    search.addEventListener('input', function () {
-      clearTimeout(debounce);
-      debounce = setTimeout(function () { applyQuery(search.value); }, 250);
+      input.addEventListener('input', function () {
+        var render = SEARCH_FIELDS[inputId];
+
+        clearTimeout(state.searchTimer);
+        state.searchTimer = setTimeout(function () {
+          state.searchTimer = null;
+          applySearch(input, render);
+        }, 250);
+      });
+
+      input.addEventListener('focus', function () { state.searchActive = true; });
+      input.addEventListener('blur', function () { state.searchActive = false; });
     });
-
-    // Marca quando o usuario esta digitando (para as setas nao roubarem o foco).
-    search.addEventListener('focus', function () { state.searchActive = true; });
-    search.addEventListener('blur', function () { state.searchActive = false; });
-
-    var liveSearch = $('live-search');
-    var liveDebounce = null;
-
-    liveSearch.addEventListener('input', function () {
-      clearTimeout(liveDebounce);
-      liveDebounce = setTimeout(function () {
-        state.query = liveSearch.value.trim();
-        renderLiveChannels();
-
-        var first = document.querySelector('#live-channels .channel');
-
-        if (first) {
-          setFocus(first);
-        }
-      }, 250);
-    });
-
-    liveSearch.addEventListener('focus', function () { state.searchActive = true; });
-    liveSearch.addEventListener('blur', function () { state.searchActive = false; });
-
-    var seriesSearch = $('series-search');
-    var seriesDebounce = null;
-
-    seriesSearch.addEventListener('input', function () {
-      clearTimeout(seriesDebounce);
-      seriesDebounce = setTimeout(function () {
-        state.query = seriesSearch.value.trim();
-        renderSeries();
-
-        var first = document.querySelector('#series-items .poster');
-
-        if (first) {
-          setFocus(first);
-        }
-      }, 250);
-    });
-
-    seriesSearch.addEventListener('focus', function () { state.searchActive = true; });
-    seriesSearch.addEventListener('blur', function () { state.searchActive = false; });
 
     document.addEventListener('scroll', function () {
       clearTimeout(state.scrollTimer);

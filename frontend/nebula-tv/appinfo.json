@@ -1,6 +1,6 @@
 {
   "id": "com.nebula.tv",
-  "version": "0.3.3",
+  "version": "0.3.5",
   "vendor": "Nebula",
   "type": "web",
   "main": "index.html",
