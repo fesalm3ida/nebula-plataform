@@ -4,9 +4,11 @@ import 'package:flutter/services.dart';
 import '../models/content_source.dart';
 import '../models/m3u_channel.dart';
 import '../models/media_kind.dart';
+import '../models/series_group.dart';
 import '../services/catalog_service.dart';
 import '../services/playlist_selection_service.dart';
 import '../utils/search.dart';
+import 'tv_episodes_screen.dart';
 import 'tv_player_screen.dart';
 
 /// Menu da TV no padrao do Ibo Player:
@@ -28,6 +30,7 @@ class _TvHomeScreenState extends State<TvHomeScreen> {
 
   MediaKind _kind = MediaKind.movie;
   List<M3uChannel> _items = const [];
+  List<SeriesGroup> _groups = const [];
   List<String> _categories = const [];
   String? _category;
   String _query = '';
@@ -51,6 +54,21 @@ class _TvHomeScreenState extends State<TvHomeScreen> {
         .where((item) => matchesSearch(item.displayName, _query))
         .toList();
   }
+
+  /// Series filtradas por categoria e busca (uma entrada por serie).
+  List<SeriesGroup> get _filteredGroups {
+    final byCategory = _category == null
+        ? _groups
+        : _groups.where((group) => group.category == _category).toList();
+
+    if (_query.trim().isEmpty) return byCategory;
+
+    return byCategory
+        .where((group) => matchesSearch(group.name, _query))
+        .toList();
+  }
+
+  bool get _isSeries => _kind == MediaKind.series;
 
   @override
   void initState() {
@@ -90,8 +108,13 @@ class _TvHomeScreenState extends State<TvHomeScreen> {
 
       if (!mounted) return;
 
+      final groups = _kind == MediaKind.series
+          ? SeriesGroup.from(items)
+          : <SeriesGroup>[];
+
       setState(() {
         _items = items;
+        _groups = groups;
         _categories = CatalogService.categoriesOf(items);
         _loading = false;
       });
@@ -118,7 +141,7 @@ class _TvHomeScreenState extends State<TvHomeScreen> {
 
   /// Move o foco (modelo de colunas: categorias + grade).
   void _move(String direction) {
-    final items = _filtered;
+    final items = _isSeries ? _filteredGroups : _filtered;
     final columns = _categories.length + 1;
 
     setState(() {
@@ -171,6 +194,20 @@ class _TvHomeScreenState extends State<TvHomeScreen> {
       return;
     }
 
+    if (_isSeries) {
+      final groups = _filteredGroups;
+
+      if (_row < groups.length) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => TvEpisodesScreen(group: groups[_row]),
+          ),
+        );
+      }
+
+      return;
+    }
+
     final items = _filtered;
 
     if (_row < items.length) {
@@ -217,7 +254,7 @@ class _TvHomeScreenState extends State<TvHomeScreen> {
             _TopBar(
               kind: _kind,
               category: _category,
-              count: _filtered.length,
+              count: _isSeries ? _filteredGroups.length : _filtered.length,
               onKind: (kind) {
                 _kind = kind;
                 _load();
@@ -246,11 +283,17 @@ class _TvHomeScreenState extends State<TvHomeScreen> {
                               ),
                             ),
                             Expanded(
-                              child: _PosterGrid(
-                                items: _filtered,
-                                focusedIndex: _column == 1 ? _row : -1,
-                                columns: gridColumns,
-                              ),
+                              child: _isSeries
+                                  ? _SeriesGrid(
+                                      groups: _filteredGroups,
+                                      focusedIndex: _column == 1 ? _row : -1,
+                                      columns: gridColumns,
+                                    )
+                                  : _PosterGrid(
+                                      items: _filtered,
+                                      focusedIndex: _column == 1 ? _row : -1,
+                                      columns: gridColumns,
+                                    ),
                             ),
                           ],
                         ),
@@ -427,6 +470,95 @@ class _PosterGrid extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 18),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Grade de series: uma capa por serie, com a contagem de episodios.
+class _SeriesGrid extends StatelessWidget {
+  const _SeriesGrid({
+    required this.groups,
+    required this.focusedIndex,
+    required this.columns,
+  });
+
+  final List<SeriesGroup> groups;
+  final int focusedIndex;
+  final int columns;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = groups.take(300).toList();
+
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(4, 0, 40, 40),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
+        childAspectRatio: 0.60,
+      ),
+      itemCount: visible.length,
+      itemBuilder: (context, index) {
+        final group = visible[index];
+        final focused = index == focusedIndex;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: focused ? const Color(0x558B3FFD) : Colors.white10,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: focused ? const Color(0xFFB07BFF) : Colors.white12,
+              width: focused ? 3 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(12),
+                  ),
+                  child: group.poster.isNotEmpty
+                      ? Image.network(
+                          group.poster,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          errorBuilder: (_, _, _) =>
+                              _Fallback(label: group.name),
+                        )
+                      : _Fallback(label: group.name),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      group.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      group.episodes.length == 1
+                          ? '1 episódio'
+                          : '${group.episodes.length} episódios',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        color: Colors.white60,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
