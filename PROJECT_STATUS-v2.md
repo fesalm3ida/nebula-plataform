@@ -288,6 +288,27 @@ entregue ao Player via `GET /me/provisioning`.
 
 ---
 
+
+---
+
+# Frentes de Desenvolvimento (visão 360°)
+
+| # | Frente | Onde | Status |
+|---|---|---|---|
+| 1 | **Backend** (Core + BFF) | Render (nuvem) | ✅ Ativa |
+| 2 | **Portal Web** (usuário + admin) | Render Static | ✅ Ativa |
+| 3 | **App Android** (celular/TV box) | `frontend/nebula-player` | ✅ Ativa |
+| 4 | **App LG Smart TV** (HTML + JavaScript / webOS) | `frontend/nebula-tv` | ✅ **Ativa** — reproduz vídeo na TV |
+| 5 | **App de TV em Flutter** | `frontend/nebula-tv-flutter` | 🧊 Congelado (AB-013) |
+| 6 | **App iOS** | `frontend/nebula-player/ios` | 🧊 Congelado (requer macOS) |
+| 7 | **Nebula Monitor** (telemetria) | Core/BFF/Portal | 🧊 Congelado (implementado) |
+
+**Frente ativa de TV:** o app **web (HTML + JavaScript)** roda na LG com
+reprodução de vídeo funcionando (MPEG-TS/HLS pelo pipeline da TV). O espelho do
+`npm run inspect` **não** reproduz mídia — a validação de vídeo deve ser feita
+na própria TV.
+
+
 # Milestones
 
 | ID | Milestone | Status |
