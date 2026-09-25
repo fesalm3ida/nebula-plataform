@@ -37,6 +37,7 @@
     scrollTimer: null,
     filterTimer: null,
     searchTimer: null,
+    listNode: null,
     hintTimer: null,
     seriesGroups: [],
     episodeGroup: null,
@@ -820,41 +821,68 @@
     refreshNav(document.activeElement === input ? input : null);
   }
 
-  /** Container da lista de conteudo de cada tela. */
-  var CONTENT_CONTAINER = {
-    'screen-live': 'live-channels',
-    'screen-catalog': 'catalog-items',
-    'screen-series': 'series-items'
+  /**
+   * Campo de busca, lista de conteudo e render de cada tela.
+   *
+   * O campo fica no topbar, FORA de qualquer container [data-nav], entao o
+   * rebuildNav o coloca numa coluna "extras" no FIM da navegacao. Numa lista
+   * (cols=1) o 'right' troca de coluna e chega nele; numa grade (cols=6, como
+   * Filmes e Series) o 'right' nunca sai da coluna, e o campo so e alcancavel
+   * pela ponte vertical do moveFocus (seta para cima na primeira linha).
+   */
+  var SCREEN_CONTENT = {
+    'screen-live': { search: 'live-search', list: 'live-channels', render: renderLiveChannels },
+    'screen-catalog': { search: 'catalog-search', list: 'catalog-items', render: renderItems },
+    'screen-series': { search: 'series-search', list: 'series-items', render: renderSeries }
   };
+
+  /** Configuracao da tela ativa (null nas telas sem busca, como o menu). */
+  function screenContent() {
+    var screen = activeScreen();
+
+    return screen ? SCREEN_CONTENT[screen.id] || null : null;
+  }
+
+  /** Campo de busca da tela ativa. */
+  function searchNodeOf() {
+    var map = screenContent();
+
+    return map ? $(map.search) : null;
+  }
+
+  /** Lista de conteudo (grade ou lista) da tela ativa. */
+  function contentListOf() {
+    var map = screenContent();
+
+    return map ? $(map.list) : null;
+  }
 
   /** Primeiro item da lista de conteudo da tela ativa (destino do OK na busca). */
   function firstContentNode() {
-    var screen = activeScreen();
-    var id = screen ? CONTENT_CONTAINER[screen.id] : null;
-    var container = id ? $(id) : null;
+    var container = contentListOf();
 
     return container ? container.querySelector('.focusable') : null;
   }
 
-  /** Campo de busca de cada tela e o render correspondente. */
-  var SEARCH_FIELDS = {
-    'catalog-search': renderItems,
-    'live-search': renderLiveChannels,
-    'series-search': renderSeries
-  };
+  /** O no pertence a lista de conteudo da tela ativa? */
+  function isInContentList(node) {
+    var container = contentListOf();
+
+    return Boolean(node && container && container.contains(node));
+  }
 
   /** Fecha o texto do campo ativo na lista e cancela o debounce pendente. */
   function commitSearch() {
     var input = document.activeElement;
-    var render = input ? SEARCH_FIELDS[input.id] : null;
+    var map = screenContent();
 
-    if (!render) {
+    if (!map || !input || input.id !== map.search) {
       return;
     }
 
     clearTimeout(state.searchTimer);
     state.searchTimer = null;
-    applySearch(input, render);
+    applySearch(input, map.render);
   }
 
   /* -------------------------------------------------------------- series --- */
@@ -1381,6 +1409,21 @@
     var column = nav.columns[nav.col];
 
     if (direction === 'up' || direction === 'down') {
+      var current = nodeAt(nav.col, nav.row);
+      var search = searchNodeOf();
+
+      // O campo de busca fica na barra ACIMA da lista: descer dele volta para
+      // a lista, na posicao exata de onde o usuario saiu.
+      if (current && search && current === search) {
+        if (direction === 'down') {
+          var back = state.listNode;
+
+          setFocus(isInContentList(back) ? back : firstContentNode());
+        }
+
+        return;
+      }
+
       var step = direction === 'up' ? -1 : 1;
       var distance = column.cols > 1 ? column.cols : 1;
       var target = nav.row + step * distance;
@@ -1388,6 +1431,15 @@
       if (target >= 0 && target < column.nodes.length) {
         nav.row = target;
         setFocus(nodeAt(nav.col, nav.row));
+        return;
+      }
+
+      // Ponte com o campo de busca: subir da PRIMEIRA linha da lista leva ao
+      // campo. Sem ela a grade de Filmes/Series prendia o foco (numa grade o
+      // 'right' nao troca de coluna) e o campo era inalcancavel pelas setas.
+      if (direction === 'up' && search && isInContentList(current)) {
+        state.listNode = current;
+        setFocus(search);
         return;
       }
 
@@ -1883,20 +1935,6 @@
 
     if (directions[code]) {
       event.preventDefault();
-
-      // Campo de busca focado (sem o teclado aberto): descer sai do campo em
-      // vez de ficar preso na coluna de um no so.
-      var focado = document.querySelector('.focusable.focused');
-
-      if (directions[code] === 'down' && focado && focado.tagName === 'INPUT') {
-        var primeiro = firstContentNode();
-
-        if (primeiro) {
-          setFocus(primeiro);
-          return;
-        }
-      }
-
       moveFocus(directions[code]);
       return;
     }
@@ -1913,16 +1951,15 @@
 
     // Busca: filtra enquanto digita (com debounce) mantendo o foco no campo, e
     // marca quando o usuario esta digitando (para as setas nao roubarem o foco).
-    Object.keys(SEARCH_FIELDS).forEach(function (inputId) {
-      var input = $(inputId);
+    Object.keys(SCREEN_CONTENT).forEach(function (screenId) {
+      var map = SCREEN_CONTENT[screenId];
+      var input = $(map.search);
 
       input.addEventListener('input', function () {
-        var render = SEARCH_FIELDS[inputId];
-
         clearTimeout(state.searchTimer);
         state.searchTimer = setTimeout(function () {
           state.searchTimer = null;
-          applySearch(input, render);
+          applySearch(input, map.render);
         }, 250);
       });
 
