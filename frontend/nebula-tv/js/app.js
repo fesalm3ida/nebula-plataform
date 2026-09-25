@@ -1242,10 +1242,15 @@
     });
 
     video.addEventListener('playing', function () {
-      $('player-hint').textContent = 'OK: pausar · Voltar: sair';
+      $('player-hint').textContent = PLAYER_HINT;
       showKeyHint('▶ reproduzindo');
       console.log('[nebula] reproduzindo:', video.currentSrc || video.src);
     });
+
+    // A barra de progresso segue os eventos de tempo do proprio video.
+    video.addEventListener('timeupdate', updateProgress);
+    video.addEventListener('loadedmetadata', updateProgress);
+    video.addEventListener('durationchange', updateProgress);
   }
 
   function play(url, title) {
@@ -1264,6 +1269,11 @@
     watchVideoEvents();
     $('player-title').textContent = title;
     $('player-hint').textContent = 'Conectando ao canal…';
+
+    // Esconde a barra ANTES de trocar a fonte: a duracao do titulo anterior
+    // continua valendo ate o player carregar os metadados do novo.
+    hideProgress();
+
     video.src = url;
     video.play().catch(function () { /* o usuario aperta OK */ });
 
@@ -1294,6 +1304,7 @@
     video.removeAttribute('src');
     video.load();
     state.playerVisible = false;
+    hideProgress();
 
     api.telemetry('playback_ended', { title: $('player-title').textContent })
       .catch(function () { /* melhor esforço */ });
@@ -1308,6 +1319,70 @@
     overlay.classList.remove('hidden');
     clearTimeout(state.hideTimer);
     state.hideTimer = setTimeout(function () { overlay.classList.add('hidden'); }, 4000);
+  }
+
+  /* -------------------------------------------------- barra de progresso --- */
+
+  /** Passo da busca com as setas no controle (segundos). */
+  var SEEK_STEP = 10;
+
+  var PLAYER_HINT = 'OK: pausar · ←/→: ' + SEEK_STEP + 's · Voltar: sair';
+
+  /** mm:ss, ou h:mm:ss depois de uma hora. */
+  function formatTime(seconds) {
+    var total = Math.max(0, Math.floor(seconds || 0));
+    var hours = Math.floor(total / 3600);
+    var minutes = Math.floor((total % 3600) / 60);
+    var secs = total % 60;
+    var pad = function (value) { return value < 10 ? '0' + value : String(value); };
+
+    return (hours ? hours + ':' + pad(minutes) : String(minutes)) + ':' + pad(secs);
+  }
+
+  /**
+   * Atualiza a barra e os tempos do overlay.
+   *
+   * A lista vem em M3U e boa parte dos titulos e MPEG-TS/HLS, onde o
+   * `video.duration` chega como Infinity ou NaN ate o player conhecer o total —
+   * e em canal ao vivo nunca existe. Sem duracao nao ha barra nem busca, entao
+   * e a propria duracao que decide mostrar ou esconder a linha.
+   */
+  function updateProgress() {
+    var video = $('video');
+    var duration = video.duration;
+    var row = $('player-progress');
+
+    if (!isFinite(duration) || duration <= 0) {
+      row.hidden = true;
+      return;
+    }
+
+    row.hidden = false;
+
+    var played = Math.min(Math.max(video.currentTime, 0), duration);
+
+    // scaleX em vez de width: nao dispara layout a cada timeupdate (~4x/s).
+    $('progress-fill').style.transform = 'scaleX(' + (played / duration) + ')';
+    $('progress-time').textContent =
+      formatTime(played) + ' / ' + formatTime(duration);
+  }
+
+  /** Esconde a barra (ao trocar de titulo e ao sair do player). */
+  function hideProgress() {
+    $('player-progress').hidden = true;
+  }
+
+  /** Avanca/retrocede o titulo em reproducao, respeitando os limites. */
+  function seekBy(seconds) {
+    var video = $('video');
+    var duration = video.duration;
+
+    if (!isFinite(duration) || duration <= 0) {
+      return;
+    }
+
+    video.currentTime = Math.min(Math.max(video.currentTime + seconds, 0), duration - 1);
+    updateProgress();
   }
 
   /* -------------------------------------------------- foco (controle remoto) --- */
@@ -1925,6 +2000,16 @@
       if (code === KEYS.BACK || code === KEYS.ESC) {
         event.preventDefault();
         stopPlayer();
+        return;
+      }
+
+      // Busca no titulo (Filmes/Series). Em canal ao vivo nao ha duracao, entao
+      // o seekBy nao faz nada. A tecla repetida do controle rende um arrasto
+      // continuo enquanto estiver pressionada.
+      if (code === KEYS.LEFT || code === KEYS.RIGHT) {
+        event.preventDefault();
+        seekBy(code === KEYS.RIGHT ? SEEK_STEP : -SEEK_STEP);
+        scheduleOverlayHide();
         return;
       }
 

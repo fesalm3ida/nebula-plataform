@@ -141,6 +141,38 @@ html, body {
 .player-info { display: flex; flex-direction: column; gap: 6px; }
 #player-title { font-size: 34px; }
 
+/* Barra de progresso dos titulos (Filmes/Series) */
+.player-progress { display: flex; align-items: center; gap: 18px; margin-top: 16px; }
+
+/* O display:flex acima venceria o [hidden] do navegador (estilo de autor vence
+   o estilo do UA), entao o escondido precisa ser reafirmado aqui. */
+.player-progress[hidden] { display: none; }
+
+.progress-track {
+  flex: 1 1 auto;
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, .22);
+  overflow: hidden;
+}
+
+/* O preenchimento anda por scaleX (o JS escreve a fracao): nao dispara layout a
+   cada timeupdate, o que importa na CPU da TV. */
+.progress-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--primary);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
+.progress-time {
+  flex: 0 0 auto;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ------------------------------------------------- busca e grade (catálogo) */
 
 .search-bar { display: flex; align-items: center; gap: 20px; }

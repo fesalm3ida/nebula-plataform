@@ -123,7 +123,13 @@
       <div id="player-overlay" class="player-overlay">
         <div class="player-info">
           <strong id="player-title">—</strong>
-          <span id="player-hint" class="muted">OK: pausar · Voltar: sair</span>
+          <span id="player-hint" class="muted">OK: pausar · ←/→: 10s · Voltar: sair</span>
+        </div>
+        <!-- Barra de progresso dos titulos (Filmes/Series). Fica escondida em
+             canal ao vivo, que nao tem duracao. -->
+        <div id="player-progress" class="player-progress" hidden>
+          <div class="progress-track"><div id="progress-fill" class="progress-fill"></div></div>
+          <span id="progress-time" class="progress-time muted">0:00 / 0:00</span>
         </div>
       </div>
     </section>
