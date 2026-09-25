@@ -266,9 +266,7 @@
 
         // Esgotou as tentativas: diz o motivo e deixa uma saida focavel, em vez
         // de abandonar a TV numa tela sem nada para apertar.
-        setStatus('Erro: ' + (error && error.message ? error.message : error) +
-          ' — aperte "Tentar novamente" ou Voltar para sair.');
-        showBootRetry();
+        bootFailed(error);
       });
   }
 
@@ -340,8 +338,7 @@
     focusFirst();
   }
 
-  /**
-   * Esconde o botao enquanto uma nova tentativa esta em curso.
+  /** Esconde o botao enquanto uma nova tentativa esta em curso.
    *
    * A classe 'focusable' sai junto de proposito: o rebuildNav monta a navegacao
    * so pelos '.focusable' da tela ativa, sem checar visibilidade, e um botao
@@ -352,6 +349,18 @@
 
     button.hidden = true;
     button.classList.remove('focusable', 'focused');
+  }
+
+  /**
+   * Fecha um carregamento que falhou: motivo na tela e uma saida focavel.
+   *
+   * Usado pelo boot e pela troca de lista — sem isto a rejeicao ficava sem
+   * tratamento e a TV parava na tela de boot sem mensagem e sem saida.
+   */
+  function bootFailed(error) {
+    setStatus('Erro: ' + (error && error.message ? error.message : error) +
+      ' — aperte "Tentar novamente" ou Voltar para sair.');
+    showBootRetry();
   }
 
   function showActivation(message) {
@@ -403,6 +412,16 @@
   var CACHE_STORE = 'playlists';
   var CACHE_MAX_AGE = 12 * 60 * 60 * 1000; // 12 horas
 
+  // Prazo de INATIVIDADE do download da lista: nenhum byte novo por este tempo
+  // significa que o provedor engasgou. Sobrescrevivel por
+  // window.NEBULA_DOWNLOAD_IDLE, como o CORE_API. Nao e um teto de duracao: sao
+  // ~80 MB e numa TV o download inteiro pode levar minutos legitimamente.
+  var DOWNLOAD_IDLE = Number(window.NEBULA_DOWNLOAD_IDLE) || 20000;
+
+  // Teto so para o caminho sem stream/Content-Length, onde nao da para observar
+  // progresso: ali o prazo nao pode ser de inatividade, entao e folgado.
+  var DOWNLOAD_TOTAL = 300000;
+
   function openCache() {
     return new Promise(function (resolve, reject) {
       if (!window.indexedDB) {
@@ -448,7 +467,17 @@
     }).catch(function () { return false; });
   }
 
-  /** Baixa (informando a % do progresso) e parseia a lista. */
+  /**
+   * Baixa (informando a % do progresso) e parseia a lista.
+   *
+   * O prazo e de INATIVIDADE, nao de duracao total: sao ~80 MB e numa TV o
+   * download inteiro pode levar minutos, entao um teto de tempo derrubaria
+   * download legitimo. O que nao pode e o provedor parar de mandar bytes — sem
+   * isto a promessa ficava pendente para sempre e a TV congelava em
+   * 'Carregando lista… 43%'. O relogio comeca antes do fetch, entao tambem
+   * cobre a conexao e os cabecalhos: um host que aceita e nunca responde cai no
+   * mesmo prazo.
+   */
   function fetchPlaylist(sourceUrl) {
     function parseText(text) {
       var channels = window.NebulaM3u.parse(text);
@@ -462,54 +491,102 @@
       return channels;
     }
 
-    return fetch(sourceUrl).then(function (response) {
-      var total = Number(response.headers.get('Content-Length')) || 0;
+    var controller = window.AbortController ? new window.AbortController() : null;
+    var watchdog = null;
 
-      // Sem suporte a stream ou sem Content-Length: cai no caminho simples.
-      if (!response.body || !response.body.getReader || !total) {
-        setStatus('Carregando lista…');
+    return new Promise(function (resolve, reject) {
+      var settled = false;
 
-        return response.text().then(parseText);
+      /** Resolve/rejeita uma unica vez e desarma o relogio. */
+      function done(fn, value) {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        clearTimeout(watchdog);
+        fn(value);
       }
 
-      var reader = response.body.getReader();
-      var received = 0;
-      var chunks = [];
-      var lastPercent = -1;
+      /** Reinicia o relogio: cada byte novo prova que o provedor esta vivo. */
+      function keepAlive(ms) {
+        clearTimeout(watchdog);
+        watchdog = setTimeout(function () {
+          // Chromium 66+ (webOS 5+) aborta de fato; nas TVs antigas o prazo
+          // sozinho ja devolve o controle ao app.
+          if (controller) {
+            controller.abort();
+          }
 
-      function read() {
-        return reader.read().then(function (result) {
-          if (result.done) {
-            var merged = new Uint8Array(received);
-            var offset = 0;
+          var error = new Error('o provedor parou de enviar a lista (sem dados por ' +
+            Math.round((ms || DOWNLOAD_IDLE) / 1000) + 's)');
 
-            chunks.forEach(function (chunk) {
-              merged.set(chunk, offset);
-              offset += chunk.length;
+          error.timeout = true;
+          done(reject, error);
+        }, ms || DOWNLOAD_IDLE);
+      }
+
+      keepAlive();
+
+      fetch(sourceUrl, controller ? { signal: controller.signal } : undefined)
+        .then(function (response) {
+          var total = Number(response.headers.get('Content-Length')) || 0;
+
+          // Sem suporte a stream ou sem Content-Length: cai no caminho simples.
+          if (!response.body || !response.body.getReader || !total) {
+            setStatus('Carregando lista…');
+            keepAlive(DOWNLOAD_TOTAL);
+
+            return response.text().then(function (text) {
+              done(resolve, parseText(text));
             });
-
-            setStatus('Processando lista…');
-
-            return parseText(new TextDecoder('utf-8').decode(merged));
           }
 
-          chunks.push(result.value);
-          received += result.value.length;
+          var reader = response.body.getReader();
+          var received = 0;
+          var chunks = [];
+          var lastPercent = -1;
 
-          var percent = Math.floor((received / total) * 100);
+          function read() {
+            return reader.read().then(function (result) {
+              if (result.done) {
+                var merged = new Uint8Array(received);
+                var offset = 0;
 
-          if (percent !== lastPercent && percent % 5 === 0) {
-            lastPercent = percent;
-            setStatus('Carregando lista… ' + percent + '%');
+                chunks.forEach(function (chunk) {
+                  merged.set(chunk, offset);
+                  offset += chunk.length;
+                });
+
+                setStatus('Processando lista…');
+
+                done(resolve, parseText(new TextDecoder('utf-8').decode(merged)));
+                return;
+              }
+
+              keepAlive();
+
+              chunks.push(result.value);
+              received += result.value.length;
+
+              var percent = Math.floor((received / total) * 100);
+
+              if (percent !== lastPercent && percent % 5 === 0) {
+                lastPercent = percent;
+                setStatus('Carregando lista… ' + percent + '%');
+              }
+
+              return read();
+            });
           }
+
+          setStatus('Carregando lista… 0%');
 
           return read();
+        })
+        .catch(function (error) {
+          done(reject, error);
         });
-      }
-
-      setStatus('Carregando lista… 0%');
-
-      return read();
     });
   }
 
@@ -672,7 +749,10 @@
     }
 
     setStatus('Carregando lista…');
-    loadPlaylist(escolhida.source_url);
+
+    // Sem o catch a rejeicao (download que engasgou, lista invalida) ficava sem
+    // tratamento e a TV parava na tela de boot sem mensagem e sem saida.
+    loadPlaylist(escolhida.source_url).catch(bootFailed);
   }
 
   /* ------------------------------------------------------------- ao vivo --- */
