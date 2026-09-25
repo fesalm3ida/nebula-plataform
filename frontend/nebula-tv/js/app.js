@@ -172,15 +172,66 @@
 
   /* --------------------------------------------------------------- boot --- */
 
+  var BOOT_ATTEMPTS = 3;
+  var RETRY_DELAY = 2000;
+
+  /** Vale repetir a chamada? Falha de rede, prazo estourado ou 5xx. */
+  function retryable(error) {
+    if (!error) {
+      return false;
+    }
+
+    if (error.timeout) {
+      return true;                  // prazo do cliente (js/api.js)
+    }
+
+    if (!error.status) {
+      return true;                  // rede, DNS, CORS, conexao que caiu
+    }
+
+    return error.status >= 500 || error.status === 429;
+  }
+
+  /**
+   * Repete a tarefa enquanto o erro for de infraestrutura, avisando na tela.
+   *
+   * 401/403/404/409 NAO repetem: o resultado nao muda, e repetir 401/403 ainda
+   * faria o resumeOrRegister regenerar a identidade (novo MAC e novo codigo) a
+   * toa — trocando a ativacao do aparelho por causa de uma oscilacao de rede.
+   */
+  function withRetry(task, attempts, label) {
+    return task().catch(function (error) {
+      if (attempts <= 1 || !retryable(error)) {
+        throw error;
+      }
+
+      setStatus(label + ': sem resposta, tentando de novo — restam ' +
+        (attempts - 1) + ' tentativa(s)…');
+
+      return new Promise(function (resolve) {
+        setTimeout(resolve, RETRY_DELAY);
+      }).then(function () {
+        return withRetry(task, attempts - 1, label);
+      });
+    });
+  }
+
   function boot() {
     state.identity = loadIdentity();
+
+    // As mensagens de repeticao aparecem na tela de boot: vindo da ativacao
+    // (botao 'Verificar agora') elas ficariam invisiveis.
+    show('screen-boot');
+    hideBootRetry();
     setStatus('Conectando…');
 
-    resumeOrRegister()
+    withRetry(resumeOrRegister, BOOT_ATTEMPTS, 'Conectando')
       .then(function () {
         setStatus('Carregando lista…');
 
-        return api.provisioning();
+        return withRetry(function () {
+          return api.provisioning();
+        }, BOOT_ATTEMPTS, 'Carregando a lista');
       })
       .then(function (provisioning) {
         var endpoints = provisioning.content_endpoints || [];
@@ -205,7 +256,11 @@
           );
         }
 
-        setStatus('Erro: ' + (error && error.message ? error.message : error));
+        // Esgotou as tentativas: diz o motivo e deixa uma saida focavel, em vez
+        // de abandonar a TV numa tela sem nada para apertar.
+        setStatus('Erro: ' + (error && error.message ? error.message : error) +
+          ' — aperte "Tentar novamente" ou Voltar para sair.');
+        showBootRetry();
       });
   }
 
@@ -266,6 +321,29 @@
 
   function setStatus(text) {
     $('boot-status').textContent = text;
+  }
+
+  /** Mostra a saida da tela de boot quando o servidor nao responde. */
+  function showBootRetry() {
+    var button = $('boot-retry');
+
+    button.hidden = false;
+    button.classList.add('focusable');
+    focusFirst();
+  }
+
+  /**
+   * Esconde o botao enquanto uma nova tentativa esta em curso.
+   *
+   * A classe 'focusable' sai junto de proposito: o rebuildNav monta a navegacao
+   * so pelos '.focusable' da tela ativa, sem checar visibilidade, e um botao
+   * escondido continuaria recebendo o foco das setas.
+   */
+  function hideBootRetry() {
+    var button = $('boot-retry');
+
+    button.hidden = true;
+    button.classList.remove('focusable', 'focused');
   }
 
   function showActivation(message) {
@@ -1627,7 +1705,9 @@
 
     if (!node) return;
 
-    if (node.id === 'activation-check') {
+    // 'Verificar agora' (ativacao) e 'Tentar novamente' (boot sem resposta)
+    // refazem o boot inteiro.
+    if (node.id === 'activation-check' || node.id === 'boot-retry') {
       boot();
       return;
     }
@@ -1873,6 +1953,14 @@
 
       var active = activeScreen();
 
+      // A tela de boot nao tem nada focavel enquanto o servidor nao responde:
+      // sem tratar aqui, o preventDefault acima cancelava o default do webOS e a
+      // TV ficava presa — sem setas e sem Voltar. Voltar precisa fechar o app.
+      if (active && active.id === 'screen-boot') {
+        window.close();
+        return;
+      }
+
       if (active && active.id === 'screen-episodes') {
         show('screen-series');
         focusFirst();
@@ -1948,6 +2036,9 @@
   window.addEventListener('load', function () {
     el.activationCheck = $('activation-check');
     el.activationCheck.addEventListener('click', function () { boot(); });
+
+    // Saida da tela de boot quando o servidor nao responde.
+    $('boot-retry').addEventListener('click', function () { boot(); });
 
     // Busca: filtra enquanto digita (com debounce) mantendo o foco no campo, e
     // marca quando o usuario esta digitando (para as setas nao roubarem o foco).
