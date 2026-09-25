@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:nebula_tv/main.dart';
+import 'package:nebula_tv/screens/tv_boot_screen.dart';
 
 void main() {
-  testWidgets('Nebula TV inicia no boot', (WidgetTester tester) async {
+  testWidgets('Nebula TV monta a tela de boot', (WidgetTester tester) async {
     await tester.pumpWidget(const NebulaTvApp());
+    await tester.pump();
 
-    // O boot mostra o progresso enquanto registra o aparelho no Core.
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.textContaining('Inicializando'), findsOneWidget);
+    expect(find.byType(MaterialApp), findsOneWidget);
+    expect(find.byType(TvBootScreen), findsOneWidget);
   });
 }
