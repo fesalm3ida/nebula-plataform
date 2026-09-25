@@ -276,7 +276,110 @@
 
   /* ----------------------------------------------------------- playlist --- */
 
+  // ------------------------------------------------- cache da lista (IDB) --
+  //
+  // A lista do provedor tem ~80 MB: baixar e parsear a cada boot deixa a TV
+  // minutos em "Carregando lista...". Guardamos o resultado em IndexedDB
+  // (quota bem maior que o localStorage) e usamos na hora, atualizando em
+  // segundo plano.
+
+  var CACHE_DB = 'nebula.tv.cache';
+  var CACHE_STORE = 'playlists';
+  var CACHE_MAX_AGE = 12 * 60 * 60 * 1000; // 12 horas
+
+  function openCache() {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) {
+        reject(new Error('sem indexedDB'));
+        return;
+      }
+
+      var request = window.indexedDB.open(CACHE_DB, 1);
+
+      request.onupgradeneeded = function () {
+        request.result.createObjectStore(CACHE_STORE);
+      };
+      request.onsuccess = function () { resolve(request.result); };
+      request.onerror = function () { reject(request.error); };
+    });
+  }
+
+  function cacheRead(sourceUrl) {
+    return openCache().then(function (db) {
+      return new Promise(function (resolve) {
+        var tx = db.transaction(CACHE_STORE, 'readonly');
+        var get = tx.objectStore(CACHE_STORE).get(sourceUrl);
+
+        get.onsuccess = function () { resolve(get.result || null); };
+        get.onerror = function () { resolve(null); };
+      });
+    }).catch(function () { return null; });
+  }
+
+  function cacheWrite(sourceUrl, channels) {
+    return openCache().then(function (db) {
+      return new Promise(function (resolve) {
+        var tx = db.transaction(CACHE_STORE, 'readwrite');
+
+        tx.objectStore(CACHE_STORE).put({
+          savedAt: Date.now(),
+          channels: channels
+        }, sourceUrl);
+
+        tx.oncomplete = function () { resolve(true); };
+        tx.onerror = function () { resolve(false); };
+      });
+    }).catch(function () { return false; });
+  }
+
+  /** Baixa, parseia e guarda no cache. */
+  function fetchPlaylist(sourceUrl) {
+    return fetch(sourceUrl)
+      .then(function (response) { return response.text(); })
+      .then(function (text) {
+        var channels = window.NebulaM3u.parse(text);
+
+        if (!channels.length) {
+          throw new Error('A lista está vazia ou em formato não suportado.');
+        }
+
+        cacheWrite(sourceUrl, channels);
+
+        return channels;
+      });
+  }
+
+  /** Usa o cache quando estiver fresco; atualiza em segundo plano. */
   function loadPlaylist(sourceUrl) {
+    return cacheRead(sourceUrl).then(function (cached) {
+      var fresh = cached && cached.channels && cached.channels.length &&
+        (Date.now() - (cached.savedAt || 0)) < CACHE_MAX_AGE;
+
+      if (fresh) {
+        state.channels = cached.channels;
+        state.categories = window.NebulaM3u.categoriesOf(state.channels);
+        localStorage.setItem(PLAYLIST_KEY, sourceUrl);
+        showMenu();
+
+        // Atualiza silenciosamente para a proxima abertura.
+        fetchPlaylist(sourceUrl).catch(function () { /* mantem o cache */ });
+
+        return;
+      }
+
+      setStatus('Carregando lista (pode levar 1 minuto)…');
+      show('screen-boot');
+
+      return fetchPlaylist(sourceUrl).then(function (channels) {
+        state.channels = channels;
+        state.categories = window.NebulaM3u.categoriesOf(channels);
+        localStorage.setItem(PLAYLIST_KEY, sourceUrl);
+        showMenu();
+      });
+    });
+  }
+
+  function loadPlaylistLegacy(sourceUrl) {
     setStatus('Carregando lista…');
     show('screen-boot');
 
