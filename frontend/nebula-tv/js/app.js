@@ -332,21 +332,69 @@
     }).catch(function () { return false; });
   }
 
-  /** Baixa, parseia e guarda no cache. */
+  /** Baixa (informando a % do progresso) e parseia a lista. */
   function fetchPlaylist(sourceUrl) {
-    return fetch(sourceUrl)
-      .then(function (response) { return response.text(); })
-      .then(function (text) {
-        var channels = window.NebulaM3u.parse(text);
+    function parseText(text) {
+      var channels = window.NebulaM3u.parse(text);
 
-        if (!channels.length) {
-          throw new Error('A lista está vazia ou em formato não suportado.');
-        }
+      if (!channels.length) {
+        throw new Error('A lista está vazia ou em formato não suportado.');
+      }
 
-        cacheWrite(sourceUrl, channels);
+      cacheWrite(sourceUrl, channels);
 
-        return channels;
-      });
+      return channels;
+    }
+
+    return fetch(sourceUrl).then(function (response) {
+      var total = Number(response.headers.get('Content-Length')) || 0;
+
+      // Sem suporte a stream ou sem Content-Length: cai no caminho simples.
+      if (!response.body || !response.body.getReader || !total) {
+        setStatus('Carregando lista…');
+
+        return response.text().then(parseText);
+      }
+
+      var reader = response.body.getReader();
+      var received = 0;
+      var chunks = [];
+      var lastPercent = -1;
+
+      function read() {
+        return reader.read().then(function (result) {
+          if (result.done) {
+            var merged = new Uint8Array(received);
+            var offset = 0;
+
+            chunks.forEach(function (chunk) {
+              merged.set(chunk, offset);
+              offset += chunk.length;
+            });
+
+            setStatus('Processando lista…');
+
+            return parseText(new TextDecoder('utf-8').decode(merged));
+          }
+
+          chunks.push(result.value);
+          received += result.value.length;
+
+          var percent = Math.floor((received / total) * 100);
+
+          if (percent !== lastPercent && percent % 5 === 0) {
+            lastPercent = percent;
+            setStatus('Carregando lista… ' + percent + '%');
+          }
+
+          return read();
+        });
+      }
+
+      setStatus('Carregando lista… 0%');
+
+      return read();
+    });
   }
 
   /** Usa o cache quando estiver fresco; atualiza em segundo plano. */
@@ -367,7 +415,7 @@
         return;
       }
 
-      setStatus('Carregando lista (pode levar 1 minuto)…');
+      setStatus('Carregando lista…');
       show('screen-boot');
 
       return fetchPlaylist(sourceUrl).then(function (channels) {
@@ -1209,6 +1257,29 @@
 
     console.log('[nebula] tela=' + activeScreenId() + ' · ' + nav.columns.length +
       ' colunas · ' + nav.nodes.length + ' itens');
+
+    setTimeout(ensureFocus, 0);
+  }
+
+  /**
+   * Garante a invariante do foco: SEMPRE existe exatamente um elemento com
+   * '.focused' quando ha itens navegaveis. Sem isso o app fica em "SEM FOCO"
+   * (as setas nao movem nada) apos um re-render ou troca de tela.
+   */
+  function ensureFocus() {
+    if (document.querySelector('.focusable.focused')) {
+      return;
+    }
+
+    if (!nav.nodes.length) {
+      rebuildNav();
+    }
+
+    if (nav.nodes.length) {
+      nav.col = 0;
+      nav.row = 0;
+      setFocus(nav.nodes[0]);
+    }
   }
 
   function focusableNodes() {
@@ -1368,9 +1439,11 @@
       } else if (active.id === 'screen-catalog') {
         renderItems();
       }
+      ensureFocus();
     }, 160);
 
     rebuildNav();
+    ensureFocus();
     setFocus(node);
   }
 
