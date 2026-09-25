@@ -35,6 +35,7 @@
     playReturn: 'screen-catalog',
     previewTimer: null,
     scrollTimer: null,
+    filterTimer: null,
     hintTimer: null,
     seriesGroups: [],
     episodeGroup: null,
@@ -442,21 +443,17 @@
     number.className = 'channel-num';
     number.textContent = String(position);
 
-    if (channel.logo) {
-      var image = document.createElement('img');
+    row.appendChild(number);
 
-      image.className = 'channel-logo';
-      image.alt = '';
-      image.src = channel.logo;
-      image.addEventListener('error', function () {
-        image.replaceWith(logoPlaceholder(channel));
-      });
-      row.appendChild(number);
-      row.appendChild(image);
-    } else {
-      row.appendChild(number);
-      row.appendChild(logoPlaceholder(channel));
-    }
+    var logo = buildLogo(channel.logo, 'channel-logo', function () {
+      var empty = logoPlaceholder(channel);
+
+      if (logo && logo.parentNode) {
+        logo.parentNode.replaceChild(empty, logo);
+      }
+    });
+
+    row.appendChild(logo || logoPlaceholder(channel));
 
     name.className = 'channel-name';
     name.textContent = channel.name || 'Sem nome';
@@ -574,17 +571,14 @@
 
     media.className = 'poster-media';
 
-    if (channel.logo) {
-      var image = document.createElement('img');
+    var poster = buildLogo(channel.logo, '', function () {
+      // Capa indisponivel: mantem o card legivel.
+      media.innerHTML = '';
+      media.appendChild(fallbackLabel(channel));
+    });
 
-      image.alt = '';
-      image.src = channel.logo;
-      image.addEventListener('error', function () {
-        // Capa indisponivel: mantem o card legivel com o nome do grupo.
-        media.innerHTML = '';
-        media.appendChild(fallbackLabel(channel));
-      });
-      media.appendChild(image);
+    if (poster) {
+      media.appendChild(poster);
     } else {
       media.appendChild(fallbackLabel(channel));
     }
@@ -616,6 +610,7 @@
   }
 
   function renderItems() {
+    var startedAt = Date.now();
     var container = $('catalog-items');
     var items = filteredItems();
     var limit = Math.min(items.length, MAX_RENDER);
@@ -648,6 +643,9 @@
       empty.textContent = 'Nenhum título encontrado.';
       container.appendChild(empty);
     }
+
+    console.log('[nebula] renderItems: ' + (container.children.length - 1) +
+      ' cards em ' + (Date.now() - startedAt) + 'ms');
 
     state.focus = { column: 0, index: 0 };
   }
@@ -787,6 +785,7 @@
   }
 
   function renderSeries() {
+    var startedAt = Date.now();
     var container = $('series-items');
     var groups = seriesItems();
     var limit = Math.min(groups.length, MAX_SERIES);
@@ -808,6 +807,9 @@
       empty.textContent = 'Nenhuma série encontrada.';
       container.appendChild(empty);
     }
+
+    console.log('[nebula] renderSeries: ' + (container.children.length - 1) +
+      ' cards em ' + (Date.now() - startedAt) + 'ms');
   }
 
   function buildSeriesCard(group) {
@@ -821,16 +823,13 @@
 
     media.className = 'poster-media';
 
-    if (group.poster) {
-      var image = document.createElement('img');
+    var poster = buildLogo(group.poster, '', function () {
+      media.innerHTML = '';
+      media.appendChild(fallbackLabel({ name: group.name }));
+    });
 
-      image.alt = '';
-      image.src = group.poster;
-      image.addEventListener('error', function () {
-        media.innerHTML = '';
-        media.appendChild(fallbackLabel({ name: group.name }));
-      });
-      media.appendChild(image);
+    if (poster) {
+      media.appendChild(poster);
     } else {
       media.appendChild(fallbackLabel({ name: group.name }));
     }
@@ -970,6 +969,37 @@
 
   var nav = { columns: [], nodes: [], place: [], col: 0, row: 0 };
 
+  // Muitos logos de listas IPTV apontam para dominios mortos: sem este cache o
+  // navegador refaz a resolucao DNS (e falha) a cada re-render, travando a TV.
+  var failedImages = {};
+
+  /**
+   * Cria a imagem da capa com carregamento sob demanda.
+   * URLs que ja falharam nao sao tentadas de novo.
+   */
+  function buildLogo(url, className, onFail) {
+    if (!url || failedImages[url]) {
+      return null;
+    }
+
+    var image = document.createElement('img');
+
+    image.className = className || '';
+    image.alt = '';
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    image.src = url;
+    image.addEventListener('error', function () {
+      failedImages[url] = true;
+
+      if (onFail) {
+        onFail();
+      }
+    });
+
+    return image;
+  }
+
   /** Reconstroi as colunas a partir do DOM da tela ativa (em cache). */
   function rebuildNav() {
     var screen = activeScreen();
@@ -984,9 +1014,10 @@
 
     Array.prototype.slice.call(columns).forEach(function (container) {
       var cols = Number(container.getAttribute('data-nav')) || 1;
+      // Sem offsetParent: a leitura forca layout em centenas de elementos.
+      // Como a busca ja esta limitada a tela ATIVA, todos sao visiveis.
       var items = Array.prototype.slice
-        .call(container.querySelectorAll('.focusable'))
-        .filter(function (node) { return node.offsetParent !== null; });
+        .call(container.querySelectorAll('.focusable'));
 
       if (!items.length) return;
 
@@ -1004,7 +1035,7 @@
     var extras = Array.prototype.slice
       .call(screen.querySelectorAll('.focusable'))
       .filter(function (node) {
-        return node.offsetParent !== null && nav.nodes.indexOf(node) === -1;
+        return nav.nodes.indexOf(node) === -1;
       });
 
     if (extras.length) {
@@ -1169,17 +1200,22 @@
 
     state.category = group;
 
-    var active = activeScreen();
+    // Re-renderiza com um pequeno atraso: percorrer varias categorias com a
+    // seta nao deve reconstruir 240 cards a cada passo.
+    clearTimeout(state.filterTimer);
+    state.filterTimer = setTimeout(function () {
+      var active = activeScreen();
 
-    if (!active) return;
+      if (!active) return;
 
-    if (active.id === 'screen-live') {
-      renderLiveChannels();
-    } else if (active.id === 'screen-series') {
-      renderSeries();
-    } else if (active.id === 'screen-catalog') {
-      renderItems();
-    }
+      if (active.id === 'screen-live') {
+        renderLiveChannels();
+      } else if (active.id === 'screen-series') {
+        renderSeries();
+      } else if (active.id === 'screen-catalog') {
+        renderItems();
+      }
+    }, 160);
 
     rebuildNav();
     setFocus(node);
