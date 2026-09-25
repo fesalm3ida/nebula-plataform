@@ -18,7 +18,8 @@ Android (`Nebula Core`), então a escolha é só de camada de apresentação.
 
 ```
 appinfo.json     metadados do app webOS (id, ícone, resolução)
-index.html       telas: boot, ativação, menu, catálogo, player
+index.html       as telas do app: boot, ativação, menu, trocar lista, ao vivo,
+                 catálogo, séries, episódios e player (ver "Telas")
 css/tv.css       tema roxo/preto e foco para controle remoto (10-foot UI)
 js/api.js        cliente do Nebula Core (registro, auth, sessão, telemetria, timeout)
 js/m3u.js        parser M3U/M3U_PLUS (mesmas regras do app Android)
@@ -33,7 +34,7 @@ icons/           ícones e fundo exigidos pelo pacote
 # A CLI oficial do webOS (comandos ares):
 npm install -g @webos-tools/cli
 
-npm test                    # parser M3U + busca + consistência
+npm test                    # parser M3U + busca + cliente HTTP + estrutura
 ```
 
 ### Instalar na TV (modo desenvolvedor)
@@ -163,7 +164,10 @@ que o `AbortController` é acionado quando existe, e que respostas normais
 1. **Registro**: gera uma identidade local (pseudo-MAC, como no Android — o
    webOS não expõe o MAC real) e registra no Core;
 2. **Ativação**: exibe **MAC + código de 6 dígitos**; o usuário ativa no portal;
-3. **Provisionamento**: baixa as listas provisionadas e faz o parse do M3U;
+3. **Provisionamento**: recebe do Core **todas** as listas vinculadas ao aparelho
+   e faz o parse da escolhida em **Trocar lista** (ou da primeira, na primeira
+   execução). A escolha fica no `localStorage` e sobrevive ao boot; listas já
+   baixadas saem do cache, sem novo download;
 4. **Catálogo**: Ao vivo · Filmes · Séries, com categorias e navegação por
    setas do controle;
 5. **Player**: `<video>` em tela cheia; **OK** pausa/retoma, **Voltar** sai;
@@ -189,9 +193,47 @@ tem prazo e repetição próprios:
 - **saída:** esgotadas as tentativas aparecem **"Tentar novamente"** (refaz o boot
   inteiro) e o **Voltar** fecha o app. Antes disso a tela de boot não tinha nada
   focável, e nem as setas nem o Voltar faziam algo — a TV ficava presa;
-- **o que ainda não tem prazo:** o download da lista (~80 MB). Se o servidor do
-  provedor parar de enviar bytes no meio, a barra congela no percentual
-  alcançado; o Voltar na tela de boot é a saída.
+- **download da lista (~80 MB):** o prazo é de **inatividade**, não de duração
+  total — `DOWNLOAD_IDLE` (20 s em `js/app.js`, ajustável por
+  `window.NEBULA_DOWNLOAD_IDLE`) reinicia a cada bloco recebido e cobre também a
+  conexão e os cabeçalhos, então um host que aceita e nunca responde cai no mesmo
+  prazo. Um teto de tempo total derrubaria download legítimo numa TV. Sem stream
+  ou sem `Content-Length` não há progresso observável, e aí vale `DOWNLOAD_TOTAL`
+  (5 min). Se o provedor engasgar, o download é encerrado e a tela de boot mostra
+  o motivo com a saída de sempre ("Tentar novamente" / Voltar).
+
+## Telas
+
+Todas ficam no `index.html` como `<section class="screen">`. O app mostra uma por
+vez pela classe `active` (`SCREEN_IDS` em `js/app.js`) e monta a navegação a
+partir dos containers marcados com `data-nav` — o número ali é o passo do ↑/↓,
+então ele tem de casar com as colunas reais do CSS.
+
+| Tela | `id` | O que faz |
+|---|---|---|
+| Boot | `screen-boot` | progresso do carregamento, mensagens de repetição e o botão **"Tentar novamente"**; **Voltar** fecha o app |
+| Ativação | `screen-activation` | MAC + código de 6 dígitos para ativar no portal, com **"Verificar agora"** |
+| Menu | `screen-menu` | 5 botões agrupados no centro: Ao vivo · Filmes · Séries · **Trocar lista** · Recarregar lista; o topo mostra a lista em uso e o total de itens |
+| Trocar lista | `screen-playlists` | as playlists vinculadas ao aparelho, com **"em uso"** na ativa; **OK** troca, **Voltar** volta ao menu |
+| Ao vivo | `screen-live` | categorias ‖ lista de canais ‖ preview retangular |
+| Catálogo | `screen-catalog` | grade de pôsteres (Filmes), com categorias e busca |
+| Séries | `screen-series` | uma capa por série, com os episódios agrupados |
+| Episódios | `screen-episodes` | episódios da série escolhida, em ordem de temporada |
+| Player | `screen-player` | vídeo em tela cheia, overlay com título, dica e a **barra de progresso** dos títulos |
+
+### Trocar lista
+
+As opções vêm do **vínculo do aparelho**: o `GET /me/provisioning` devolve
+`content_endpoints` com **todas** as playlists associadas ao Device (`name`,
+`format`, `source_url` e `status`), e o app guarda a lista inteira — a primeira
+versão usava só o `[0]`. A escolha é gravada no `localStorage`
+(`nebula.tv.source_url`) e consultada a cada boot, então o app reabre na lista que
+o usuário deixou. Como o cache do IndexedDB é indexado pela URL, alternar entre
+listas já baixadas não baixa nada de novo.
+
+> Para a troca ter o que mostrar, o aparelho precisa de **duas ou mais** listas
+> vinculadas; com uma só, a tela lista um único item (o que ainda é útil, porque
+> identifica a lista em uso).
 
 ## Atalhos do controle
 
