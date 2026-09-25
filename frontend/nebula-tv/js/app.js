@@ -1839,7 +1839,7 @@
       (state.searchActive ? ' · BUSCA' : ''));
 
     console.log('[nebula] key=' + code, 'busca=' + state.searchActive,
-      'tela=' + ((screen || {}).id));
+      'tela=' + activeScreenId());
 
     if (state.playerVisible) {
       if (code === KEYS.BACK || code === KEYS.ESC) {
