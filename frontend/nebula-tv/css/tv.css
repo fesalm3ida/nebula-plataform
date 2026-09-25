@@ -85,14 +85,66 @@ html, body {
 
 .topbar { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 28px; }
 
-.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+/* Menu: os botoes ficam agrupados no CENTRO da tela.
+   O palco e 1920x1080 e o fitStage() o escala para o viewport da TV, entao a
+   responsividade aqui e a grade fluida dentro do palco: as 3 colunas acompanham
+   o espaco disponivel (ate 1240px) em vez de esticar ate as bordas.
+   Seletor com .active de proposito: so um #menu-grid bastaria para o flex
+   vencer o 'display: none' de .screen e o menu apareceria fora de hora. */
+#screen-menu.active { display: flex; flex-direction: column; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  align-content: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  flex: 1 1 auto;
+}
+
 .tile {
   background: var(--surface);
   border: 2px solid var(--border);
   border-radius: 18px;
   padding: 34px 20px;
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   font-size: 28px;
+}
+
+/* ------------------------------------------- Trocar lista (menu) --------- */
+
+.playlists { height: 880px; max-width: 1240px; margin: 0 auto; }
+
+/* Mesmo desenho das linhas de canal, mas em classe propria: o setFocus usa
+   '.channel' para acionar o preview da tela Ao vivo, e playlist nao e video. */
+.playlist-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  margin-bottom: 10px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: var(--surface);
+}
+.playlist-row.focused {
+  background: rgba(139, 63, 253, .38);
+  border-color: var(--primary-soft);
+}
+.playlist-name { font-size: 24px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.playlist-active {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--primary-soft);
+  font-weight: bold;
+  font-size: 20px;
 }
 
 .catalog-body {

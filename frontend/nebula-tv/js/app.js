@@ -23,6 +23,8 @@
 
   var state = {
     identity: null,
+    playlists: [],
+    playlistName: '',
     channels: [],
     categories: [],
     category: null,
@@ -49,8 +51,9 @@
   function $(id) { return document.getElementById(id); }
 
   var SCREEN_IDS = [
-    'screen-boot', 'screen-activation', 'screen-menu', 'screen-live',
-    'screen-catalog', 'screen-series', 'screen-episodes', 'screen-player'
+    'screen-boot', 'screen-activation', 'screen-menu', 'screen-playlists',
+    'screen-live', 'screen-catalog', 'screen-series', 'screen-episodes',
+    'screen-player'
   ];
 
   /**
@@ -236,11 +239,16 @@
       .then(function (provisioning) {
         var endpoints = provisioning.content_endpoints || [];
 
+        // O provisioning traz TODAS as listas associadas ao aparelho (o vinculo
+        // Device <-> Playlist). Guardamos a lista inteira: e dela que o menu
+        // tira as opcoes de troca.
+        state.playlists = endpoints;
+
         if (!endpoints.length) {
           return showActivation('Nenhuma lista cadastrada. Ative no portal e cadastre uma lista.');
         }
 
-        return loadPlaylist(endpoints[0].source_url);
+        return loadPlaylist(chosenPlaylist(endpoints).source_url);
       })
       .catch(function (error) {
         if (error && error.message === 'DEVICE_NOT_ACTIVE') {
@@ -355,6 +363,34 @@
   }
 
   /* ----------------------------------------------------------- playlist --- */
+
+  /**
+   * Lista em uso: a escolhida pelo usuario (guardada em PLAYLIST_KEY) ou a
+   * primeira do vinculo. Sem isto o boot sempre voltaria para a lista 1,
+   * desfazendo a troca feita no menu.
+   */
+  function chosenPlaylist(playlists) {
+    var saved = localStorage.getItem(PLAYLIST_KEY);
+
+    for (var i = 0; i < playlists.length; i++) {
+      if (playlists[i].source_url === saved) {
+        return playlists[i];
+      }
+    }
+
+    return playlists[0];
+  }
+
+  /** Nome da lista, que o provisioning entrega junto com a URL. */
+  function nameOfPlaylist(sourceUrl) {
+    for (var i = 0; i < state.playlists.length; i++) {
+      if (state.playlists[i].source_url === sourceUrl) {
+        return state.playlists[i].name || '';
+      }
+    }
+
+    return '';
+  }
 
   // ------------------------------------------------- cache da lista (IDB) --
   //
@@ -479,6 +515,8 @@
 
   /** Usa o cache quando estiver fresco; atualiza em segundo plano. */
   function loadPlaylist(sourceUrl) {
+    state.playlistName = nameOfPlaylist(sourceUrl);
+
     return cacheRead(sourceUrl).then(function (cached) {
       var fresh = cached && cached.channels && cached.channels.length &&
         (Date.now() - (cached.savedAt || 0)) < CACHE_MAX_AGE;
@@ -532,6 +570,7 @@
     { id: 'live', label: 'Ao vivo' },
     { id: 'movie', label: 'Filmes' },
     { id: 'series', label: 'Séries' },
+    { id: 'playlists', label: 'Trocar lista' },
     { id: 'reload', label: 'Recarregar lista' }
   ];
 
@@ -539,7 +578,9 @@
     var grid = $('menu-grid');
 
     grid.innerHTML = '';
-    $('menu-list-name').textContent = state.channels.length + ' itens na lista';
+    $('menu-list-name').textContent =
+      (state.playlistName ? state.playlistName + ' · ' : '') +
+      state.channels.length + ' itens';
 
     MENU.forEach(function (item, index) {
       var tile = document.createElement('div');
@@ -553,6 +594,85 @@
     show('screen-menu');
     state.focus = { column: 0, index: 0 };
     focusFirst();
+  }
+
+  /* -------------------------------------------------------- trocar lista --- */
+
+  /** Tela de troca: as opcoes sao as playlists do vinculo do aparelho. */
+  function openPlaylists() {
+    renderPlaylists();
+    rebuildNav();
+    show('screen-playlists');
+
+    // Abre com o cursor na lista que esta em uso.
+    var badge = document.querySelector('#playlist-list .playlist-active');
+    var atual = badge ? badge.parentNode : null;
+
+    if (atual) {
+      setFocus(atual);
+    } else {
+      focusFirst();
+    }
+  }
+
+  function renderPlaylists() {
+    var container = $('playlist-list');
+    var ativa = localStorage.getItem(PLAYLIST_KEY);
+
+    container.innerHTML = '';
+    $('playlists-count').textContent = state.playlists.length === 1
+      ? '1 lista neste aparelho'
+      : state.playlists.length + ' listas neste aparelho';
+
+    if (!state.playlists.length) {
+      var empty = document.createElement('div');
+
+      empty.className = 'limit-hint';
+      empty.textContent = 'Nenhuma lista associada a este aparelho.';
+      container.appendChild(empty);
+      return;
+    }
+
+    state.playlists.forEach(function (playlist, index) {
+      var row = document.createElement('div');
+      var name = document.createElement('span');
+
+      row.className = 'playlist-row focusable';
+      row.dataset.index = index;
+
+      name.className = 'playlist-name';
+      name.textContent = playlist.name || ('Lista ' + (index + 1));
+
+      row.appendChild(name);
+
+      if (playlist.source_url === ativa) {
+        var badge = document.createElement('span');
+
+        badge.className = 'playlist-active';
+        badge.textContent = 'em uso';
+        row.appendChild(badge);
+      }
+
+      container.appendChild(row);
+    });
+  }
+
+  /**
+   * Troca a lista em uso.
+   *
+   * A escolha fica no localStorage (PLAYLIST_KEY), entao sobrevive ao boot, e o
+   * cache de listas do IndexedDB e por URL — trocar entre listas ja baixadas e
+   * instantaneo, sem novo download.
+   */
+  function selectPlaylist(index) {
+    var escolhida = state.playlists[index];
+
+    if (!escolhida) {
+      return;
+    }
+
+    setStatus('Carregando lista…');
+    loadPlaylist(escolhida.source_url);
   }
 
   /* ------------------------------------------------------------- ao vivo --- */
@@ -1810,7 +1930,17 @@
         return;
       }
 
+      if (item.id === 'playlists') {
+        openPlaylists();
+        return;
+      }
+
       openCatalog(item.id);
+      return;
+    }
+
+    if (node.classList.contains('playlist-row')) {
+      selectPlaylist(Number(node.dataset.index));
       return;
     }
 
@@ -2043,6 +2173,11 @@
       // TV ficava presa — sem setas e sem Voltar. Voltar precisa fechar o app.
       if (active && active.id === 'screen-boot') {
         window.close();
+        return;
+      }
+
+      if (active && active.id === 'screen-playlists') {
+        showMenu();
         return;
       }
 
