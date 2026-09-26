@@ -1,7 +1,9 @@
-# Nebula TV (LG Smart TV / webOS)
+# Nebula-Player (LG Smart TV / webOS)
 
 App do Nebula Player para **LG Smart TV**, em **web nativo** (HTML/CSS/JS)
-empacotado como app webOS (`.ipk`).
+empacotado como app webOS (`.ipk`). O app se chama **Nebula-Player** nas telas e
+no lançador; a pasta e o `id` do pacote continuam `nebula-tv` / `com.nebula.tv` —
+trocar o `id` faria o webOS instalar como outro app, perdendo ativação e cache.
 
 ## Por que web nativo (e não Flutter)
 
@@ -18,8 +20,9 @@ Android (`Nebula Core`), então a escolha é só de camada de apresentação.
 
 ```
 appinfo.json     metadados do app webOS (id, ícone, resolução)
-index.html       as telas do app: boot, ativação, menu, trocar lista, ao vivo,
-                 catálogo, séries, episódios e player (ver "Telas")
+index.html       as 12 telas do app (ver "Telas"): boot, ativação, menu, trocar
+                 lista, termos, controle parental, teclado do PIN, ao vivo,
+                 catálogo, séries, episódios e player
 css/tv.css       tema roxo/preto e foco para controle remoto (10-foot UI)
 js/api.js        cliente do Nebula Core (registro, auth, sessão, telemetria, timeout)
 js/m3u.js        parser M3U/M3U_PLUS (mesmas regras do app Android)
@@ -161,17 +164,23 @@ que o `AbortController` é acionado quando existe, e que respostas normais
 
 ## Fluxo do app
 
-1. **Registro**: gera uma identidade local (pseudo-MAC, como no Android — o
+1. **Termos de uso**: no primeiro uso o app abre os termos e só segue depois de
+   **"Concordo"** — e isso acontece antes de qualquer acesso à rede;
+2. **Registro**: gera uma identidade local (pseudo-MAC, como no Android — o
    webOS não expõe o MAC real) e registra no Core;
-2. **Ativação**: exibe **MAC + código de 6 dígitos**; o usuário ativa no portal;
-3. **Provisionamento**: recebe do Core **todas** as listas vinculadas ao aparelho
+3. **Ativação**: exibe **MAC + código de 6 dígitos**; o usuário ativa no portal;
+4. **Provisionamento**: recebe do Core **todas** as listas vinculadas ao aparelho
    e faz o parse da escolhida em **Trocar lista** (ou da primeira, na primeira
    execução). A escolha fica no `localStorage` e sobrevive ao boot; listas já
    baixadas saem do cache, sem novo download;
-4. **Catálogo**: Ao vivo · Filmes · Séries, com categorias e navegação por
-   setas do controle;
-5. **Player**: `<video>` em tela cheia; **OK** pausa/retoma, **Voltar** sai;
-6. **Telemetria**: envia `playback_started` / `playback_ended` ao Nebula Monitor.
+5. **Menu**: 7 botões — Ao vivo · Filmes · Séries · Trocar lista · Controle
+   parental · Termos de uso · Recarregar lista;
+6. **Catálogo**: Ao vivo · Filmes · Séries, com categorias e navegação por setas
+   do controle. Com o **controle parental** ligado, as categorias +18 não
+   aparecem;
+7. **Player**: `<video>` em tela cheia; **OK** pausa/retoma, **←/→** buscam 10 s,
+   **Voltar** sai;
+8. **Telemetria**: envia `playback_started` / `playback_ended` ao Nebula Monitor.
 
 ### Quando o Core não responde
 
@@ -213,8 +222,11 @@ então ele tem de casar com as colunas reais do CSS.
 |---|---|---|
 | Boot | `screen-boot` | progresso do carregamento, mensagens de repetição e o botão **"Tentar novamente"**; **Voltar** fecha o app |
 | Ativação | `screen-activation` | MAC + código de 6 dígitos para ativar no portal, com **"Verificar agora"** |
-| Menu | `screen-menu` | 5 botões agrupados no centro: Ao vivo · Filmes · Séries · **Trocar lista** · Recarregar lista; o topo mostra a lista em uso e o total de itens |
+| Menu | `screen-menu` | 7 botões agrupados no centro, 3 por linha: Ao vivo · Filmes · Séries · Trocar lista · Controle parental · Termos de uso · Recarregar lista. O topo mostra a lista em uso e o total de itens visíveis |
 | Trocar lista | `screen-playlists` | as playlists vinculadas ao aparelho, com **"em uso"** na ativa; **OK** troca, **Voltar** volta ao menu |
+| Termos de uso | `screen-terms` | as 7 cláusulas, uma por item navegável; no primeiro uso traz **"Concordo"** e **"Não concordo"** no fim |
+| Controle parental | `screen-parental` | liga/desliga o bloqueio de +18, altera o PIN, libera a sessão e lista as categorias detectadas |
+| Teclado do PIN | `screen-pin` | teclado numérico de 0 a 9 com **Apagar**, para definir, conferir ou alterar o PIN |
 | Ao vivo | `screen-live` | categorias ‖ lista de canais ‖ preview retangular |
 | Catálogo | `screen-catalog` | grade de pôsteres (Filmes), com categorias e busca |
 | Séries | `screen-series` | uma capa por série, com os episódios agrupados |
@@ -235,13 +247,63 @@ listas já baixadas não baixa nada de novo.
 > vinculadas; com uma só, a tela lista um único item (o que ainda é útil, porque
 > identifica a lista em uso).
 
+### Termos de uso
+
+A tela existe em dois modos: **leitura**, aberta pelo menu, e **aceitação
+obrigatória**, que aparece no primeiro uso. O gate fica no topo do `boot()`,
+**antes de qualquer chamada de rede** — é a única etapa que não depende do Core,
+então o usuário lê e aceita mesmo com o servidor fora do ar, e nada acontece no
+aparelho antes disso.
+
+| Botão | O que faz |
+|---|---|
+| **Concordo** | grava a revisão aceita em `nebula.tv.terms` e retoma o boot |
+| **Não concordo** | avisa na tela e fecha o app; ao reabrir, os termos voltam |
+
+O texto fica **estático no `index.html`**, cláusula por cláusula: é texto para
+revisar, não para remontar string em JS. Cada cláusula é um item navegável, então
+as setas percorrem e o container rola sozinho. Ao mudar o texto, **suba
+`TERMS_REVISION`** em `js/app.js`: os aparelhos que aceitaram a revisão anterior
+são consultados de novo — é isso que dá sentido à aceitação.
+
+> ⚠️ O texto atual é um **rascunho operacional** escrito a partir do que o app
+> faz (inclusive a cláusula sobre a telemetria enviada ao Core). Não substitui
+> revisão jurídica antes de ser tratado como termo vinculante.
+
+### Controle parental (+18)
+
+O provedor **não marca** o conteúdo adulto na lista: não há `parental-lock` nem
+atributo equivalente nas ~333 mil entradas, então a detecção é por
+**palavras-chave no nome da categoria** (`adult`, `+18`, `18+`, `xxx`, `porn`,
+`sex`, `erot`, `onlyfans`…), com acento e maiúscula normalizados. A decisão é
+tomada **uma vez por lista** e o filtro só consulta um mapa — comparar
+palavra-chave item a item numa lista desse tamanho travaria a TV.
+
+- **bloqueado**, o +18 sai de Ao vivo, Filmes e Séries, e a contagem no topo do
+  menu cai junto;
+- o **desbloqueio é de sessão** (memória): fechar o app volta a bloquear;
+- o **PIN de 4 dígitos fica no aparelho** (`nebula.tv.parental`), definido num
+  teclado numérico na tela, que confere no quarto dígito e tem **Apagar** para
+  corrigir. Definir pede duas digitações e já liga o bloqueio;
+- **desligar** o bloqueio, **liberar** ou **alterar** o PIN pedem o PIN; ligar e
+  voltar a bloquear não. **Ligar sem PIN é recusado**, porque esconderia o
+  conteúdo sem como liberar depois;
+- a tela lista as categorias que o app considerou +18, para o responsável
+  conferir se a detecção está pegando o que deve.
+
+> ⚠️ **PIN esquecido não tem recuperação pelo app** — é a consequência de o PIN
+> ficar no aparelho, sem participação do Core. Na TV em modo desenvolvedor, a
+> saída é o console do inspetor:
+> `localStorage.removeItem('nebula.tv.parental')` e recarregar. Num aparelho real,
+> só o `deploy:clean`, que apaga também a ativação.
+
 ## Atalhos do controle
 
 | Tecla | Ação |
 |---|---|
 | ↑ ↓ ← → | navegar |
 | OK (Enter) | selecionar / pausar-retomar no player |
-| Voltar (461) | voltar de tela / sair do player / fechar o app na tela de boot |
+| Voltar (461) | voltar de tela · sair do player · sair do teclado do PIN · fechar o app no boot e ao recusar os termos |
 
 ## Melhorias pendentes (UX)
 
