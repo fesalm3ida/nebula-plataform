@@ -1,5 +1,5 @@
 /**
- * Nebula TV — app para LG Smart TV (webOS).
+ * Nebula-Player — app para LG Smart TV (webOS).
  *
  * Fluxo: registra o aparelho (MAC + código) -> ativação no portal ->
  * provisionamento das listas -> catálogo (Ao vivo / Filmes / Séries) ->
@@ -13,6 +13,22 @@
   var CORE_API = window.NEBULA_CORE_API || 'https://nebula-core-6hq4.onrender.com';
   var IDENTITY_KEY = 'nebula.tv.identity';
   var PLAYLIST_KEY = 'nebula.tv.source_url';
+  var TERMS_KEY = 'nebula.tv.terms';
+  var PARENTAL_KEY = 'nebula.tv.parental';
+
+  // Revisao dos termos aceita pelo usuario. Ao mudar o texto no index.html,
+  // mude aqui: os aparelhos que aceitaram a revisao anterior sao consultados de
+  // novo, que e o que da sentido a aceitacao.
+  var TERMS_REVISION = '2026-09';
+
+  // O provedor NAO marca o conteudo +18 na lista (nem 'parental-lock' nem
+  // atributo equivalente): o unico sinal e o nome da categoria, e ele varia
+  // ("XXX +18", "[+18] ADULTOS...", "Filmes - Adultos"). A comparacao passa pelo
+  // NebulaSearch.normalize, entao acento e maiuscula nao importam.
+  var PARENTAL_WORDS = [
+    'adult', '+18', '18+', 'xxx', 'porn', 'sex', 'erot', 'onlyfans',
+    'brazz', 'playboy', 'hentai', 'sensual', 'hardcore'
+  ];
 
   var KEYS = {
     LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40,
@@ -25,6 +41,13 @@
     identity: null,
     playlists: [],
     playlistName: '',
+    termsGate: false,
+    termsClosing: false,
+    adultGroups: {},
+    parentalUnlocked: false,
+    pinPurpose: null,
+    pinBuffer: '',
+    pinFirst: '',
     channels: [],
     categories: [],
     category: null,
@@ -52,8 +75,8 @@
 
   var SCREEN_IDS = [
     'screen-boot', 'screen-activation', 'screen-menu', 'screen-playlists',
-    'screen-live', 'screen-catalog', 'screen-series', 'screen-episodes',
-    'screen-player'
+    'screen-terms', 'screen-parental', 'screen-pin', 'screen-live',
+    'screen-catalog', 'screen-series', 'screen-episodes', 'screen-player'
   ];
 
   /**
@@ -221,6 +244,14 @@
 
   function boot() {
     state.identity = loadIdentity();
+
+    // Termos primeiro, e antes de qualquer chamada de rede: e a unica etapa que
+    // nao depende do Core, entao o usuario le e aceita mesmo com o servidor fora
+    // do ar (e nada acontece no aparelho antes disso).
+    if (!termsAccepted()) {
+      openTerms(true);
+      return;
+    }
 
     // As mensagens de repeticao aparecem na tela de boot: vindo da ativacao
     // (botao 'Verificar agora') elas ficariam invisiveis.
@@ -399,6 +430,13 @@
     }
 
     return '';
+  }
+
+  /** Define a lista ativa e reindexa as categorias (inclusive as +18). */
+  function setChannels(channels) {
+    state.channels = channels;
+    state.categories = window.NebulaM3u.categoriesOf(state.channels);
+    indexAdultGroups();
   }
 
   // ------------------------------------------------- cache da lista (IDB) --
@@ -599,8 +637,7 @@
         (Date.now() - (cached.savedAt || 0)) < CACHE_MAX_AGE;
 
       if (fresh) {
-        state.channels = cached.channels;
-        state.categories = window.NebulaM3u.categoriesOf(state.channels);
+        setChannels(cached.channels);
         localStorage.setItem(PLAYLIST_KEY, sourceUrl);
         showMenu();
 
@@ -614,8 +651,7 @@
       show('screen-boot');
 
       return fetchPlaylist(sourceUrl).then(function (channels) {
-        state.channels = channels;
-        state.categories = window.NebulaM3u.categoriesOf(channels);
+        setChannels(channels);
         localStorage.setItem(PLAYLIST_KEY, sourceUrl);
         showMenu();
       });
@@ -629,8 +665,7 @@
     return fetch(sourceUrl)
       .then(function (response) { return response.text(); })
       .then(function (text) {
-        state.channels = window.NebulaM3u.parse(text);
-        state.categories = window.NebulaM3u.categoriesOf(state.channels);
+        setChannels(window.NebulaM3u.parse(text));
 
         if (!state.channels.length) {
           return showActivation('A lista está vazia ou em formato não suportado.');
@@ -641,6 +676,340 @@
       });
   }
 
+  /* ---------------------------------------------------- controle parental --- */
+
+  /** Configuracao do controle parental gravada no proprio aparelho. */
+  function parentalSettings() {
+    var raw = localStorage.getItem(PARENTAL_KEY);
+
+    if (raw) {
+      try {
+        return JSON.parse(raw) || {};
+      } catch (error) {
+        /* configuracao invalida: trata como inexistente */
+      }
+    }
+
+    return {};
+  }
+
+  function saveParental(changes) {
+    var settings = parentalSettings();
+
+    Object.keys(changes).forEach(function (key) {
+      settings[key] = changes[key];
+    });
+
+    localStorage.setItem(PARENTAL_KEY, JSON.stringify(settings));
+  }
+
+  /** A categoria e de conteudo adulto? (o provedor so marca pelo nome) */
+  function isAdultCategory(group) {
+    var name = window.NebulaSearch.normalize(group);
+
+    return PARENTAL_WORDS.some(function (word) {
+      return name.indexOf(word) !== -1;
+    });
+  }
+
+  /**
+   * Indexa as categorias +18 uma vez por lista.
+   *
+   * O filtro roda item a item numa lista de centenas de milhares: comparar
+   * palavra-chave (com normalizacao de acento) em cada item travaria a TV, entao
+   * a decisao e tomada nas categorias e o filtro apenas consulta este mapa.
+   */
+  function indexAdultGroups() {
+    state.adultGroups = {};
+
+    state.categories.forEach(function (group) {
+      if (isAdultCategory(group)) {
+        state.adultGroups[group] = true;
+      }
+    });
+  }
+
+  /** O conteudo +18 esta escondido agora? */
+  function parentalLocked() {
+    return Boolean(parentalSettings().locked) && !state.parentalUnlocked;
+  }
+
+  /** Itens visiveis agora (sem o +18 quando o bloqueio esta ligado). */
+  function visibleChannels() {
+    if (!parentalLocked()) {
+      return state.channels;
+    }
+
+    return state.channels.filter(function (item) {
+      return !state.adultGroups[item.group];
+    });
+  }
+
+  /** As categorias +18 desta lista (para o responsavel conferir). */
+  function adultCategories() {
+    return state.categories.filter(function (group) {
+      return Boolean(state.adultGroups[group]);
+    });
+  }
+
+  /* ------------------------------------------------- tela: controle parental --- */
+
+  function openParental() {
+    renderParental();
+    rebuildNav();
+    show('screen-parental');
+    focusFirst();
+  }
+
+  function renderParental() {
+    var container = $('parental-list');
+    var settings = parentalSettings();
+    var hasPin = Boolean(settings.pin);
+    var rows = [];
+
+    if (!hasPin) {
+      rows.push({
+        action: 'pin',
+        label: 'Definir PIN',
+        tag: 'necessário para bloquear'
+      });
+    } else {
+      rows.push({
+        action: 'lock',
+        label: 'Bloqueio de conteúdo +18',
+        tag: settings.locked ? 'LIGADO' : 'DESLIGADO'
+      });
+      rows.push({ action: 'pin', label: 'Alterar PIN', tag: '' });
+
+      if (settings.locked) {
+        rows.push({
+          action: 'unlock',
+          label: state.parentalUnlocked ? 'Bloquear novamente' : 'Liberar agora',
+          tag: state.parentalUnlocked ? 'conteúdo visível' : 'digitar o PIN'
+        });
+      }
+    }
+
+    $('parental-state').textContent = !hasPin
+      ? 'sem PIN definido'
+      : (parentalLocked() ? 'bloqueado' : 'liberado');
+
+    container.innerHTML = '';
+
+    rows.forEach(function (row) {
+      var node = document.createElement('div');
+      var label = document.createElement('span');
+
+      node.className = 'parental-row focusable';
+      node.dataset.action = row.action;
+
+      label.className = 'parental-label';
+      label.textContent = row.label;
+      node.appendChild(label);
+
+      if (row.tag) {
+        var tag = document.createElement('span');
+
+        tag.className = 'parental-tag';
+        tag.textContent = row.tag;
+        node.appendChild(tag);
+      }
+
+      container.appendChild(node);
+    });
+
+    renderParentalDetected();
+  }
+
+  /** Mostra quais categorias o app considera +18, para o responsavel conferir. */
+  function renderParentalDetected() {
+    var box = $('parental-detected');
+    var found = adultCategories();
+    var title = document.createElement('p');
+
+    box.innerHTML = '';
+
+    title.className = 'muted';
+    title.textContent = found.length
+      ? 'Categorias detectadas como +18 (' + found.length + '):'
+      : 'Nenhuma categoria +18 detectada nesta lista.';
+    box.appendChild(title);
+
+    found.forEach(function (group) {
+      var line = document.createElement('p');
+
+      line.className = 'parental-found';
+      line.textContent = '· ' + group;
+      box.appendChild(line);
+    });
+  }
+
+  /** Reconstroi a navegacao mantendo o cursor na linha indicada. */
+  function focusParentalRow(action) {
+    rebuildNav();
+
+    var node = document.querySelector(
+      '#parental-list .parental-row[data-action="' + action + '"]'
+    );
+
+    if (node) {
+      setFocus(node);
+    } else {
+      ensureFocus();
+    }
+  }
+
+  function parentalAction(action) {
+    var settings = parentalSettings();
+
+    if (action === 'lock') {
+      if (settings.locked) {
+        // Desligar o bloqueio revela o conteudo: pede o PIN.
+        openPin('disable');
+        return;
+      }
+
+      // Ligar sem PIN deixaria o conteudo escondido sem como liberar.
+      if (!settings.pin) {
+        openPin('set');
+        return;
+      }
+
+      saveParental({ locked: true });
+      state.parentalUnlocked = false;
+      renderParental();
+      focusParentalRow(action);
+      return;
+    }
+
+    if (action === 'pin') {
+      openPin(settings.pin ? 'current' : 'set');
+      return;
+    }
+
+    if (action === 'unlock') {
+      if (state.parentalUnlocked) {
+        // Bloquear de novo nao precisa de PIN.
+        state.parentalUnlocked = false;
+        renderParental();
+        focusParentalRow(action);
+        return;
+      }
+
+      openPin('unlock');
+    }
+  }
+
+  /* --------------------------------------------------------- teclado PIN --- */
+
+  var PIN_HINTS = {
+    unlock: 'Digite o PIN para liberar o conteúdo +18',
+    disable: 'Digite o PIN para desligar o bloqueio',
+    current: 'Digite o PIN atual',
+    set: 'Digite o novo PIN'
+  };
+
+  /** Atualiza a instrucao e o visor do teclado. */
+  function pinHint(text) {
+    $('pin-hint').textContent = text;
+    renderPinDisplay();
+  }
+
+  /** Quatro posicoes, preenchidas conforme os digitos entram. */
+  function renderPinDisplay() {
+    var slots = [];
+
+    for (var i = 0; i < 4; i++) {
+      slots.push(i < state.pinBuffer.length ? '•' : '–');
+    }
+
+    $('pin-display').textContent = slots.join('  ');
+  }
+
+  function openPin(purpose) {
+    state.pinPurpose = purpose;
+    state.pinBuffer = '';
+    state.pinFirst = '';
+
+    pinHint(PIN_HINTS[purpose] || '');
+    rebuildNav();
+    show('screen-pin');
+    focusFirst();
+  }
+
+  /**
+   * Uma tecla do teclado do PIN.
+   *
+   * A conferencia acontece ao completar 4 digitos: no controle isso economiza um
+   * OK por digitacao, e o 'Apagar' permite corrigir antes do quarto digito.
+   */
+  function pinKey(node) {
+    if (node.dataset.action === 'erase') {
+      state.pinBuffer = state.pinBuffer.slice(0, -1);
+      renderPinDisplay();
+      return;
+    }
+
+    if (!node.dataset.digit || state.pinBuffer.length >= 4) {
+      return;
+    }
+
+    state.pinBuffer += node.dataset.digit;
+    renderPinDisplay();
+
+    if (state.pinBuffer.length === 4) {
+      pinSubmit();
+    }
+  }
+
+  function pinSubmit() {
+    var typed = state.pinBuffer;
+    var settings = parentalSettings();
+
+    state.pinBuffer = '';
+
+    if (state.pinPurpose === 'set') {
+      if (!state.pinFirst) {
+        state.pinFirst = typed;
+        pinHint('Repita o novo PIN');
+        return;
+      }
+
+      if (state.pinFirst !== typed) {
+        state.pinFirst = '';
+        pinHint('Os PINs não conferem. Digite o novo PIN');
+        return;
+      }
+
+      state.pinFirst = '';
+      state.parentalUnlocked = false;
+      saveParental({ pin: typed, locked: true });
+      openParental();
+      return;
+    }
+
+    if (typed !== settings.pin) {
+      pinHint('PIN incorreto. Tente de novo');
+      return;
+    }
+
+    if (state.pinPurpose === 'disable') {
+      saveParental({ locked: false });
+      state.parentalUnlocked = false;
+      openParental();
+      return;
+    }
+
+    if (state.pinPurpose === 'current') {
+      openPin('set');
+      return;
+    }
+
+    // 'unlock': libera ate o app fechar (o desbloqueio nao e gravado).
+    state.parentalUnlocked = true;
+    openParental();
+  }
+
   /* --------------------------------------------------------------- menu --- */
 
   var MENU = [
@@ -648,6 +1017,8 @@
     { id: 'movie', label: 'Filmes' },
     { id: 'series', label: 'Séries' },
     { id: 'playlists', label: 'Trocar lista' },
+    { id: 'parental', label: 'Controle parental' },
+    { id: 'terms', label: 'Termos de uso' },
     { id: 'reload', label: 'Recarregar lista' }
   ];
 
@@ -657,7 +1028,7 @@
     grid.innerHTML = '';
     $('menu-list-name').textContent =
       (state.playlistName ? state.playlistName + ' · ' : '') +
-      state.channels.length + ' itens';
+      visibleChannels().length + ' itens';
 
     MENU.forEach(function (item, index) {
       var tile = document.createElement('div');
@@ -755,13 +1126,82 @@
     loadPlaylist(escolhida.source_url).catch(bootFailed);
   }
 
+  /* ------------------------------------------------------------- termos --- */
+
+  /**
+   * Termos de uso.
+   *
+   * O texto fica estatico no index.html (e texto juridico: melhor revisar no
+   * HTML do que remontar string no JS) e cada clausula e um item navegavel, para
+   * as setas percorrerem e o container rolar sozinho.
+   *
+   * Dois modos: leitura (pelo menu) e aceitacao obrigatoria (primeiro uso), em
+   * que o item de aceitar entra na navegacao no FIM da lista — o usuario precisa
+   * passar por todas as clausulas para chegar nele.
+   */
+  function openTerms(aceitando) {
+    state.termsGate = Boolean(aceitando);
+
+    // Os botoes de decisao ('Concordo' / 'Nao concordo') so entram na navegacao
+    // no primeiro uso.
+    ['terms-accept', 'terms-refuse'].forEach(function (id) {
+      var node = $(id);
+
+      node.hidden = !state.termsGate;
+
+      // Sem a classe o rebuildNav nao enxerga o item escondido.
+      node.classList.toggle('focusable', state.termsGate);
+
+      if (!state.termsGate) {
+        node.classList.remove('focused');
+      }
+    });
+
+    $('terms-mode').textContent = state.termsGate
+      ? 'Percorra com as setas até o fim e escolha'
+      : 'Nebula-Player · atualizado em setembro de 2026';
+
+    rebuildNav();
+    show('screen-terms');
+    focusFirst();
+  }
+
+  /** O usuario ja aceitou a revisao atual dos termos? */
+  function termsAccepted() {
+    return localStorage.getItem(TERMS_KEY) === TERMS_REVISION;
+  }
+
+  /** Grava a aceitacao e retoma o boot. */
+  function acceptTerms() {
+    localStorage.setItem(TERMS_KEY, TERMS_REVISION);
+    state.termsGate = false;
+    boot();
+  }
+
+  /**
+   * Recusa dos termos: sem a aceitacao o app nao tem como operar, entao ele
+   * avisa na tela e fecha — em vez de deixar o usuario preso numa tela sem
+   * saida. O aviso existe porque fechar sem explicacao parece travamento.
+   */
+  function refuseTerms() {
+    if (state.termsClosing) {
+      return;
+    }
+
+    state.termsClosing = true;
+    $('terms-mode').textContent =
+      'Sem a aceitação o Nebula-Player não pode ser usado — fechando…';
+
+    setTimeout(function () { window.close(); }, 1500);
+  }
+
   /* ------------------------------------------------------------- ao vivo --- */
 
   var PREVIEW_DELAY = 900;
 
   function openLive() {
     state.section = 'live';
-    state.catalog = state.channels.filter(function (item) {
+    state.catalog = visibleChannels().filter(function (item) {
       return item.kind === 'live';
     });
     state.category = null;
@@ -929,7 +1369,7 @@
 
   function openCatalog(kind) {
     state.section = kind;
-    state.catalog = state.channels.filter(function (channel) { return channel.kind === kind; });
+    state.catalog = visibleChannels().filter(function (channel) { return channel.kind === kind; });
     state.category = null;
     state.query = '';
 
@@ -1210,7 +1650,7 @@
 
   function openSeries() {
     state.section = 'series';
-    state.catalog = state.channels.filter(function (item) {
+    state.catalog = visibleChannels().filter(function (item) {
       return item.kind === 'series';
     });
     state.seriesGroups = groupSeries(state.catalog);
@@ -1987,6 +2427,18 @@
       return;
     }
 
+    // Aceitar continua o boot; recusar fecha o app (nao ha como operar sem a
+    // aceitacao).
+    if (node.id === 'terms-accept') {
+      acceptTerms();
+      return;
+    }
+
+    if (node.id === 'terms-refuse') {
+      refuseTerms();
+      return;
+    }
+
     showKeyHint('ATIVAR: ' + node.className +
       ' | ' + String(node.dataset.title || node.textContent || '')
         .trim().slice(0, 22) +
@@ -2015,7 +2467,27 @@
         return;
       }
 
+      if (item.id === 'parental') {
+        openParental();
+        return;
+      }
+
+      if (item.id === 'terms') {
+        openTerms(false);
+        return;
+      }
+
       openCatalog(item.id);
+      return;
+    }
+
+    if (node.classList.contains('parental-row')) {
+      parentalAction(node.dataset.action);
+      return;
+    }
+
+    if (node.classList.contains('pin-key')) {
+      pinKey(node);
       return;
     }
 
@@ -2258,6 +2730,29 @@
 
       if (active && active.id === 'screen-playlists') {
         showMenu();
+        return;
+      }
+
+      if (active && active.id === 'screen-parental') {
+        showMenu();
+        return;
+      }
+
+      if (active && active.id === 'screen-pin') {
+        // O teclado e sempre aberto a partir do controle parental.
+        openParental();
+        return;
+      }
+
+      if (active && active.id === 'screen-terms') {
+        // No primeiro uso o app so segue depois da aceitacao: o Voltar fecha o
+        // app, em vez de voltar para um menu que ainda nao existe.
+        if (state.termsGate) {
+          window.close();
+        } else {
+          showMenu();
+        }
+
         return;
       }
 

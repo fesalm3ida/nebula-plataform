@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=1920, initial-scale=1">
-  <title>Nebula TV</title>
+  <title>Nebula-Player</title>
   <link rel="stylesheet" href="css/tv.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
     <!-- Boot -->
     <section id="screen-boot" class="screen active">
       <div class="center">
-        <h1 class="brand">Nebula TV</h1>
+        <h1 class="brand">Nebula-Player</h1>
         <p id="boot-status" class="muted">Inicializando…</p>
         <!-- Saida quando o servidor nao responde: sem ela a tela de boot fica
              sem nada focavel e nem as setas nem o Voltar fazem algo. -->
@@ -22,7 +22,7 @@
     <!-- Ativação (MAC + código) -->
     <section id="screen-activation" class="screen">
       <div class="center">
-        <h1 class="brand">Nebula TV</h1>
+        <h1 class="brand">Nebula-Player</h1>
         <p class="muted">Ative este aparelho no portal Nebula:</p>
 
         <div class="data-cards">
@@ -70,7 +70,7 @@
     <!-- Menu -->
     <section id="screen-menu" class="screen">
       <header class="topbar">
-        <h1 class="brand">Nebula TV</h1>
+        <h1 class="brand">Nebula-Player</h1>
         <span id="menu-list-name" class="muted"></span>
       </header>
       <div id="menu-grid" class="grid" data-nav="3"></div>
@@ -83,6 +83,121 @@
         <span id="playlists-count" class="muted"></span>
       </header>
       <div id="playlist-list" class="channels playlists" data-nav="1"></div>
+    </section>
+
+    <!-- Termos de uso: cada clausula e um item navegavel, entao as setas
+         percorrem o texto e rolam o container -->
+    <section id="screen-terms" class="screen">
+      <header class="topbar">
+        <h2>Termos de uso</h2>
+        <span id="terms-mode" class="muted">Nebula-Player · atualizado em setembro de 2026</span>
+      </header>
+      <div id="terms-list" class="terms" data-nav="1">
+        <div class="term-item focusable">
+          <h3>1. O que é o Nebula-Player</h3>
+          <p>O Nebula-Player é um <strong>reprodutor multimídia</strong> para TV. Ele
+            reproduz as listas de reprodução (M3U) cadastradas e vinculadas a este
+            aparelho e não inclui, fornece ou embute conteúdo próprio.</p>
+        </div>
+
+        <div class="term-item destaque focusable">
+          <h3>2. O Nebula não comercializa listas nem conteúdo</h3>
+          <p>O Nebula <strong>não vende, aluga, licencia, fornece, hospeda ou
+            distribui</strong> listas de reprodução, canais, filmes, séries ou
+            qualquer outro conteúdo audiovisual. Não há venda de assinaturas,
+            planos ou listas de IPTV: o aplicativo é <strong>somente um reprodutor
+            multimídia</strong>.</p>
+        </div>
+
+        <div class="term-item focusable">
+          <h3>3. A origem do conteúdo é do usuário</h3>
+          <p>As listas exibidas no aparelho são cadastradas e vinculadas pelo próprio
+            usuário, ou por quem administra o aparelho. Ao usar o Nebula-Player, o
+            usuário declara ter autorização e os direitos necessários para acessar o
+            conteúdo dessas listas e assume integral responsabilidade pela origem,
+            legalidade e licenciamento delas.</p>
+        </div>
+
+        <div class="term-item focusable">
+          <h3>4. Sem garantias sobre conteúdo de terceiros</h3>
+          <p>O Nebula não controla as listas e não se responsabiliza por
+            disponibilidade, qualidade, legalidade, continuidade ou alteração do
+            conteúdo oferecido por terceiros. Lista fora do ar, com endereço alterado
+            ou que deixe de funcionar não gera direito a reembolso, crédito ou
+            indenização.</p>
+        </div>
+
+        <div class="term-item focusable">
+          <h3>5. Dados do aparelho</h3>
+          <p>Para ativar e operar o aparelho, o aplicativo registra uma identificação
+            do dispositivo (MAC e código de ativação) e envia eventos de reprodução —
+            início e fim — ao Nebula Core. Esses dados servem ao funcionamento e ao
+            monitoramento do aparelho, não para publicidade.</p>
+        </div>
+
+        <div class="term-item focusable">
+          <h3>6. Uso permitido</h3>
+          <p>O aplicativo deve ser usado apenas para fins lícitos, conforme a
+            legislação aplicável. O usuário não deve utilizá-lo para acessar conteúdo
+            sem autorização.</p>
+        </div>
+
+        <div class="term-item focusable">
+          <h3>7. Aceitação</h3>
+          <p>O uso do Nebula-Player implica a aceitação destes termos. Quem não
+            concordar deve interromper o uso e não cadastrar nem reproduzir listas no
+            aparelho.</p>
+        </div>
+
+        <!-- Botoes de decisao: entram na navegacao apenas no primeiro uso (sem
+             a classe .focusable o rebuildNav nao os enxerga). Ficam no FIM da
+             lista de clausulas, para o usuario chegar neles descendo com a mesma
+             seta que ja esta usando. -->
+        <div id="terms-accept" class="term-action aceite" hidden>
+          <strong>Concordo</strong>
+          <span class="muted">aceito os termos e quero usar o Nebula-Player</span>
+        </div>
+
+        <div id="terms-refuse" class="term-action recusa" hidden>
+          <strong>Não concordo</strong>
+          <span class="muted">sair sem aceitar os termos</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Controle parental: as linhas de acao sao montadas pelo app -->
+    <section id="screen-parental" class="screen">
+      <header class="topbar">
+        <h2>Controle parental</h2>
+        <span id="parental-state" class="muted"></span>
+      </header>
+      <div class="parental-body">
+        <div id="parental-list" class="channels" data-nav="1"></div>
+        <div id="parental-detected" class="parental-detected"></div>
+      </div>
+    </section>
+
+    <!-- Teclado do PIN: o app decide se e definir, conferir ou alterar -->
+    <section id="screen-pin" class="screen">
+      <div class="center">
+        <h2>Controle parental</h2>
+        <p id="pin-hint" class="muted"></p>
+        <p id="pin-display" class="pin-display">–  –  –  –</p>
+        <div id="pin-grid" class="pin-grid" data-nav="3">
+          <div class="pin-key focusable" data-digit="1">1</div>
+          <div class="pin-key focusable" data-digit="2">2</div>
+          <div class="pin-key focusable" data-digit="3">3</div>
+          <div class="pin-key focusable" data-digit="4">4</div>
+          <div class="pin-key focusable" data-digit="5">5</div>
+          <div class="pin-key focusable" data-digit="6">6</div>
+          <div class="pin-key focusable" data-digit="7">7</div>
+          <div class="pin-key focusable" data-digit="8">8</div>
+          <div class="pin-key focusable" data-digit="9">9</div>
+          <div class="pin-key apagar focusable" data-action="erase">Apagar</div>
+          <div class="pin-key focusable" data-digit="0">0</div>
+        </div>
+        <p class="muted">↑↓←→ escolhem · OK digita · Voltar sai do teclado</p>
+      </div>
     </section>
 
     <!-- Catálogo (Ao vivo / Filmes / Séries) -->

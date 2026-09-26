@@ -1,10 +1,10 @@
 {
   "id": "com.nebula.tv",
-  "version": "0.3.11",
+  "version": "0.3.15",
   "vendor": "Nebula",
   "type": "web",
   "main": "index.html",
-  "title": "Nebula TV",
+  "title": "Nebula-Player",
   "icon": "icons/icon-256.png",
   "largeIcon": "icons/icon-512.png",
   "bgImage": "icons/bg-1920.png",

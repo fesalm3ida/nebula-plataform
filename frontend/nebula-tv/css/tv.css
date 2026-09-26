@@ -1,4 +1,4 @@
-/* Nebula TV — tema roxo/preto com foco para controle remoto (10-foot UI). */
+/* Nebula-Player — tema roxo/preto com foco para controle remoto (10-foot UI). */
 :root {
   --bg-dark: #0b0618;
   --bg-mid: #1b0b3a;
@@ -94,11 +94,13 @@ html, body {
 #screen-menu.active { display: flex; flex-direction: column; }
 
 .grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 28px;
+  /* flex-wrap (e nao grid) para a ultima linha incompleta ficar CENTRADA: o
+     menu ja tem 7 botoes, e numa grade a sobra ficaria encostada a esquerda. */
+  display: flex;
+  flex-wrap: wrap;
   align-content: center;
   justify-content: center;
+  gap: 28px;
   width: 100%;
   max-width: 1240px;
   margin: 0 auto;
@@ -106,6 +108,8 @@ html, body {
 }
 
 .tile {
+  /* Exatamente 3 por linha: 100% menos os 2 espacos de 28px entre eles. */
+  flex: 0 0 calc((100% - 56px) / 3);
   background: var(--surface);
   border: 2px solid var(--border);
   border-radius: 18px;
@@ -146,6 +150,118 @@ html, body {
   font-weight: bold;
   font-size: 20px;
 }
+
+/* ------------------------------------------- Termos de uso (menu) -------- */
+
+.terms { height: 880px; max-width: 1400px; margin: 0 auto; }
+
+.term-item {
+  padding: 20px 26px;
+  margin-bottom: 14px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background: var(--surface);
+}
+.term-item.focused {
+  border-color: var(--primary-soft);
+  background: rgba(139, 63, 253, .22);
+}
+
+/* A clausula que precisa ficar evidente mesmo sem estar em foco. */
+.term-item.destaque { border-color: var(--primary); }
+
+/* Botoes de decisao dos termos (so aparecem no primeiro uso). */
+.term-action {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 22px 26px;
+  margin-bottom: 14px;
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+/* O display:flex acima venceria o [hidden] do navegador (estilo de autor vence
+   o estilo do UA), entao o escondido precisa ser reafirmado aqui. */
+.term-action[hidden] { display: none; }
+
+.term-action strong { font-size: 26px; }
+.term-action .muted { font-size: 19px; }
+
+.term-action.aceite { border-color: var(--primary); background: rgba(139, 63, 253, .18); }
+.term-action.aceite strong { color: var(--primary-soft); }
+.term-action.recusa strong { color: var(--muted); }
+
+/* -------------------------------- Controle parental + teclado do PIN ------ */
+
+.parental-body { max-width: 1240px; margin: 0 auto; }
+
+.parental-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 22px;
+  margin-bottom: 10px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: var(--surface);
+}
+.parental-row.focused {
+  background: rgba(139, 63, 253, .38);
+  border-color: var(--primary-soft);
+}
+.parental-label { font-size: 24px; }
+.parental-tag {
+  margin-left: auto;
+  flex: 0 0 auto;
+  color: var(--primary-soft);
+  font-weight: bold;
+  font-size: 20px;
+}
+
+/* Lista do que o app considera +18, para o responsavel conferir. */
+.parental-detected {
+  padding: 16px 22px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+.parental-detected p { margin: 0 0 6px; font-size: 19px; }
+.parental-found { color: var(--muted); }
+
+.pin-display {
+  font-size: 56px;
+  letter-spacing: 6px;
+  color: var(--primary-soft);
+}
+
+.pin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 130px);
+  gap: 14px;
+  justify-content: center;
+  margin: 8px 0;
+}
+
+.pin-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 96px;
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 34px;
+}
+.pin-key.focused {
+  border-color: var(--primary-soft);
+  background: rgba(139, 63, 253, .35);
+}
+.pin-key.apagar { font-size: 22px; }
+
+.term-item h3 { margin: 0 0 10px; font-size: 26px; }
+.term-item p { margin: 0; font-size: 20px; line-height: 1.45; color: var(--muted); }
+.term-item strong { color: var(--text); }
 
 .catalog-body {
   display: grid;
