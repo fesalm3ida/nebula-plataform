@@ -102,6 +102,20 @@ npm run version:tv    # confere a versão que está instalada na TV
 npm run running       # lista os apps rodando na TV
 ```
 
+> 📶 **O IP da TV é dinâmico (DHCP).** Quando ele muda, o deploy falha com
+> `EHOSTUNREACH` ou `Connection timed out` — e nada está quebrado: o app continua
+> instalado e ativado, só o registro do device ficou apontando para o endereço
+> antigo. O IP atual aparece no app **Developer Mode** da TV.
+>
+> ```bash
+> ares-setup-device --listfull                      # mostra o IP registrado
+> ares-setup-device -m lg-sala -i "host=<NOVO_IP>"  # aponta para o novo
+> ```
+>
+> Num único dia de trabalho a TV já trocou de endereço duas vezes, então confira
+> isso **antes** de suspeitar de rede, de chave SSH ou de sessão do Developer Mode
+> expirada.
+
 ### Atualizar o app na TV
 
 O webOS reaproveita o pacote instalado quando a **versão não muda** — por isso,
