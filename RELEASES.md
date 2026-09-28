@@ -2,7 +2,7 @@
 tipo: Releases
 id: RELEASES
 projeto: Nebula Platform
-atualizacao: '2026-09-23'
+atualizacao: '2026-09-28'
 relacionados:
 - '[[CHANGELOG]]'
 - '[[CONTRIBUTING]]'
@@ -16,6 +16,13 @@ aliases:
 ---
 
 # Nebula Platform — Releases
+
+v0.9.0 — "Light beyond" (consolidação por marcos)
+
+- Reúne os **11 marcos** da plataforma: do alicerce arquitetural (M1) ao app da **LG Smart TV** (M11).
+- Destaques: M8 Player Android (reprodução real) · M9 Licenciamento/Pagamentos (Mercado Pago com webhook) ·
+  M10 Nebula Monitor (observabilidade) · M11 Nebula TV (webOS com preview, séries agrupadas e cache).
+- Notas completas: `docs/RELEASE-LIGHT-BEYOND.md`.
 
 v0.8.0 — Nebula Monitor (telemetria e observabilidade)
 

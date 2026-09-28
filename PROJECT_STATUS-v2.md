@@ -2,11 +2,11 @@
 tipo: Status do Projeto
 id: PROJECT_STATUS-v2
 projeto: Nebula Platform
-versao: 0.8.0
+versao: 0.9.0
 status: 🚧 Em desenvolvimento ativo
-atualizacao: '2026-09-23'
-milestone: M10 — Nebula Monitor
-codename: Observability
+atualizacao: '2026-09-28'
+milestone: M11 — Nebula TV (LG webOS)
+codename: Light beyond
 relacionados:
 - '[[CHANGELOG]]'
 - '[[CONTRIBUTING]]'
@@ -26,9 +26,9 @@ aliases:
 
 ## Status do Projeto
 
-- **Versão atual:** **0.8.0** (Nebula Monitor — telemetria)
-- **Codename:** **Observability**
-- **Milestone atual:** **M10 — Nebula Monitor** (M4–M9 concluídas)
+- **Versão atual:** **0.9.0** — "Light beyond"
+- **Codename:** **Light beyond**
+- **Milestone atual:** **M11 — Nebula TV (LG webOS)** (M1–M10 concluídas)
 - **Status geral:** 🚧 Em desenvolvimento ativo
 - **Última atualização:** **23/09/2026**
 
@@ -319,7 +319,11 @@ na própria TV.
 | M4 | PostgreSQL Persistence | ✅ Validada (integração E2E com PostgreSQL) |
 | M5 | Playlist Domain | 🟢 Implementado (entidade+repos+CRUD+provisioning) — falta Auth Admin |
 | M6 | Provisioning | ✅ Provisionamento (ciclo de vida administrativo + device + ContentEndpoints) |
-| M7 | Telemetry | 🟢 Subdomínio de observabilidade implementado (TelemetryEvent/Log) |
+| M7 | Telemetry | ✅ Subdomínio de observabilidade (TelemetryEvent/Log) |
+| M8 | Nebula Player Android | ✅ Reprodução real (media_kit/libmpv) |
+| M9 | Licenciamento e Pagamentos | ✅ Trial, anual/vitalícia, portal do usuário e Mercado Pago (webhook automático) |
+| M10 | Nebula Monitor | ✅ Observabilidade + dashboard de telemetria |
+| M11 | Nebula TV (LG webOS) | ✅ App web nativo na LG: ativação, catálogo, preview e reprodução |
 
 ---
 
